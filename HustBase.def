@@ -1,0 +1,14 @@
+LIBRARY
+
+EXPORTS
+	CreateDB @1
+	OpenDB @2
+	DropDB @3
+	CloseDB @4
+	execute @5
+	Query @6
+	GetRec @7
+	OpenIndexScan @8
+	IX_GetNextEntry @9
+	CloseIndexScan @10
+	GetIndexTree @11

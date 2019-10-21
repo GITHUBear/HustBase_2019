@@ -1,0 +1,46 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: HustBase - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\Users\ADMINI~1\AppData\Local\Temp\RSP389F.tmp" with contents
+[
+/nologo /MDd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_AFXDLL" /D "_MBCS" /FR"Debug/" /Fp"Debug/HustBase.pch" /Yu"stdafx.h" /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
+"C:\Users\Administrator\Desktop\HustBase课设 无记录管理\HustBase 课设版 无记录管理模块\TableList.cpp"
+]
+Creating command line "cl.exe @C:\Users\ADMINI~1\AppData\Local\Temp\RSP389F.tmp" 
+Creating temporary file "C:\Users\ADMINI~1\AppData\Local\Temp\RSP38A0.tmp" with contents
+[
+/nologo /subsystem:windows /incremental:yes /pdb:"Debug/HustBase.pdb" /debug /machine:I386 /out:"Debug/HustBase.exe" /pdbtype:sept 
+".\Debug\EditArea.obj"
+".\Debug\HustBase.obj"
+".\Debug\HustBaseDoc.obj"
+".\Debug\HustBaseView.obj"
+".\Debug\IX_Manager.obj"
+".\Debug\MainFrm.obj"
+".\Debug\PF_Manager.obj"
+".\Debug\RM_Manager.obj"
+".\Debug\StdAfx.obj"
+".\Debug\SYS_Manager.obj"
+".\Debug\TableList.obj"
+".\Debug\TreeList.obj"
+".\Debug\HustBase.res"
+".\hustbase_sql.lib"
+]
+Creating command line "link.exe @C:\Users\ADMINI~1\AppData\Local\Temp\RSP38A0.tmp"
+<h3>Output Window</h3>
+Compiling...
+TableList.cpp
+C:\Users\Administrator\Desktop\HustBase课设 无记录管理\HustBase 课设版 无记录管理模块\TableList.cpp(126) : warning C4700: local variable 'cchCurDir' used without having been initialized
+Linking...
+
+
+
+<h3>Results</h3>
+HustBase.exe - 0 error(s), 1 warning(s)
+</pre>
+</body>
+</html>
