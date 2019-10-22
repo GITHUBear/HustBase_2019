@@ -10,6 +10,9 @@
 #include "PF_Manager.h"
 #include "str.h"
 
+const int RM_NO_MORE_FREE_PAGE = -1;
+const int RM_NO_MORE_FREE_SLOT = -1;
+
 typedef int SlotNum;
 
 typedef struct {	
@@ -39,7 +42,7 @@ typedef struct {
 	int nextFreePage;          // 与 RM_FileHdr 建立一个 freePage 链
 	int firstFreeSlot;         // 第 1 个 free slot
 	int slotCount;             // 已经分配的 slot 个数 包括删除之后的空 slot
-	char slotBitMap[1];        // 标记 slot 是否使用的 bitMap，此处仅做为地址用 (代码中实际分配空间)
+	char slotBitMap[0];        // 标记 slot 是否使用的 bitMap，此处仅做为地址用 (代码中实际分配空间)
 } RM_PageHdr;
 
 typedef struct {
@@ -51,6 +54,7 @@ typedef struct {
 } RM_FileHdr;
 
 typedef struct{                 // 文件句柄
+	bool bOpen;
 	PF_FileHandle pfFileHandle; // 保存 PF_FileHandle
 	RM_FileHdr rmFileHdr;       
 	bool isRMHdrDirty;          // 第 1 页是否脏
