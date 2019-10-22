@@ -28,7 +28,9 @@ const RC CreateFile(const char *fileName)
 	fd=open(fileName,_O_RDWR);
 	Page page;
 	memset(&page,0,PF_PAGESIZE);
-	bitmap=page.pData+(int)PF_FILESUBHDR_SIZE;
+	bitmap=page.pData+(int)PF_FILESUBHDR_SIZE;         // [dim dew] bitmap的大小受限导致 Paged File 的大小也是受限制的
+													   // 但是下面的代码当中对申请的 pageNum 并没有进行限制
+	// TODO: 在 PF_FileHdr中保存 Paged File 的限制, 并在相关代码处进行检查
 	fileSubHeader=(PF_FileSubHeader *)page.pData;
 	fileSubHeader->nAllocatedPages=1;                  // [dim dew] 分配的首页控制页
 	bitmap[0]|=0x01;                                   // [dim dew] 标志控制页used
