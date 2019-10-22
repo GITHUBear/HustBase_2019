@@ -11,21 +11,20 @@
 #include "str.h"
 
 const int RM_NO_MORE_FREE_PAGE = -1;
-const int RM_NO_MORE_FREE_SLOT = -1;
+const int RM_NO_MORE_FREE_SLOT = -2;
 
 typedef int SlotNum;
 
 typedef struct {	
 	PageNum pageNum;	       // 记录所在页的页号
 	SlotNum slotNum;		   // 记录的插槽号
-	bool bValid; 			   // true表示为一个有效记录的标识符
-}RID;
+} RID;
 
 typedef struct{
 	bool bValid;		       // False表示还未被读入记录
 	RID  rid; 		           // 记录的标识符 
 	char *pData; 		       // 记录所存储的数据 
-}RM_Record;
+} RM_Record;
 
 
 typedef struct
