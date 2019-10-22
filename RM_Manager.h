@@ -1,3 +1,9 @@
+//
+// File:        RM_Manager.h
+// Description: A interface for RM File
+// Authors:     dim dew
+//
+
 #ifndef RM_MANAGER_H_H
 #define RM_MANAGER_H_H
 
@@ -7,15 +13,15 @@
 typedef int SlotNum;
 
 typedef struct {	
-	PageNum pageNum;	//记录所在页的页号
-	SlotNum slotNum;		//记录的插槽号
-	bool bValid; 			//true表示为一个有效记录的标识符
+	PageNum pageNum;	       // 记录所在页的页号
+	SlotNum slotNum;		   // 记录的插槽号
+	bool bValid; 			   // true表示为一个有效记录的标识符
 }RID;
 
 typedef struct{
-	bool bValid;		 // False表示还未被读入记录
-	RID  rid; 		 // 记录的标识符 
-	char *pData; 		 //记录所存储的数据 
+	bool bValid;		       // False表示还未被读入记录
+	RID  rid; 		           // 记录的标识符 
+	char *pData; 		       // 记录所存储的数据 
 }RM_Record;
 
 
@@ -29,10 +35,26 @@ typedef struct
 	void *Lvalue,*Rvalue;
 }Con;
 
-typedef struct{//文件句柄
-	bool bOpen;//句柄是否打开（是否正在被使用）
-	//需要自定义其内部结构
-}RM_FileHandle;
+typedef struct {
+	int nextFreePage;          // 与 RM_FileHdr 建立一个 freePage 链
+	int firstFreeSlot;         // 第 1 个 free slot
+	int slotCount;             // 已经分配的 slot 个数 包括删除之后的空 slot
+	char slotBitMap[1];        // 标记 slot 是否使用的 bitMap，此处仅做为地址用 (代码中实际分配空间)
+} RM_PageHdr;
+
+typedef struct {
+	int recordSize;             // 一条记录的大小
+	int recordsPerPage;			// 每一页中可以存放的record数量
+	int firstFreePage;          // 第一个可以放下记录的page序号 (>= 2)
+	int slotsOffset;            // 每个页面中记录槽相对于 PF_Page.pData 的偏移
+	// 为了减少 FileHdr 的刷写这里不维护文件中记录的个数
+} RM_FileHdr;
+
+typedef struct{                 // 文件句柄
+	PF_FileHandle pfFileHandle; // 保存 PF_FileHandle
+	RM_FileHdr rmFileHdr;       
+	bool isRMHdrDirty;          // 第 1 页是否脏
+} RM_FileHandle;
 
 typedef struct{
 	bool  bOpen;		//扫描是否打开 
