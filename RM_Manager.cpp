@@ -68,7 +68,7 @@ RC RM_CreateFile (char *fileName, int recordSize)
 		((recordSize + 4) << 3) +
 		sizeof(RM_PageHdr)) > PF_PAGE_SIZE)
 		maxRecordsNum--;
-	maxRecordsNum = (maxRecordsNum + 7) >> 3;
+	maxRecordsNum = ((maxRecordsNum + 7) >> 3) << 3;
 
 	// 2. 调用 PF_Manager::CreateFile() 将 Paged File 的相关控制信息进行初始化
 	// 3. 调用 PF_Manager::OpenFile() 打开该文件 获取 PF_FileHandle
