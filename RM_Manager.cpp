@@ -97,8 +97,21 @@ RC RM_CreateFile (char *fileName, int recordSize)
 
 	return SUCCESS;
 }
+
+//目的；读取文件，设置RM_FileHandle
 RC RM_OpenFile(char *fileName, RM_FileHandle *fileHandle)
 {
+	RC rc;
+	PF_PageHandle pfPageHandle;
+	RM_FileHdr *rm_FileHdr;
+    if((rc=openFile(fileName,&fileHandle->pfFileHandle)) ||
+		rc=GetThisPage(&fileHandle->pfFileHandle,1,&pfPageHandle))
+		return rc;
+	fileHandle->bOpen=true;
+	rm_FileHdr = (RM_FileHdr*)pfPageHandle.pFrame->page.pData;
+	
+	fileHandle->rmFileHdr = *rm_FileHdr;
+
 	return SUCCESS;
 }
 
