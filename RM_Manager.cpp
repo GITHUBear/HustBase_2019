@@ -1,3 +1,9 @@
+//
+// File:        RM_Manger.cpp
+// Description: A implementation of RM_Manager.h to handle RM file
+// Authors:     dim dew
+//
+
 #include "stdafx.h"
 #include "RM_Manager.h"
 #include "str.h"
@@ -5,6 +11,7 @@
 
 RC OpenScan(RM_FileScan *rmFileScan,RM_FileHandle *fileHandle,int conNum,Con *conditions)//≥ı ºªØ…®√Ë
 {
+
 	return SUCCESS;
 }
 

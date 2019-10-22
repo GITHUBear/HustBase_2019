@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "PF_Manager.h"
 
-BF_Manager bf_manager;
+BF_Manager bf_manager;                          // [dim dew] 建立在全局区的缓冲区
 
 const RC AllocateBlock(Frame **buf);
 const RC DisposeBlock(Frame *buf);
@@ -30,8 +30,8 @@ const RC CreateFile(const char *fileName)
 	memset(&page,0,PF_PAGESIZE);
 	bitmap=page.pData+(int)PF_FILESUBHDR_SIZE;
 	fileSubHeader=(PF_FileSubHeader *)page.pData;
-	fileSubHeader->nAllocatedPages=1;
-	bitmap[0]|=0x01;
+	fileSubHeader->nAllocatedPages=1;                  // [dim dew] 分配的首页控制页
+	bitmap[0]|=0x01;                                   // [dim dew] 标志控制页used
 	if(_lseek(fd,0,SEEK_SET)==-1)
 		return PF_FILEERR;
 	if(_write(fd,(char *)&page,sizeof(Page))!=sizeof(Page)){
@@ -42,7 +42,7 @@ const RC CreateFile(const char *fileName)
 		return PF_FILEERR;
 	return SUCCESS;
 }
-PF_FileHandle * getPF_FileHandle(void )
+PF_FileHandle * getPF_FileHandle(void )                  // [dim dew] ??? 这也能叫get? 应该是留着传给openFile的
 {
 	PF_FileHandle *p=(PF_FileHandle *)malloc(sizeof( PF_FileHandle));
 	p->bopen=false;
@@ -59,6 +59,7 @@ const RC openFile(char *fileName,PF_FileHandle *fileHandle)
 	pfilehandle->bopen=true;
 	pfilehandle->fileName=fileName;
 	pfilehandle->fileDesc=fd;
+	// 分配页面留给首页
 	if((tmp=AllocateBlock(&pfilehandle->pHdrFrame))!=SUCCESS){
 		_close(fd);
 		return tmp;
@@ -73,6 +74,7 @@ const RC openFile(char *fileName,PF_FileHandle *fileHandle)
 		_close(fd);
 		return PF_FILEERR;
 	}
+	// 完成首页到内存的写入
 	if(_read(fd,&(pfilehandle->pHdrFrame->page),sizeof(Page))!=sizeof(Page)){
 		DisposeBlock(pfilehandle->pHdrFrame);
 		_close(fd);
@@ -116,7 +118,7 @@ const RC AllocateBlock(Frame **buffer)
 			min=i;
 			mintime=bf_manager.frame[i].accTime;
 		}
-		if(bf_manager.frame[i].accTime<mintime){
+		if(bf_manager.frame[i].accTime<mintime){           // 真·LRU
 			min=i;
 			mintime=bf_manager.frame[i].accTime;
 		}
@@ -125,7 +127,7 @@ const RC AllocateBlock(Frame **buffer)
 		return PF_NOBUF;
 	if(bf_manager.frame[min].bDirty==true){
 		offset=(bf_manager.frame[min].page.pageNum)*sizeof(Page);
-		if(_lseek(bf_manager.frame[min].fileDesc,offset,SEEK_SET)==offset-1)
+		if(_lseek(bf_manager.frame[min].fileDesc,offset,SEEK_SET)==offset-1)           // 为什么不是-1？？
 			return PF_FILEERR;
 		if(_write(bf_manager.frame[min].fileDesc,&(bf_manager.frame[min].page),sizeof(Page))!=sizeof(Page))
 			return PF_FILEERR;
@@ -161,11 +163,17 @@ const RC GetThisPage(PF_FileHandle *fileHandle,PageNum pageNum,PF_PageHandle *pa
 	int i,nread,offset;
 	RC tmp;
 	PF_PageHandle *pPageHandle=pageHandle;
+
+	// [?bug?] 这里不应该确保一下 assert(fileHandle->bopen) 吗
+	if (!(fileHandle->bopen))
+		return PF_FHCLOSED;
+
 	if(pageNum>fileHandle->pFileSubHeader->pageCount)
 		return PF_INVALIDPAGENUM;
 	if((fileHandle->pBitmap[pageNum/8]&(1<<(pageNum%8)))==0)
 		return PF_INVALIDPAGENUM;
 	pPageHandle->bOpen=true;
+	// 判断一下当前缓冲区中是否存在 fd(fileName勉强也行吧) + pageNum
 	for(i=0;i<PF_BUFFER_SIZE;i++){
 		if(bf_manager.allocated[i]==false)
 			continue;
@@ -178,6 +186,7 @@ const RC GetThisPage(PF_FileHandle *fileHandle,PageNum pageNum,PF_PageHandle *pa
 			return SUCCESS;
 		}
 	}
+	// 缓冲区内不存在，挪用缓冲区读入page
 	if((tmp=AllocateBlock(&(pPageHandle->pFrame)))!=SUCCESS){
 		return tmp;
 	}
@@ -204,6 +213,7 @@ const RC AllocatePage(PF_FileHandle *fileHandle,PF_PageHandle *pageHandle)
 	RC tmp;
 	int i,byte,bit;
 	fileHandle->pHdrFrame->bDirty=true;
+	// 先用之前分配但是Dispose掉的页面，增加磁盘利用率
 	if((fileHandle->pFileSubHeader->nAllocatedPages)<=(fileHandle->pFileSubHeader->pageCount)){
 		for(i=0;i<=fileHandle->pFileSubHeader->pageCount;i++){
 			byte=i/8;
@@ -218,6 +228,7 @@ const RC AllocatePage(PF_FileHandle *fileHandle,PF_PageHandle *pageHandle)
 			return GetThisPage(fileHandle,i,pageHandle);
 		
 	}
+	// 之前都是分配着的，申请一个缓冲区放置新的pageNum对应的页
 	fileHandle->pFileSubHeader->nAllocatedPages++;
 	fileHandle->pFileSubHeader->pageCount++;
 	byte=fileHandle->pFileSubHeader->pageCount/8;
@@ -232,6 +243,7 @@ const RC AllocatePage(PF_FileHandle *fileHandle,PF_PageHandle *pageHandle)
 	pPageHandle->pFrame->pinCount=1;
 	pPageHandle->pFrame->accTime=clock();
 	memset(&(pPageHandle->pFrame->page),0,sizeof(Page));
+	// 所以每个page前4个字节存对应的page编号有啥意义呢
 	pPageHandle->pFrame->page.pageNum=fileHandle->pFileSubHeader->pageCount;
 	if(_lseek(fileHandle->fileDesc,0,SEEK_END)==-1){
 		bf_manager.allocated[pPageHandle->pFrame-bf_manager.frame]=false;
@@ -265,6 +277,11 @@ const RC DisposePage(PF_FileHandle *fileHandle,PageNum pageNum)
 {
 	int i;
 	char tmp;
+
+	// 也请务必保证 fileHandle->bOpen 为真
+	if (!(fileHandle->bopen))
+		return PF_FHCLOSED;
+
 	if(pageNum>fileHandle->pFileSubHeader->pageCount)
 		return PF_INVALIDPAGENUM;
 	if(((fileHandle->pBitmap[pageNum/8])&(1<<(pageNum%8)))==0)
@@ -290,12 +307,20 @@ const RC DisposePage(PF_FileHandle *fileHandle,PageNum pageNum)
 
 const RC MarkDirty(PF_PageHandle *pageHandle)
 {
+	// 保证一下 pageHandle->bopen 为真
+	if (!(pageHandle->bOpen))
+		return PF_PHCLOSED;
+
 	pageHandle->pFrame->bDirty=true;
 	return SUCCESS;
 }
 
 const RC UnpinPage(PF_PageHandle *pageHandle)
 {
+	// 保证一下 pageHandle->bopen 为真
+	if (!(pageHandle->bOpen))
+		return PF_PHCLOSED;
+
 	pageHandle->pFrame->pinCount--;
 	return SUCCESS;
 }
@@ -303,6 +328,11 @@ const RC UnpinPage(PF_PageHandle *pageHandle)
 const RC ForcePage(PF_FileHandle *fileHandle,PageNum pageNum)
 {
 	int i;
+
+	// 也请务必保证 fileHandle->bOpen 为真
+	if (!(fileHandle->bopen))
+		return PF_FHCLOSED;
+
 	for(i=0;i<PF_BUFFER_SIZE;i++){
 		if(bf_manager.allocated[i]==false)
 			continue;
@@ -326,6 +356,11 @@ const RC ForcePage(PF_FileHandle *fileHandle,PageNum pageNum)
 const RC ForceAllPages(PF_FileHandle *fileHandle)
 {
 	int i,offset;
+
+	// 也请务必保证 fileHandle->bOpen 为真
+	if (!(fileHandle->bopen))
+		return PF_FHCLOSED;
+
 	for(i=0;i<PF_BUFFER_SIZE;i++){
 		if(bf_manager.allocated[i]==false)
 			continue;
