@@ -505,12 +505,15 @@ RC RM_CreateFile (char *fileName, int recordSize)
 
 	// 1. 计算每一页可以放置的记录个数
 	maxRecordsNum = ( ( PF_PAGE_SIZE - sizeof(RM_PageHdr) ) << 3 ) / ( (recordSize << 3) + (sizeof(int) << 3) + 1 );
+	std::cout << "PageSize: " << PF_PAGE_SIZE << " sizeof(RM_PageHdr) " << sizeof(RM_PageHdr) << std::endl;
+	std::cout << "maxRecordsNum: " << maxRecordsNum << std::endl;
 	if ((((maxRecordsNum + 7) >> 3) +
-		((recordSize + sizeof(int)) << 3) +
+		((recordSize + sizeof(int)) * maxRecordsNum) +
 		sizeof(RM_PageHdr)) > PF_PAGE_SIZE)
 		maxRecordsNum--;
-	maxRecordsNum = ((maxRecordsNum + 7) >> 3) << 3;
-
+	std::cout << "maxRecordsNum: " << maxRecordsNum << std::endl;
+	//maxRecordsNum = ((maxRecordsNum + 7) >> 3) << 3;
+	std::cout << "maxBitMapNum: " << ((maxRecordsNum + 7) >> 3) << std::endl;
 	// 2. 调用 PF_Manager::CreateFile() 将 Paged File 的相关控制信息进行初始化
 	// 3. 调用 PF_Manager::OpenFile() 打开该文件 获取 PF_FileHandle
 	if ((rc = CreateFile(fileName)) ||
@@ -530,7 +533,7 @@ RC RM_CreateFile (char *fileName, int recordSize)
 	rmFileHdr->firstFreePage = RM_NO_MORE_FREE_PAGE;
 	rmFileHdr->recordSize = recordSize;
 	rmFileHdr->recordsPerPage = maxRecordsNum;
-	rmFileHdr->slotsOffset = sizeof(RM_PageHdr) + (maxRecordsNum >> 3);
+	rmFileHdr->slotsOffset = sizeof(RM_PageHdr) + ((maxRecordsNum + 7) >> 3);
 
 	// 6. 标记 第 1 页 为脏
 	// 7. PF_Manager::CloseFile() 将调用 ForceAllPage
