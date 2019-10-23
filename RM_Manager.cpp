@@ -308,11 +308,13 @@ RC InsertRec (RM_FileHandle *fileHandle,char *pData, RID *rid)
 		records = data + fileHandle->rmFileHdr.slotsOffset;
 
 		//    1.3 写入，标记脏，更新 freeSlot 链 (即更新 pageHdr 的 firstFreeSlot)
-		memcpy(WHICH_REC(fileHandle->rmFileHdr.recordSize, records, firstFreePage),
+		memcpy(WHICH_REC(fileHandle->rmFileHdr.recordSize, records, firstFreeSlot),
 			pData, fileHandle->rmFileHdr.recordSize);
-		rmPageHdr->firstFreeSlot = *((int*)REC_NEXT_SLOT(fileHandle->rmFileHdr.recordSize, records, firstFreePage));
-		// *((int*)REC_NEXT_SLOT(fileHandle->rmFileHdr.recordSize, records, firstFreePage)) = RM_NO_MORE_FREE_SLOT;
-		
+		rmPageHdr->firstFreeSlot = *((int*)REC_NEXT_SLOT(fileHandle->rmFileHdr.recordSize, records, firstFreeSlot));
+		*((int*)REC_NEXT_SLOT(fileHandle->rmFileHdr.recordSize, records, firstFreeSlot)) = RM_NO_MORE_FREE_SLOT;
+		rid->pageNum = firstFreePage;
+		rid->slotNum = firstFreeSlot;
+
 		setBit(rmPageHdr->slotBitMap, firstFreeSlot, true);
 
 		if ((rc = MarkDirty(&pfPageHandle)) ||
@@ -333,17 +335,20 @@ RC InsertRec (RM_FileHandle *fileHandle,char *pData, RID *rid)
 			return rc;
 		}
 
-		//    2.2 获得该页 PageHdr 中的 slotNum, 如果 slotNum 尚未达到数量限制，就在文件后面写入新的记录
+		// 2.2 获得该页 PageHdr 中的 slotNum, 如果 slotNum 尚未达到数量限制，就在文件后面写入新的记录
 		rmPageHdr = (RM_PageHdr*)data;
 		lastSlotNum = rmPageHdr->slotCount;
 		records = data + fileHandle->rmFileHdr.slotsOffset;
 
-		if (lastSlotNum < fileHandle->rmFileHdr.recordsPerPage) {
+		if (lastPageNum >= 2 && lastSlotNum < fileHandle->rmFileHdr.recordsPerPage) {
 			// slotNum 尚未达到数量限制, 就在文件后面写入新的记录
 			memcpy(WHICH_REC(fileHandle->rmFileHdr.recordSize, records, lastSlotNum),
-				pData, sizeof(fileHandle->rmFileHdr.recordSize));
+				pData, fileHandle->rmFileHdr.recordSize);
 			setBit(rmPageHdr->slotBitMap, lastSlotNum, true);
-			
+			*((int*)REC_NEXT_SLOT(fileHandle->rmFileHdr.recordSize, records, lastSlotNum)) = RM_NO_MORE_FREE_SLOT;
+			rid->pageNum = lastPageNum;
+			rid->slotNum = lastSlotNum;
+
 			rmPageHdr->slotCount++;
 
 			if ((rc = MarkDirty(&lastPageHandle)))
@@ -364,7 +369,10 @@ RC InsertRec (RM_FileHandle *fileHandle,char *pData, RID *rid)
 
 			//  2.3.3 写入，更新 bitmap, 更新slotCount，并设置 该页 为脏
 			memcpy(WHICH_REC(fileHandle->rmFileHdr.recordSize, records, 0),
-				pData, sizeof(fileHandle->rmFileHdr.recordSize));
+				pData, fileHandle->rmFileHdr.recordSize);
+			*((int*)REC_NEXT_SLOT(fileHandle->rmFileHdr.recordSize, records, 0)) = RM_NO_MORE_FREE_SLOT;
+			rid->pageNum = newPageHandle.pFrame->page.pageNum;
+			rid->slotNum = 0;
 
 			setBit(rmPageHdr->slotBitMap, 0, true);
 			rmPageHdr->slotCount++;
@@ -422,7 +430,6 @@ RC DeleteRec (RM_FileHandle *fileHandle,const RID *rid)
 	// 3. 维护 free slot list
 	nextFreeSlot = (int*)(REC_NEXT_SLOT(fileHandle->rmFileHdr.recordSize, records, slotNum));
 	*nextFreeSlot = rmPageHdr->firstFreeSlot;
-	rmPageHdr->firstFreeSlot = slotNum;
 
 	// 4. 更新 bitMap
 	setBit(rmPageHdr->slotBitMap, slotNum, false);
@@ -434,6 +441,8 @@ RC DeleteRec (RM_FileHandle *fileHandle,const RID *rid)
 		
 		fileHandle->isRMHdrDirty = true;
 	}
+
+	rmPageHdr->firstFreeSlot = slotNum;
 
 	if ((rc = MarkDirty(&pfPageHandle)) ||
 		(rc = UnpinPage(&pfPageHandle)))
@@ -469,7 +478,7 @@ RC UpdateRec (RM_FileHandle *fileHandle,const RM_Record *rec)
 	if (!search.bValid)
 		return RM_INVALIDRID;
 
-	memcpy(search.pData, rec->pData, sizeof(fileHandle->rmFileHdr.recordSize));
+	memcpy(search.pData, rec->pData, fileHandle->rmFileHdr.recordSize);
 
 	if ((rc = GetThisPage(&(fileHandle->pfFileHandle), pageNum, &pfPageHandle)) ||
 		(rc = MarkDirty(&pfPageHandle)) ||
@@ -505,15 +514,14 @@ RC RM_CreateFile (char *fileName, int recordSize)
 
 	// 1. 计算每一页可以放置的记录个数
 	maxRecordsNum = ( ( PF_PAGE_SIZE - sizeof(RM_PageHdr) ) << 3 ) / ( (recordSize << 3) + (sizeof(int) << 3) + 1 );
-	std::cout << "PageSize: " << PF_PAGE_SIZE << " sizeof(RM_PageHdr) " << sizeof(RM_PageHdr) << std::endl;
-	std::cout << "maxRecordsNum: " << maxRecordsNum << std::endl;
+	// std::cout << "PageSize: " << PF_PAGE_SIZE << " sizeof(RM_PageHdr) " << sizeof(RM_PageHdr) << std::endl;
+	// std::cout << "maxRecordsNum: " << maxRecordsNum << std::endl;
 	if ((((maxRecordsNum + 7) >> 3) +
 		((recordSize + sizeof(int)) * maxRecordsNum) +
 		sizeof(RM_PageHdr)) > PF_PAGE_SIZE)
 		maxRecordsNum--;
-	std::cout << "maxRecordsNum: " << maxRecordsNum << std::endl;
-	//maxRecordsNum = ((maxRecordsNum + 7) >> 3) << 3;
-	std::cout << "maxBitMapNum: " << ((maxRecordsNum + 7) >> 3) << std::endl;
+	// std::cout << "maxRecordsNum: " << maxRecordsNum << std::endl;
+	// std::cout << "maxBitMapNum: " << ((maxRecordsNum + 7) >> 3) << std::endl;
 	// 2. 调用 PF_Manager::CreateFile() 将 Paged File 的相关控制信息进行初始化
 	// 3. 调用 PF_Manager::OpenFile() 打开该文件 获取 PF_FileHandle
 	if ((rc = CreateFile(fileName)) ||
@@ -564,15 +572,19 @@ RC RM_OpenFile(char *fileName, RM_FileHandle *fileHandle)
 	// 1. 调用 PF_Manager::OpenFile，获得一个 PF_FileHandle
 	// 2. 通过 PF_FileHandle 来获取1号页面上的 RM_FileHdr 信息
 	if ((rc = openFile(fileName, &pfFileHandle)) ||
-		(rc = GetThisPage(&pfFileHandle, 1, &pfPageHandle)))
+		(rc = GetThisPage(&pfFileHandle, 1, &pfPageHandle))) {
+		std::cout << "A" << std::endl;
 		return rc;
+	}
 
 	// 3. 初始化 RM_FileHandle 成员
 	fileHandle->bOpen = true;
 	fileHandle->isRMHdrDirty = false;
 	fileHandle->pfFileHandle = pfFileHandle;
-	if ((rc = GetData(&pfPageHandle, &data)))
+	if ((rc = GetData(&pfPageHandle, &data))) {
+		std::cout << "B" << std::endl;
 		return rc;
+	}
 	fileHandle->rmFileHdr = *((RM_FileHdr*)data);
 
 	// 4. 释放内存缓冲区

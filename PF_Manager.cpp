@@ -22,7 +22,7 @@ const RC CreateFile(const char *fileName)
 	char *bitmap;
 	PF_FileSubHeader *fileSubHeader;
 	fd=_open(fileName,_O_RDWR|_O_CREAT|_O_EXCL|_O_BINARY,_S_IREAD|_S_IWRITE);
-	if(fd<0)
+	if (fd < 0)
 		return PF_EXIST;
 	_close(fd);
 	fd=open(fileName,_O_RDWR);
