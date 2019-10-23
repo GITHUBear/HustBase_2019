@@ -380,3 +380,12 @@ const RC ForceAllPages(PF_FileHandle *fileHandle)
 	}
 	return SUCCESS;
 }
+
+const RC GetLastPageNum(PF_FileHandle* fileHandle, PageNum* pageNum)
+{
+	if (!(fileHandle->bopen))
+		return PF_FHCLOSED;
+
+	*pageNum = fileHandle->pFileSubHeader->pageCount;
+	return SUCCESS;
+}

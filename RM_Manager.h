@@ -10,6 +10,11 @@
 #include "PF_Manager.h"
 #include "str.h"
 
+#define WHICH_REC(recordSize, records, x) ((records) + ((recordSize) + sizeof(int)) * x + sizeof(int))
+#define REC_NEXT_SLOT(recordSize, records, x) ((records) + ((recordSize) + sizeof(int)) * x)
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
 const int RM_NO_MORE_FREE_PAGE = -1;
 const int RM_NO_MORE_FREE_SLOT = -2;
 
@@ -35,7 +40,7 @@ typedef struct
 	int LattrOffset,RattrOffset;
 	CompOp compOp;
 	void *Lvalue,*Rvalue;
-}Con;
+} Con;
 
 typedef struct {
 	int nextFreePage;          // 与 RM_FileHdr 建立一个 freePage 链

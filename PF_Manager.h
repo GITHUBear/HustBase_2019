@@ -76,4 +76,6 @@ const RC MarkDirty(PF_PageHandle *pageHandle);
 
 const RC UnpinPage(PF_PageHandle *pageHandle);
 
+const RC GetLastPageNum(PF_FileHandle* fileHandle, PageNum* pageNum);
+
 #endif

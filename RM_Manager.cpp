@@ -9,6 +9,7 @@
 #include "str.h"
 #include <cassert>
 #include <string.h>
+#include <iostream>
 
 bool getBit (char *bitMap, int bitIdx)
 {
@@ -23,16 +24,188 @@ void setBit(char* bitMap, int bitIdx, bool val)
 		bitMap[bitIdx >> 3] &= (~(1 << (bitIdx & 0x7)));
 }
 
+int cmp(AttrType attrType, void *ldata, void *rdata, int llen, int rlen)
+{
+	switch (attrType) 
+	{
+	case chars:
+	{
+		char* l = (char*)ldata;
+		char* r = (char*)rdata;
+		int min_len = MIN(llen, rlen);
+		int cmp_res = strncmp(l, r, min_len);
+		if (cmp_res == 0)
+			cmp_res = (llen > rlen) ? 1 : (llen == rlen) ? 0 : -1;
+		return cmp_res;
+	}
+	case ints:
+	{
+		int l = *(int*)ldata;
+		int r = *(int*)rdata;
+		return (l > r) ? 1 : (l == r) ? 0 : -1;
+	}
+	case floats:
+	{
+		float l = *(float*)ldata;
+		float r = *(float*)rdata;
+		return (l > r) ? 1 : (l == r) ? 0 : -1;
+	}
+	}
+}
+
+bool matchComp (int cmp_res, CompOp compOp)
+{
+	switch (compOp)
+	{
+	case EQual:
+		return cmp_res == 0;
+	case LEqual:      
+		return cmp_res <= 0;
+	case NEqual:    
+		return cmp_res != 0;
+	case LessT:
+		return cmp_res < 0;
+	case GEqual:  
+		return cmp_res >= 0;
+	case GreatT:
+		return cmp_res > 0;
+	case NO_OP:
+		return true;
+	}
+}
+
+bool innerCmp(Con condition, char *pData)
+{
+	void* lval, * rval;
+
+	lval = (condition.bLhsIsAttr == 1) ? (pData + condition.LattrOffset) : condition.Lvalue;
+	rval = (condition.bRhsIsAttr == 1) ? (pData + condition.RattrOffset) : condition.Rvalue;
+
+	return matchComp(cmp(condition.attrType, lval, rval, 
+			condition.LattrLength, condition.RattrLength), condition.compOp);
+}
+
+//
+// 初始化 RM_FileScan 结构
+//
 RC OpenScan(RM_FileScan *rmFileScan,RM_FileHandle *fileHandle,int conNum,Con *conditions)//初始化扫描
 {
+	RC rc;
+
+	if ((rmFileScan->bOpen))
+		return RM_FSOPEN;
+
+	if (!(fileHandle->bOpen))
+		return RM_FHCLOSED;
+
+	rmFileScan->bOpen = true;
+	rmFileScan->conditions = conditions;
+	rmFileScan->conNum = conNum;
+	rmFileScan->pRMFileHandle = fileHandle;
+	rmFileScan->pn = 2;
+	rmFileScan->sn = 0;
+
+	//if ((rc = GetThisPage(&(fileHandle->pfFileHandle), 2, &(rmFileScan->PageHandle)))) {
+	//	if (rc == PF_INVALIDPAGENUM)
+	//		return RM_NOMORERECINMEM;
+	//	return rc;
+	//}
 
 	return SUCCESS;
 }
 
+//
+// 目的: 
+//
+RC CloseScan(RM_FileScan* rmFileScan)
+{
+	if (!rmFileScan->bOpen)
+		return RM_FSCLOSED;
+
+	rmFileScan->bOpen = false;
+	return SUCCESS;
+}
+
+//
+// 目的: 
+//
 RC GetNextRec(RM_FileScan *rmFileScan,RM_Record *rec)
 {
+	RC rc;
+	PageNum lastPageNum;
+	PageNum nextPageNum;
+	SlotNum nextSlotNum;
+	PF_PageHandle pfPageHandle;
+	RM_PageHdr* rmPageHdr;
+	char* data;
+	char* records;
+	int recordSize = rmFileScan->pRMFileHandle->rmFileHdr.recordSize;
 
-	return SUCCESS;
+	if ((rc = GetLastPageNum(&(rmFileScan->pRMFileHandle->pfFileHandle), &lastPageNum)))
+		return rc;
+
+	nextPageNum = rmFileScan->pn;
+	nextSlotNum = rmFileScan->sn;
+
+	for (; nextPageNum <= lastPageNum; nextPageNum++) {
+		std::cout << "============================== Page " << nextPageNum << "================================" << std::endl;
+		if ((rc = GetThisPage(&(rmFileScan->pRMFileHandle->pfFileHandle), nextPageNum, &pfPageHandle)))
+		{
+			if (rc == PF_INVALIDPAGENUM)
+				continue;
+			return rc;
+		}
+
+		if ((rc = GetData(&pfPageHandle, &data)))
+			return rc;
+
+		rmPageHdr = (RM_PageHdr*)data;
+		records = data + rmFileScan->pRMFileHandle->rmFileHdr.slotsOffset;
+
+		for (; nextSlotNum < rmPageHdr->slotCount; nextSlotNum++) {
+			if (!getBit(rmPageHdr->slotBitMap, nextSlotNum))
+				continue;
+
+			int i = 0;
+			for (; i < rmFileScan->conNum; i++) {
+				if (!innerCmp(rmFileScan->conditions[i],
+					WHICH_REC(recordSize, records, nextSlotNum))) {
+					break;
+				}
+			}
+
+			if (i != rmFileScan->conNum)
+				continue;
+
+			rec->bValid = true;
+			rec->rid.pageNum = nextPageNum;
+			rec->rid.slotNum = nextSlotNum;
+			memcpy(rec->pData, WHICH_REC(recordSize, records, nextSlotNum), recordSize);
+
+			std::cout << "PageNum: " << nextPageNum << " SlotNum: " << nextSlotNum << std::endl;
+			std::cout << "Content: " << rec->pData << std::endl;
+
+			if (nextSlotNum == rmPageHdr->slotCount - 1) {
+				rmFileScan->pn = nextPageNum + 1;
+				rmFileScan->sn = 0;
+			} else {
+				rmFileScan->pn = nextPageNum;
+				rmFileScan->sn = nextSlotNum + 1;
+			}
+
+			if ((rc = UnpinPage(&pfPageHandle)))
+				return rc;
+
+			return SUCCESS;
+		}
+
+		if ((rc = UnpinPage(&pfPageHandle)))
+			return rc;
+
+		nextSlotNum = 0;
+	}
+
+	return RM_EOF;
 }
 
 //
@@ -109,12 +282,13 @@ RC GetRec (RM_FileHandle *fileHandle,RID *rid, RM_Record *rec)
 RC InsertRec (RM_FileHandle *fileHandle,char *pData, RID *rid)
 {
 	RC rc;
-	PageNum firstFreePage;
-	SlotNum firstFreeSlot;
-	PF_PageHandle pfPageHandle;
+	PageNum firstFreePage, lastPageNum;
+	SlotNum firstFreeSlot, lastSlotNum;
+	PF_PageHandle pfPageHandle, lastPageHandle, newPageHandle;
 	RM_PageHdr* rmPageHdr;
 	char* data;
 	char* records;
+	int* nextFreeSlot;
 
 	if (!(fileHandle->bOpen))
 		return RM_FHCLOSED;
@@ -134,30 +308,173 @@ RC InsertRec (RM_FileHandle *fileHandle,char *pData, RID *rid)
 		records = data + fileHandle->rmFileHdr.slotsOffset;
 
 		//    1.3 写入，标记脏，更新 freeSlot 链 (即更新 pageHdr 的 firstFreeSlot)
-		memcpy(records + (fileHandle->rmFileHdr.recordSize + sizeof(int)) * firstFreeSlot + sizeof(int),
+		memcpy(WHICH_REC(fileHandle->rmFileHdr.recordSize, records, firstFreePage),
 			pData, fileHandle->rmFileHdr.recordSize);
-		rmPageHdr->firstFreeSlot = *((int*)(records + (fileHandle->rmFileHdr.recordSize + sizeof(int)) * firstFreeSlot));
+		rmPageHdr->firstFreeSlot = *((int*)REC_NEXT_SLOT(fileHandle->rmFileHdr.recordSize, records, firstFreePage));
+		// *((int*)REC_NEXT_SLOT(fileHandle->rmFileHdr.recordSize, records, firstFreePage)) = RM_NO_MORE_FREE_SLOT;
 		
-		if ((rc))
-	} else {
+		setBit(rmPageHdr->slotBitMap, firstFreeSlot, true);
 
+		if ((rc = MarkDirty(&pfPageHandle)) ||
+			(rc = UnpinPage(&pfPageHandle)))
+			return rc;
+
+		//    1.4 如果此时 之前该 slot 位置的 nextSlot 是 RM_NO_MORE_FREE_SLOT
+		if (rmPageHdr->firstFreeSlot == RM_NO_MORE_FREE_SLOT) {
+			fileHandle->rmFileHdr.firstFreePage = rmPageHdr->nextFreePage;
+			rmPageHdr->nextFreePage = RM_NO_MORE_FREE_PAGE;
+			fileHandle->isRMHdrDirty = true;
+		}
+	} else {
+		// 如果 pageNum == RM_NO_MORE_FREE_PAGE
+		if ((rc = GetLastPageNum(&(fileHandle->pfFileHandle), &lastPageNum)) ||
+			(rc = GetThisPage(&(fileHandle->pfFileHandle), lastPageNum, &lastPageHandle)) ||
+			(rc = GetData(&lastPageHandle, &data))) {
+			return rc;
+		}
+
+		//    2.2 获得该页 PageHdr 中的 slotNum, 如果 slotNum 尚未达到数量限制，就在文件后面写入新的记录
+		rmPageHdr = (RM_PageHdr*)data;
+		lastSlotNum = rmPageHdr->slotCount;
+		records = data + fileHandle->rmFileHdr.slotsOffset;
+
+		if (lastSlotNum < fileHandle->rmFileHdr.recordsPerPage) {
+			// slotNum 尚未达到数量限制, 就在文件后面写入新的记录
+			memcpy(WHICH_REC(fileHandle->rmFileHdr.recordSize, records, lastSlotNum),
+				pData, sizeof(fileHandle->rmFileHdr.recordSize));
+			setBit(rmPageHdr->slotBitMap, lastSlotNum, true);
+			
+			rmPageHdr->slotCount++;
+
+			if ((rc = MarkDirty(&lastPageHandle)))
+				return rc;
+		} else {
+			//  2.3.1 通过 AllocatePage 向缓冲区申请新的页面
+			if ((rc = AllocatePage(&(fileHandle->pfFileHandle), &newPageHandle)) ||
+				(rc = GetData(&newPageHandle, &data)))
+				return rc;
+
+			rmPageHdr = (RM_PageHdr*)data;
+			records = data + fileHandle->rmFileHdr.slotsOffset;
+
+			//  2.3.2 初始化 PageHdr
+			rmPageHdr->firstFreeSlot = RM_NO_MORE_FREE_SLOT;
+			rmPageHdr->nextFreePage = RM_NO_MORE_FREE_PAGE;
+			rmPageHdr->slotCount = 0;
+
+			//  2.3.3 写入，更新 bitmap, 更新slotCount，并设置 该页 为脏
+			memcpy(WHICH_REC(fileHandle->rmFileHdr.recordSize, records, 0),
+				pData, sizeof(fileHandle->rmFileHdr.recordSize));
+
+			setBit(rmPageHdr->slotBitMap, 0, true);
+			rmPageHdr->slotCount++;
+
+			if ((rc = MarkDirty(&newPageHandle)) ||
+				(rc = UnpinPage(&newPageHandle)))
+				return rc;
+		}
+
+		if ((rc = UnpinPage(&lastPageHandle)))
+			return rc;
 	}
 
 	return SUCCESS;
 }
 
+//
+// 目的: 删除指定RID位置的记录
+// 1. 通过 GetThisPage 获得 rid 指示的页
+// 2. 通过该页的 bitMap 检查 相应的 slotNum 记录是否有效
+// 3. 维护 free slot list
+// 4. 更新 bitMap
+// 5. 如果原来不在 free Page list 上， 将该页加入 free 链
+// 
+//
 RC DeleteRec (RM_FileHandle *fileHandle,const RID *rid)
 {
+	RC rc;
+	PF_PageHandle pfPageHandle;
+	PageNum pageNum = rid->pageNum;
+	SlotNum slotNum = rid->slotNum;
+	char* data;
+	char* records;
+	int* nextFreeSlot;
+	RM_PageHdr* rmPageHdr;
+
 	if (!(fileHandle->bOpen))
 		return RM_FHCLOSED;
+
+	if (pageNum < 2)
+		return RM_INVALIDRID;
+
+	// 1. 通过 GetThisPage 获得 rid 指示的页
+	if ((rc = GetThisPage(&(fileHandle->pfFileHandle), pageNum, &pfPageHandle)) ||
+		(rc = GetData(&pfPageHandle, &data)))
+		return rc;
+
+	rmPageHdr = (RM_PageHdr*)data;
+	records = data + fileHandle->rmFileHdr.slotsOffset;
+
+	// 2. 通过该页的 bitMap 检查 相应的 slotNum 记录是否有效
+	if (!getBit(rmPageHdr->slotBitMap, slotNum))
+		return RM_INVALIDRID;
+
+	// 3. 维护 free slot list
+	nextFreeSlot = (int*)(REC_NEXT_SLOT(fileHandle->rmFileHdr.recordSize, records, slotNum));
+	*nextFreeSlot = rmPageHdr->firstFreeSlot;
+	rmPageHdr->firstFreeSlot = slotNum;
+
+	// 4. 更新 bitMap
+	setBit(rmPageHdr->slotBitMap, slotNum, false);
+
+	if (rmPageHdr->firstFreeSlot == RM_NO_MORE_FREE_SLOT) {
+		// 5. 如果原来不在 free Page list 上， 将该页加入 free 链
+		rmPageHdr->nextFreePage = fileHandle->rmFileHdr.firstFreePage;
+		fileHandle->rmFileHdr.firstFreePage = pageNum;
+		
+		fileHandle->isRMHdrDirty = true;
+	}
+
+	if ((rc = MarkDirty(&pfPageHandle)) ||
+		(rc = UnpinPage(&pfPageHandle)))
+		return rc;
 
 	return SUCCESS;
 }
 
+//
+// 目的: 更新指定 RID 的内容
+//
 RC UpdateRec (RM_FileHandle *fileHandle,const RM_Record *rec)
 {
+	RC rc;
+	RM_Record search;
+	PF_PageHandle pfPageHandle;
+	PageNum pageNum = rec->rid.pageNum;
+	SlotNum slotNum = rec->rid.slotNum;
+	RID tmp;
+
+	tmp.pageNum = pageNum;
+	tmp.slotNum = slotNum;
+
 	if (!(fileHandle->bOpen))
 		return RM_FHCLOSED;
+
+	if (pageNum < 2)
+		return RM_INVALIDRID;
+
+	if ((rc = GetRec(fileHandle, &tmp, &search)))
+		return rc;
+
+	if (!search.bValid)
+		return RM_INVALIDRID;
+
+	memcpy(search.pData, rec->pData, sizeof(fileHandle->rmFileHdr.recordSize));
+
+	if ((rc = GetThisPage(&(fileHandle->pfFileHandle), pageNum, &pfPageHandle)) ||
+		(rc = MarkDirty(&pfPageHandle)) ||
+		(rc = UnpinPage(&pfPageHandle)))
+		return rc;
 
 	return SUCCESS;
 }
@@ -187,9 +504,9 @@ RC RM_CreateFile (char *fileName, int recordSize)
 		return RM_INVALIDRECSIZE;
 
 	// 1. 计算每一页可以放置的记录个数
-	maxRecordsNum = ( ( PF_PAGE_SIZE - sizeof(RM_PageHdr) ) << 3 ) / ( (recordSize << 3) + 33 );
+	maxRecordsNum = ( ( PF_PAGE_SIZE - sizeof(RM_PageHdr) ) << 3 ) / ( (recordSize << 3) + (sizeof(int) << 3) + 1 );
 	if ((((maxRecordsNum + 7) >> 3) +
-		((recordSize + 4) << 3) +
+		((recordSize + sizeof(int)) << 3) +
 		sizeof(RM_PageHdr)) > PF_PAGE_SIZE)
 		maxRecordsNum--;
 	maxRecordsNum = ((maxRecordsNum + 7) >> 3) << 3;
