@@ -78,7 +78,7 @@ RC CreateIndex (const char* fileName, AttrType attrType, int attrLength)
 	// B+树 最小 order 需要为 3， split情况下至少要在一个 node 中存下 3条 key记录
 	maxKeysNum = (PF_PAGE_SIZE - sizeof(IX_NodePageHeader)) 
 					/ (sizeof(char) + sizeof(RID) + attrLength);
-	maxBucketEntryNum = (PF_PAGE_SIZE - sizeof(IX_BucketPageHeader)) / (sizeof(RID) + sizeof(SlotNum));
+	maxBucketEntryNum = (PF_PAGE_SIZE - sizeof(IX_BucketPageHeader)) / sizeof(IX_BucketEntry);
 
 	if (maxKeysNum < 3)
 		return IX_INVALIDKEYSIZE;
@@ -203,6 +203,7 @@ RC CreateBucket(IX_IndexHandle* indexHandle, PageNum* pageNum)
 	RC rc;
 	PF_PageHandle pfPageHandle;
 	char* data;
+	IX_BucketEntry *slotRid;
 	IX_BucketPageHeader* bucketPageHdr;
 
 	if ((rc = AllocatePage(&(indexHandle->fileHandle), &pfPageHandle)) ||
@@ -210,10 +211,15 @@ RC CreateBucket(IX_IndexHandle* indexHandle, PageNum* pageNum)
 		return rc;
 
 	bucketPageHdr = (IX_BucketPageHeader*)data;
+	slotRid = (IX_BucketEntry*)(data + indexHandle->fileHeader.bucketEntryListOffset);
+
+	for (int i = 0; i < indexHandle->fileHeader.entrysPerBucket - 1; i++)
+		slotRid[i].nextFreeSlot = i + 1;
+	slotRid[indexHandle->fileHeader.entrysPerBucket - 1].nextFreeSlot = IX_NO_MORE_BUCKET_SLOT;
 
 	bucketPageHdr->slotNum = 0;
 	bucketPageHdr->nextBucket = IX_NO_MORE_BUCKET_PAGE;
-	bucketPageHdr->firstFreeSlot = IX_NO_MORE_BUCKET_SLOT;
+	bucketPageHdr->firstFreeSlot = 0;
 	bucketPageHdr->firstValidSlot = IX_NO_MORE_BUCKET_SLOT;
 
 	*pageNum = pfPageHandle.pFrame->page.pageNum;
@@ -225,11 +231,88 @@ RC CreateBucket(IX_IndexHandle* indexHandle, PageNum* pageNum)
 	return SUCCESS;
 }
 
-//
-//
-//
-RC GetThisBucket(IX_IndexHandle* indexHandle, PF_PageHandle* pageHandle)
+// 
+// 目的: 向给定的 bucket Page(s) 写入 RID
+// 
+RC InsertRIDIntoBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, RID rid)
 {
+	RC rc;
+	IX_BucketPageHeader* bucketPageHdr;
+	PF_PageHandle bucketPage;
+	IX_BucketEntry* entry;
+	PageNum lastPageNum = bucketPageNum;
+	char* data;
+	
+	while (bucketPageNum != IX_NO_MORE_BUCKET_PAGE)
+	{
+		lastPageNum = bucketPageNum;
+
+		if ((rc = GetThisPage(&(indexHandle->fileHandle), bucketPageNum, &bucketPage)) ||
+			(rc = GetData(&bucketPage, &data)))
+			return rc;
+
+		bucketPageHdr = (IX_BucketPageHeader*)data;
+		entry = (IX_BucketEntry*)(data + indexHandle->fileHeader.bucketEntryListOffset);
+
+		if (bucketPageHdr->firstFreeSlot != IX_NO_MORE_BUCKET_SLOT) {
+			// 存在 free slot
+			// 写入 RID
+			int free_idx = bucketPageHdr->firstFreeSlot;
+			int next_free_idx = entry[free_idx].nextFreeSlot;
+			entry[free_idx].nextFreeSlot = bucketPageHdr->firstValidSlot;
+			entry[free_idx].rid = rid;
+			bucketPageHdr->firstValidSlot = free_idx;
+			bucketPageHdr->firstFreeSlot = next_free_idx;
+
+			bucketPageHdr->slotNum++;
+
+			// 标记脏
+			if ((rc = MarkDirty(&bucketPage)) ||
+				(rc = UnpinPage(&bucketPage)))
+				return rc;
+
+			return SUCCESS;
+		}
+
+		bucketPageNum = bucketPageHdr->nextBucket;
+	}
+
+	// 遍历完了全部的 Bucket Page 都没有富裕空间了
+	// 创建一个新的
+	PageNum newPage;
+	PF_PageHandle newPageHandle, lastPageHandle;
+	char* newData, *lastData;
+	IX_BucketPageHeader* newHdr, *lastPageHdr;
+	IX_BucketEntry* newEntry;
+
+	if ((rc = CreateBucket(indexHandle, &newPage)) ||
+		(rc = GetThisPage(&(indexHandle->fileHandle), newPage, &newPageHandle)) ||
+		(rc = GetData(&newPageHandle, &newData)))
+		return rc;
+
+	newHdr = (IX_BucketPageHeader*)newData;
+	newEntry = (IX_BucketEntry*)(newData + indexHandle->fileHeader.bucketEntryListOffset);
+
+	int free_idx = newHdr->firstFreeSlot;
+	int next_free_idx = newEntry[free_idx].nextFreeSlot;
+	newEntry[free_idx].nextFreeSlot = newHdr->firstValidSlot;
+	newEntry[free_idx].rid = rid;
+	newHdr->firstValidSlot = free_idx;
+	newHdr->firstFreeSlot = next_free_idx;
+
+	if ((rc = GetThisPage(&(indexHandle->fileHandle), lastPageNum, &lastPageHandle)) ||
+		(rc = GetData(&lastPageHandle, &lastData)))
+		return rc;
+
+	lastPageHdr = (IX_BucketPageHeader*)lastData;
+
+	lastPageHdr->nextBucket = newPage;
+
+	if ((rc = MarkDirty(&newPageHandle)) ||
+		(rc = MarkDirty(&lastPageHandle)) ||
+		(rc = UnpinPage(&newPageHandle)) ||
+		(rc = UnpinPage(&lastPageHandle)))
+		return rc;
 
 	return SUCCESS;
 }
@@ -289,11 +372,19 @@ RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, c
 			char* pIdxEntry = entry + (sizeof(char) + sizeof(RID)) * idx;
 			// 读取该项的标志位 char tag
 			char tag = pIdxEntry[0];
+			PageNum bucketPageNum;
+			PF_PageHandle bucketPageHandle;
 
 			assert(tag != 0);
 
 			if (tag == OCCUPIED) {
 				// 尚未标记为重复键值, 需要创建一个 Bucket File
+				// 获取新分配的 Bucket Page 的 pageHandle
+				if ((rc = CreateBucket(indexHandle, &bucketPageNum)) ||
+					(rc = GetThisPage(&(indexHandle->fileHandle), bucketPageNum, &bucketPageHandle)))
+					return rc;
+
+
 
 			} else if (tag == DUPLICATE) {
 				// 已经标记为重复键值，获取对应的 Bucket File

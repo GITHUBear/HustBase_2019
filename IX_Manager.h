@@ -64,6 +64,11 @@ typedef struct {
 	PageNum nextBucket;
 } IX_BucketPageHeader;
 
+typedef struct {
+	SlotNum nextFreeSlot;
+	RID rid;
+} IX_BucketEntry;
+
 typedef struct{
 	bool bOpen;		                               /*扫描是否打开 */
 	IX_IndexHandle *pIXIndexHandle;	               //指向索引文件操作的指针
@@ -100,6 +105,6 @@ RC CloseIndexScan(IX_IndexScan *indexScan);
 // RC GetIndexTree(char *fileName, Tree *index);
 
 RC CreateBucket(IX_IndexHandle *indexHandle, PageNum *pageNum);
-RC GetThisBucket(IX_IndexHandle* indexHandle, PF_PageHandle* pageHandle);
+RC InsertRIDIntoBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, RID rid);
 
 #endif
