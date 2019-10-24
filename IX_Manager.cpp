@@ -1,5 +1,35 @@
 #include "stdafx.h"
 #include "IX_Manager.h"
+#include <cassert>
+#include <iostream>
+
+int IXComp(IX_IndexHandle *indexHandle, void *ldata, void *rdata, int llen, int rlen)
+{
+	switch (indexHandle->fileHeader.attrType) {
+	case chars:
+	{
+		char* l = (char*)ldata;
+		char* r = (char*)rdata;
+		int min_len = MIN(llen, rlen);
+		int cmp_res = strncmp(l, r, min_len);
+		if (cmp_res == 0)
+			cmp_res = (llen > rlen) ? 1 : (llen == rlen) ? 0 : -1;
+		return cmp_res;
+	}
+	case ints:
+	{
+		int l = *(int*)ldata;
+		int r = *(int*)rdata;
+		return (l > r) ? 1 : (l == r) ? 0 : -1;
+	}
+	case floats:
+	{
+		float l = *(float*)ldata;
+		float r = *(float*)rdata;
+		return (l > r) ? 1 : (l == r) ? 0 : -1;
+	}
+	}
+}
 
 RC OpenIndexScan (IX_IndexScan *indexScan,IX_IndexHandle *indexHandle,CompOp compOp,char *value)
 {
@@ -41,7 +71,6 @@ RC CreateIndex (const char* fileName, AttrType attrType, int attrLength)
 	RC rc;
 	PF_FileHandle pfFileHandle;
 	PF_PageHandle pfHdrPage, pfFirstRootPage;
-	IX_FileHeader* ixFileHdr;
 	char* fileHdrData, *nodeHdrData;
 	IX_FileHeader* ixFileHdr;
 	IX_NodePageHeader* ixNodeHdr;
@@ -166,11 +195,78 @@ RC CloseIndex (IX_IndexHandle* indexHandle)
 	return SUCCESS;
 }
 
+//
+// 目的: 初始化一个 Bucket Page，将初始化好的 Bucket Page 的 pageNum 返回
+//
+RC CreateBucket(IX_IndexHandle* indexHandle, PageNum* pageNum)
+{
+	RC rc;
+	PF_PageHandle pfPageHandle;
+	char* data;
+	IX_BucketPageHeader* bucketPageHdr;
+
+	if ((rc = AllocatePage(&(indexHandle->fileHandle), &pfPageHandle)) ||
+		(rc = GetData(&pfPageHandle, &data)))
+		return rc;
+
+	bucketPageHdr = (IX_BucketPageHeader*)data;
+
+	bucketPageHdr->slotNum = 0;
+	bucketPageHdr->nextBucket = IX_NO_MORE_BUCKET_PAGE;
+	bucketPageHdr->firstFreeSlot = IX_NO_MORE_BUCKET_SLOT;
+	bucketPageHdr->firstValidSlot = IX_NO_MORE_BUCKET_SLOT;
+
+	*pageNum = pfPageHandle.pFrame->page.pageNum;
+
+	if ((rc = MarkDirty(&pfPageHandle)) ||
+		(rc = UnpinPage(&pfPageHandle)))
+		return rc;
+
+	return SUCCESS;
+}
+
+//
+//
+//
+RC GetThisBucket(IX_IndexHandle* indexHandle, PF_PageHandle* pageHandle)
+{
+
+	return SUCCESS;
+}
+
+// 
+// 目的: 在 Node 文件页中 查找指定 pData 是否存在
+// pData: 用户指定的数据指针
+// key: Node 文件的关键字区首地址指针
+// s: 搜索范围起始索引
+// e: 搜索范围终止索引
+// 上述范围为包含
+// 
+int findKeyInNode(IX_IndexHandle* indexHandle, void* pData, void* key, int s, int e)
+{
+	int mid, cmpres;
+	int attrLen = indexHandle->fileHeader.attrLength;
+
+	while (s <= e) {
+		mid = (s + e) >> 1;
+		cmpres = IXComp(indexHandle, pData, (char*)key + attrLen * mid, attrLen, attrLen);
+
+		if (cmpres < 0)
+			e = mid - 1;
+		else if (cmpres > 0)
+			s = mid + 1;
+		else
+			return mid;
+	}
+	return -1;
+	
+}
+
 RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, const RID* rid)
 {
 	RC rc;
 	PF_PageHandle nodePage;
-	char* data, *entry, *key;                    // 回溯回来之后不要再用data
+	char* data, *entry, *key;
 	IX_NodePageHeader *nodePageHdr;
 	int keyNum;
 
@@ -186,7 +282,26 @@ RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, c
 	if (nodePageHdr->is_leaf) {
 		// 当前节点是叶子节点
 		// 1. 查找叶子节点中是否存在相同key的slot
+		int idx = findKeyInNode(indexHandle, pData, key, 0, keyNum - 1);
+		if (idx != -1) {
+			// 存在该key
+			// 获取对应索引位置 entry 区的信息
+			char* pIdxEntry = entry + (sizeof(char) + sizeof(RID)) * idx;
+			// 读取该项的标志位 char tag
+			char tag = pIdxEntry[0];
 
+			assert(tag != 0);
+
+			if (tag == OCCUPIED) {
+				// 尚未标记为重复键值, 需要创建一个 Bucket File
+
+			} else if (tag == DUPLICATE) {
+				// 已经标记为重复键值，获取对应的 Bucket File
+
+			}
+		} else {
+			// 不存在
+		}
 	} else {
 		// 当前节点是内部节点
 

@@ -12,8 +12,6 @@
 
 #define WHICH_REC(recordSize, records, x) ((records) + ((recordSize) + sizeof(int)) * x + sizeof(int))
 #define REC_NEXT_SLOT(recordSize, records, x) ((records) + ((recordSize) + sizeof(int)) * x)
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 const int RM_NO_MORE_FREE_PAGE = -1;
 const int RM_NO_MORE_FREE_SLOT = -2;

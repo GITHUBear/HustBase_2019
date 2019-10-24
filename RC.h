@@ -1,5 +1,9 @@
 #ifndef RC_HH
 #define RC_HH
+
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
 typedef enum{
 	SUCCESS,
 	SQL_SYNTAX,

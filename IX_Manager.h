@@ -14,6 +14,10 @@ const int IX_NO_MORE_BUCKET_SLOT = -1;
 const int IX_USELESS_SLOTNUM = -2;      // 内部节点中只需要用 pagenum
 const int IX_NULL_CHILD = -3;
 const int IX_NO_MORE_NEXT_LEAF = -4;
+const int IX_NO_MORE_BUCKET_PAGE = -5;
+
+const char OCCUPIED = 'o';
+const char DUPLICATE = 'd';
 
 typedef struct{
 	int attrLength;
@@ -94,5 +98,8 @@ RC OpenIndexScan(IX_IndexScan *indexScan,IX_IndexHandle *indexHandle,CompOp comp
 RC IX_GetNextEntry(IX_IndexScan *indexScan,RID * rid);
 RC CloseIndexScan(IX_IndexScan *indexScan);
 // RC GetIndexTree(char *fileName, Tree *index);
+
+RC CreateBucket(IX_IndexHandle *indexHandle, PageNum *pageNum);
+RC GetThisBucket(IX_IndexHandle* indexHandle, PF_PageHandle* pageHandle);
 
 #endif
