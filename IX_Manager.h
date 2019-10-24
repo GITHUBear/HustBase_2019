@@ -1,41 +1,73 @@
+//
+// File:       IX_Manager.h
+// Desciption: An interface defination of Index File Manager
+// Authors:    dim dew
+//
+
 #ifndef IX_MANAGER_H_H
 #define IX_MANAGER_H_H
 
 #include "RM_Manager.h"
 #include "PF_Manager.h"
 
+const int IX_NO_MORE_BUCKET_SLOT = -1;  
+const int IX_USELESS_SLOTNUM = -2;      // 内部节点中只需要用 pagenum
+const int IX_NULL_CHILD = -3;
+const int IX_NO_MORE_NEXT_LEAF = -4;
+
 typedef struct{
 	int attrLength;
-	int keyLength;
+	// int keyLength;
 	AttrType attrType;
 	PageNum rootPage;
 	PageNum first_leaf;
-	int order;
-}IX_FileHeader;
+	int order;                    // 一个Node中能够包含的key的数量范围为 [ (order - 1) / 2, order - 1 ]
+
+	// 一些 offset 值的保存，便于在文件中进行定位
+	int nodeEntryListOffset;
+	int bucketEntryListOffset;
+
+	int nodeKeyListOffset;
+	int entrysPerBucket;
+} IX_FileHeader;
 
 typedef struct{
 	bool bOpen;
+	bool isHdrDirty;
 	PF_FileHandle fileHandle;
 	IX_FileHeader fileHeader;
-}IX_IndexHandle;
+} IX_IndexHandle;
+
+typedef struct {
+	int is_leaf;                   // 节点类型
+	int keynum;                    // 目前含有的 keys 的数量
+	// PageNum parent;             // 可以有但是没有必要                
+	PageNum sibling;               // 叶子节点的兄弟节点
+	PageNum firstChild;            // 内部节点的第一个子节点
+} IX_NodePageHeader; 
+
+typedef struct {
+	IX_NodePageHeader* nodeHdr;    // 指向内存缓冲区内的 NodePageHeader, 便于更新数据
+
+	char* keys;                    // 指向内存缓冲区内的 NodePage 的 关键字 数组区
+	RID* rids;                     // 指向内存缓冲区内的 NodePage 的 指针区
+} IX_Node;
+
+typedef struct {
+	SlotNum slotNum;
+	SlotNum firstValidSlot;
+	SlotNum firstFreeSlot;
+	PageNum nextBucket;
+} IX_BucketPageHeader;
 
 typedef struct{
-	int is_leaf;
-	int keynum;
-	PageNum parent;
-	PageNum brother;
-	char *keys;
-	RID *rids;
-}IX_Node;
-
-typedef struct{
-	bool bOpen;		/*扫描是否打开 */
-	IX_IndexHandle *pIXIndexHandle;	//指向索引文件操作的指针
-	CompOp compOp;  /* 用于比较的操作符*/
-	char *value;		 /* 与属性行比较的值 */
-    PF_PageHandle pfPageHandles[PF_BUFFER_SIZE]; // 固定在缓冲区页面所对应的页面操作列表
-	PageNum pnNext; 	//下一个将要被读入的页面号
-}IX_IndexScan;
+	bool bOpen;		                               /*扫描是否打开 */
+	IX_IndexHandle *pIXIndexHandle;	               //指向索引文件操作的指针
+	CompOp compOp;                                 /* 用于比较的操作符*/
+	char *value;		                           /* 与属性行比较的值 */
+    PF_PageHandle pfPageHandles[PF_BUFFER_SIZE];   // 固定在缓冲区页面所对应的页面操作列表
+	PageNum pnNext; 	                           //下一个将要被读入的页面号
+} IX_IndexScan;
 
 typedef struct Tree_Node{
 	int  keyNum;		//节点中包含的关键字（属性值）个数
@@ -43,14 +75,14 @@ typedef struct Tree_Node{
 	Tree_Node  *parent;	//父节点
 	Tree_Node  *sibling;	//右边的兄弟节点
 	Tree_Node  *firstChild;	//最左边的孩子节点
-}Tree_Node; //节点数据结构
+} Tree_Node; //节点数据结构
 
 typedef struct{
 	AttrType  attrType;	//B+树对应属性的数据类型
 	int  attrLength;	//B+树对应属性值的长度
 	int  order;			//B+树的序数
 	Tree_Node  *root;	//B+树的根节点
-}Tree;
+} Tree;
 
 RC CreateIndex(const char * fileName,AttrType attrType,int attrLength);
 RC OpenIndex(const char *fileName,IX_IndexHandle *indexHandle);
@@ -61,6 +93,6 @@ RC DeleteEntry(IX_IndexHandle *indexHandle,void *pData,const RID * rid);
 RC OpenIndexScan(IX_IndexScan *indexScan,IX_IndexHandle *indexHandle,CompOp compOp,char *value);
 RC IX_GetNextEntry(IX_IndexScan *indexScan,RID * rid);
 RC CloseIndexScan(IX_IndexScan *indexScan);
-RC GetIndexTree(char *fileName, Tree *index);
+// RC GetIndexTree(char *fileName, Tree *index);
 
 #endif
