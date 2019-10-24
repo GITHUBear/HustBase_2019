@@ -206,6 +206,7 @@ RC GetNextRec(RM_FileScan *rmFileScan,RM_Record *rec)
 		if ((rc = UnpinPage(&pfPageHandle)))
 			return rc;
 
+		std::cout << "============================== Page " << nextPageNum << " end ================================" << std::endl;
 		nextSlotNum = 0;
 	}
 
@@ -224,7 +225,7 @@ RC GetRec (RM_FileHandle *fileHandle,RID *rid, RM_Record *rec)
 {
 	RC rc;
 	PF_PageHandle pfPageHandle;
-	RM_PageHdr rmPageHdr;
+	RM_PageHdr *rmPageHdr;
 	char *data;
 	char *records;
 
@@ -246,11 +247,11 @@ RC GetRec (RM_FileHandle *fileHandle,RID *rid, RM_Record *rec)
 	// 3. 获得该页上的 PageHdr 信息, 定位记录数组起始地址
 	if ((rc = GetData(&pfPageHandle, &data)))
 		return rc;
-	rmPageHdr = *((RM_PageHdr*)data);
+	rmPageHdr = (RM_PageHdr*)data;
 	records = data + fileHandle->rmFileHdr.slotsOffset;
 
 	// 4. 检查该 slotNum 项是否是可用的
-	if (!getBit(rmPageHdr.slotBitMap, slotNum))
+	if (!getBit(rmPageHdr->slotBitMap, slotNum))
 		return RM_INVALIDRID;
 
 	// 5. 设置返回的 rec
