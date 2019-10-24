@@ -92,6 +92,8 @@ RC OpenScan(RM_FileScan *rmFileScan,RM_FileHandle *fileHandle,int conNum,Con *co
 {
 	RC rc;
 
+	memset(rmFileScan, 0, sizeof(RM_FileScan));
+
 	if ((rmFileScan->bOpen))
 		return RM_FSOPEN;
 
@@ -127,7 +129,7 @@ RC CloseScan(RM_FileScan* rmFileScan)
 }
 
 //
-// 目的: 
+// 目的: RM_FileScan 迭代器
 //
 RC GetNextRec(RM_FileScan *rmFileScan,RM_Record *rec)
 {
@@ -141,6 +143,8 @@ RC GetNextRec(RM_FileScan *rmFileScan,RM_Record *rec)
 	char* records;
 	int recordSize = rmFileScan->pRMFileHandle->rmFileHdr.recordSize;
 
+	assert(rec->pData);
+
 	if ((rc = GetLastPageNum(&(rmFileScan->pRMFileHandle->pfFileHandle), &lastPageNum)))
 		return rc;
 
@@ -148,7 +152,6 @@ RC GetNextRec(RM_FileScan *rmFileScan,RM_Record *rec)
 	nextSlotNum = rmFileScan->sn;
 
 	for (; nextPageNum <= lastPageNum; nextPageNum++) {
-		std::cout << "============================== Page " << nextPageNum << "================================" << std::endl;
 		if ((rc = GetThisPage(&(rmFileScan->pRMFileHandle->pfFileHandle), nextPageNum, &pfPageHandle)))
 		{
 			if (rc == PF_INVALIDPAGENUM)
@@ -186,6 +189,7 @@ RC GetNextRec(RM_FileScan *rmFileScan,RM_Record *rec)
 			std::cout << "Content: " << rec->pData << std::endl;
 
 			if (nextSlotNum == rmPageHdr->slotCount - 1) {
+				std::cout << "============================== Page " << nextPageNum << " end ================================" << std::endl;
 				rmFileScan->pn = nextPageNum + 1;
 				rmFileScan->sn = 0;
 			} else {
@@ -228,7 +232,6 @@ RC GetRec (RM_FileHandle *fileHandle,RID *rid, RM_Record *rec)
 		return RM_FHCLOSED;
 
 	rec->bValid = false;
-	rec->pData = NULL;
 	// 1. 通过 rid 获得指定的 pageNum 和 slotNum
 	PageNum pageNum = rid->pageNum;
 	SlotNum slotNum = rid->slotNum;
@@ -252,7 +255,8 @@ RC GetRec (RM_FileHandle *fileHandle,RID *rid, RM_Record *rec)
 
 	// 5. 设置返回的 rec
 	rec->bValid = true;
-	rec->pData = records + (fileHandle->rmFileHdr.recordSize + sizeof(int)) * slotNum + sizeof(int);
+	memcpy(rec->pData, WHICH_REC(fileHandle->rmFileHdr.recordSize, records, slotNum), 
+		fileHandle->rmFileHdr.recordSize);
 	rec->rid = *rid;
 
 	if ((rc = UnpinPage(&pfPageHandle)))
@@ -457,11 +461,13 @@ RC DeleteRec (RM_FileHandle *fileHandle,const RID *rid)
 RC UpdateRec (RM_FileHandle *fileHandle,const RM_Record *rec)
 {
 	RC rc;
-	RM_Record search;
 	PF_PageHandle pfPageHandle;
 	PageNum pageNum = rec->rid.pageNum;
 	SlotNum slotNum = rec->rid.slotNum;
 	RID tmp;
+	char* data;
+	char* records;
+	RM_PageHdr* rmPageHdr;
 
 	tmp.pageNum = pageNum;
 	tmp.slotNum = slotNum;
@@ -472,16 +478,20 @@ RC UpdateRec (RM_FileHandle *fileHandle,const RM_Record *rec)
 	if (pageNum < 2)
 		return RM_INVALIDRID;
 
-	if ((rc = GetRec(fileHandle, &tmp, &search)))
+	if ((rc = GetThisPage(&(fileHandle->pfFileHandle), pageNum, &pfPageHandle)) ||
+		(rc = GetData(&pfPageHandle, &data)))
 		return rc;
 
-	if (!search.bValid)
+	rmPageHdr = (RM_PageHdr*)data;
+	records = data + fileHandle->rmFileHdr.slotsOffset;
+
+	if (!getBit(rmPageHdr->slotBitMap, slotNum))
 		return RM_INVALIDRID;
 
-	memcpy(search.pData, rec->pData, fileHandle->rmFileHdr.recordSize);
+	memcpy(WHICH_REC(fileHandle->rmFileHdr.recordSize, records, slotNum), rec->pData,
+		fileHandle->rmFileHdr.recordSize);
 
-	if ((rc = GetThisPage(&(fileHandle->pfFileHandle), pageNum, &pfPageHandle)) ||
-		(rc = MarkDirty(&pfPageHandle)) ||
+	if ((rc = MarkDirty(&pfPageHandle)) ||
 		(rc = UnpinPage(&pfPageHandle)))
 		return rc;
 
@@ -566,6 +576,8 @@ RC RM_OpenFile(char *fileName, RM_FileHandle *fileHandle)
 	PF_PageHandle pfPageHandle;
 	char* data;
 
+	memset(fileHandle, 0, sizeof(RM_FileHandle));
+
 	if (fileHandle->bOpen)
 		return RM_FHOPENNED;
 
@@ -573,7 +585,6 @@ RC RM_OpenFile(char *fileName, RM_FileHandle *fileHandle)
 	// 2. 通过 PF_FileHandle 来获取1号页面上的 RM_FileHdr 信息
 	if ((rc = openFile(fileName, &pfFileHandle)) ||
 		(rc = GetThisPage(&pfFileHandle, 1, &pfPageHandle))) {
-		std::cout << "A" << std::endl;
 		return rc;
 	}
 
@@ -582,7 +593,6 @@ RC RM_OpenFile(char *fileName, RM_FileHandle *fileHandle)
 	fileHandle->isRMHdrDirty = false;
 	fileHandle->pfFileHandle = pfFileHandle;
 	if ((rc = GetData(&pfPageHandle, &data))) {
-		std::cout << "B" << std::endl;
 		return rc;
 	}
 	fileHandle->rmFileHdr = *((RM_FileHdr*)data);
