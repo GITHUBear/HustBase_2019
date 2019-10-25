@@ -11,7 +11,7 @@
 #include "PF_Manager.h"
 
 const int IX_NO_MORE_BUCKET_SLOT = -1;  
-const int IX_USELESS_SLOTNUM = -2;      // 内部节点中只需要用 pagenum
+const int IX_USELESS_SLOTNUM = -2;      // 内部节点中只需要用 pagenum，以及 DUPLICATE 的叶子节点
 const int IX_NULL_CHILD = -3;
 const int IX_NO_MORE_NEXT_LEAF = -4;
 const int IX_NO_MORE_BUCKET_PAGE = -5;
@@ -69,6 +69,11 @@ typedef struct {
 	RID rid;
 } IX_BucketEntry;
 
+typedef struct {
+	char tag;
+	RID rid;
+} IX_NodeEntry;
+
 typedef struct{
 	bool bOpen;		                               /*扫描是否打开 */
 	IX_IndexHandle *pIXIndexHandle;	               //指向索引文件操作的指针
@@ -106,5 +111,6 @@ RC CloseIndexScan(IX_IndexScan *indexScan);
 
 RC CreateBucket(IX_IndexHandle *indexHandle, PageNum *pageNum);
 RC InsertRIDIntoBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, RID rid);
+RC DeleteRIDFromBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, const RID *rid);
 
 #endif

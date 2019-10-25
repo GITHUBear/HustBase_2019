@@ -31,6 +31,11 @@ int IXComp(IX_IndexHandle *indexHandle, void *ldata, void *rdata, int llen, int 
 	}
 }
 
+bool ridEqual(const RID *lrid, const RID *rrid)
+{
+	return (lrid->pageNum == rrid->pageNum && lrid->slotNum == rrid->slotNum);
+}
+
 RC OpenIndexScan (IX_IndexScan *indexScan,IX_IndexHandle *indexHandle,CompOp compOp,char *value)
 {
 	return SUCCESS;
@@ -77,7 +82,7 @@ RC CreateIndex (const char* fileName, AttrType attrType, int attrLength)
 
 	// B+树 最小 order 需要为 3， split情况下至少要在一个 node 中存下 3条 key记录
 	maxKeysNum = (PF_PAGE_SIZE - sizeof(IX_NodePageHeader)) 
-					/ (sizeof(char) + sizeof(RID) + attrLength);
+					/ (sizeof(IX_NodeEntry) + attrLength);
 	maxBucketEntryNum = (PF_PAGE_SIZE - sizeof(IX_BucketPageHeader)) / sizeof(IX_BucketEntry);
 
 	if (maxKeysNum < 3)
@@ -104,7 +109,7 @@ RC CreateIndex (const char* fileName, AttrType attrType, int attrLength)
 	ixFileHdr->entrysPerBucket = maxBucketEntryNum;
 	ixFileHdr->first_leaf = 2;
 	ixFileHdr->nodeEntryListOffset = sizeof(IX_NodePageHeader);
-	ixFileHdr->nodeKeyListOffset = ixFileHdr->nodeEntryListOffset + (sizeof(char) + sizeof(RID)) * maxKeysNum;
+	ixFileHdr->nodeKeyListOffset = ixFileHdr->nodeEntryListOffset + sizeof(IX_NodeEntry) * maxKeysNum;
 	ixFileHdr->order = maxKeysNum;
 	ixFileHdr->rootPage = 2;
 
@@ -300,6 +305,8 @@ RC InsertRIDIntoBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, RID r
 	newHdr->firstValidSlot = free_idx;
 	newHdr->firstFreeSlot = next_free_idx;
 
+	newHdr->slotNum++;
+
 	if ((rc = GetThisPage(&(indexHandle->fileHandle), lastPageNum, &lastPageHandle)) ||
 		(rc = GetData(&lastPageHandle, &lastData)))
 		return rc;
@@ -317,32 +324,126 @@ RC InsertRIDIntoBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, RID r
 	return SUCCESS;
 }
 
-// 
-// 目的: 在 Node 文件页中 查找指定 pData 是否存在
+//
+// 目的: 在 Bucket Page(s) 中查找匹配的 rid，并删除相应的 rid
+//
+RC DeleteRIDFromBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, const RID* rid)
+{
+	RC rc;
+	PF_PageHandle bucketPageHandle;
+	char* data;
+	IX_BucketPageHeader* bucketPageHdr;
+	IX_BucketEntry* entry;
+
+	while (bucketPageNum != IX_NO_MORE_BUCKET_PAGE) 
+	{
+		if ((rc = GetThisPage(&(indexHandle->fileHandle), bucketPageNum, &bucketPageHandle)) ||
+			(rc = GetData(&bucketPageHandle, &data)))
+			return rc;
+
+		bucketPageHdr = (IX_BucketPageHeader*)data;
+		entry = (IX_BucketEntry*)(data + indexHandle->fileHeader.bucketEntryListOffset);
+
+		SlotNum validSlot = bucketPageHdr->firstValidSlot;
+		SlotNum preValidSlot = IX_NO_MORE_BUCKET_SLOT;
+
+		while (validSlot != IX_NO_MORE_BUCKET_SLOT) 
+		{
+			SlotNum next_valid = entry[validSlot].nextFreeSlot;
+
+			if (ridEqual(&(entry[validSlot].rid), rid)) {
+				if (preValidSlot == IX_NO_MORE_BUCKET_SLOT) {
+					bucketPageHdr->firstValidSlot = next_valid;
+				} else {
+					entry[preValidSlot].nextFreeSlot = next_valid;
+				}
+
+				entry[validSlot].nextFreeSlot = bucketPageHdr->firstFreeSlot;
+				bucketPageHdr->firstFreeSlot = validSlot;
+				bucketPageHdr->slotNum--;
+
+				if ((rc = MarkDirty(&bucketPageHandle)) ||
+					(rc = UnpinPage(&bucketPageHandle)))
+					return rc;
+
+				return SUCCESS;
+			}
+
+			preValidSlot = validSlot;
+			validSlot = entry[validSlot].nextFreeSlot;
+		}
+
+		if (rc = UnpinPage(&bucketPageHandle))
+			return rc;
+
+		bucketPageNum = bucketPageHdr->nextBucket;
+	}
+
+	// 遍历完了也没有找到
+	return IX_DELETE_NO_RID;
+}
+
+//
+// 目的: 在 Node 文件页中 查找指定 pData
+//       找到最大的小于等于 pData 的索引位置保存在 idx 中
+//       如果存在等于 返回 true 否则返回 false
 // pData: 用户指定的数据指针
 // key: Node 文件的关键字区首地址指针
 // s: 搜索范围起始索引
 // e: 搜索范围终止索引
 // 上述范围为包含
 // 
-int findKeyInNode(IX_IndexHandle* indexHandle, void* pData, void* key, int s, int e)
+bool findKeyInNode(IX_IndexHandle* indexHandle, void* pData, void* key, int s, int e, int* idx)
 {
 	int mid, cmpres;
 	int attrLen = indexHandle->fileHeader.attrLength;
 
-	while (s <= e) {
-		mid = (s + e) >> 1;
-		cmpres = IXComp(indexHandle, pData, (char*)key + attrLen * mid, attrLen, attrLen);
+	while (s < e) {
+		mid = ((s + e) >> 1) + 1;
+		cmpres = IXComp(indexHandle, (char*)key + attrLen * mid, pData, attrLen, attrLen);
 
-		if (cmpres < 0)
+		if (cmpres < 0) {
+			s = mid;
+		} else if (cmpres > 0) {
 			e = mid - 1;
-		else if (cmpres > 0)
-			s = mid + 1;
-		else
-			return mid;
+		} else {
+			*idx = mid;
+			return true;
+		}
 	}
-	return -1;
-	
+
+	if (IXComp(indexHandle, (char*)key + attrLen * s, pData, attrLen, attrLen) > 0) {
+		*idx = s - 1;
+	} else {
+		*idx = s;
+	}
+	return false;
+}
+
+// 
+// shift 不负责获得页面，并设置页面脏
+// entry: 页面指针区首地址
+// key:   页面关键字区首地址
+// idx:   从idx开始到结束位置 len - 1 进行移动
+// dir:   true 表示 向后移动; false 反之
+//
+void shift (IX_IndexHandle* indexHandle, char *entry, char *key, int idx, int len, bool dir) 
+{
+	int attrLen = indexHandle->fileHeader.attrLength;
+
+	if (dir) {
+		for (int i = len - 1; i >= idx; i--) {
+			memcpy(key + attrLen * (i + 1), key + attrLen * i, attrLen);
+			memcpy(entry + sizeof(IX_NodeEntry) * (i + 1), 
+				entry + sizeof(IX_NodeEntry) * i, sizeof(IX_NodeEntry));
+		}
+	} else {
+		for (int i = idx; i < len; i++) {
+			memcpy(key + attrLen * (i - 1), key + attrLen * i, attrLen);
+			memcpy(entry + sizeof(IX_NodeEntry) * (i - 1),
+				entry + sizeof(IX_NodeEntry) * i, sizeof(IX_NodeEntry));
+		}
+	}
 }
 
 RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, const RID* rid)
@@ -365,13 +466,15 @@ RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, c
 	if (nodePageHdr->is_leaf) {
 		// 当前节点是叶子节点
 		// 1. 查找叶子节点中是否存在相同key的slot
-		int idx = findKeyInNode(indexHandle, pData, key, 0, keyNum - 1);
-		if (idx != -1) {
+		int idx;
+		bool findRes = findKeyInNode(indexHandle, pData, key, 0, keyNum - 1, &idx);
+		if (findRes) {
 			// 存在该key
 			// 获取对应索引位置 entry 区的信息
-			char* pIdxEntry = entry + (sizeof(char) + sizeof(RID)) * idx;
+			IX_NodeEntry* pIdxEntry = (IX_NodeEntry*)(entry + sizeof(IX_NodeEntry) * idx);
 			// 读取该项的标志位 char tag
-			char tag = pIdxEntry[0];
+			char tag = pIdxEntry->tag;
+			RID* thisRid = &(pIdxEntry->rid);
 			PageNum bucketPageNum;
 			PF_PageHandle bucketPageHandle;
 
@@ -379,23 +482,81 @@ RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, c
 
 			if (tag == OCCUPIED) {
 				// 尚未标记为重复键值, 需要创建一个 Bucket File
-				// 获取新分配的 Bucket Page 的 pageHandle
-				if ((rc = CreateBucket(indexHandle, &bucketPageNum)) ||
-					(rc = GetThisPage(&(indexHandle->fileHandle), bucketPageNum, &bucketPageHandle)))
+				// 获取新分配的 Bucket Page 的 pageHandle,并插入记录
+				if ((rc = CreateBucket(indexHandle, &bucketPageNum)) || 
+					(rc = InsertRIDIntoBucket(indexHandle, bucketPageNum, *thisRid)) || 
+					(rc = InsertRIDIntoBucket(indexHandle, bucketPageNum, *rid)))
 					return rc;
 
+				pIdxEntry->tag = DUPLICATE;
+				thisRid->pageNum = bucketPageNum;
+				thisRid->slotNum = IX_USELESS_SLOTNUM;
 
+				if ((rc = MarkDirty(&nodePage)) ||
+					(rc = UnpinPage(&nodePage)))
+					return rc;
+
+				return SUCCESS;
 
 			} else if (tag == DUPLICATE) {
-				// 已经标记为重复键值，获取对应的 Bucket File
+				// 已经标记为重复键值，获取对应的 Bucket File，插入记录
+				bucketPageNum = thisRid->pageNum;
+				if (rc = InsertRIDIntoBucket(indexHandle, bucketPageNum, *rid))
+					return rc;
 
+				if ((rc = MarkDirty(&nodePage)) ||
+					(rc = UnpinPage(&nodePage)))
+					return rc;
+
+				return SUCCESS;
 			}
 		} else {
 			// 不存在
+			// idx 中保存了 <= pData 的索引位置
+			// 需要把 idx + 1 之后的 指针区 和 关键字区 的内容向后移动
+			// 再把数据 RID 和 关键字 写到 idx + 1 位置
+			shift(indexHandle, entry, key, idx + 1, keyNum, true);
+
+			IX_NodeEntry* pIdxEntry = (IX_NodeEntry*)(entry + sizeof(IX_NodeEntry) * (idx + 1));
+
+			pIdxEntry->tag = OCCUPIED;
+			pIdxEntry->rid = *rid;
+
+			nodePageHdr->keynum++;
+
+			if ((rc = MarkDirty(&nodePage)) ||
+				(rc = UnpinPage(&nodePage)))
+				return rc;
+
+			return (nodePageHdr->keynum >= indexHandle->fileHeader.order) ? IX_CHILD_NODE_OVERFLOW : SUCCESS;
 		}
 	} else {
 		// 当前节点是内部节点
+		// 找到 小于等于 输入关键字的最大索引位置，递归执行 InsertEntryIntoTree
+		int idx;
+		bool findRes = findKeyInNode(indexHandle, pData, key, 0, keyNum - 1, &idx);
+		IX_NodeEntry* nodeEntry = (IX_NodeEntry*)entry;
 
+		PageNum child;
+		if (idx == -1)
+			child = nodePageHdr->firstChild;
+		else
+			child = nodeEntry[idx].rid.pageNum;
+
+		// 在深入 B+树 进行递归之前，释放掉当前 page
+		if (rc = UnpinPage(&nodePage))
+			return rc;
+
+		rc = InsertEntryIntoTree(indexHandle, child, pData, rid);
+
+		if (rc == IX_CHILD_NODE_OVERFLOW) {
+			// 子节点发生了 overflow
+			// Get 当前节点的 Page 以及 子节点的 Page
+
+			// split 子节点
+		}
+
+		return rc;
 	}
 
 	return SUCCESS;
