@@ -17,7 +17,7 @@ const int IX_NO_MORE_NEXT_LEAF = -4;
 const int IX_NO_MORE_BUCKET_PAGE = -5;
 
 const char OCCUPIED = 'o';
-const char DUPLICATE = 'd';
+const char DUP = 'd';
 
 typedef struct{
 	int attrLength;
@@ -111,7 +111,7 @@ RC CloseIndexScan(IX_IndexScan *indexScan);
 
 RC CreateBucket(IX_IndexHandle *indexHandle, PageNum *pageNum);
 RC InsertRIDIntoBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, RID rid);
-RC DeleteRIDFromBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, const RID *rid);
+RC DeleteRIDFromBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, const RID* rid, PageNum nodePage, RID* nodeRid);
 
 RC splitChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent, int idx, PageNum child);
 
