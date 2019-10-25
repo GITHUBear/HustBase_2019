@@ -50,12 +50,12 @@ typedef struct {
 	PageNum firstChild;            // 内部节点的第一个子节点
 } IX_NodePageHeader; 
 
-typedef struct {
-	IX_NodePageHeader* nodeHdr;    // 指向内存缓冲区内的 NodePageHeader, 便于更新数据
-
-	char* keys;                    // 指向内存缓冲区内的 NodePage 的 关键字 数组区
-	RID* rids;                     // 指向内存缓冲区内的 NodePage 的 指针区
-} IX_Node;
+//typedef struct {
+//	IX_NodePageHeader* nodeHdr;    // 指向内存缓冲区内的 NodePageHeader, 便于更新数据
+//
+//	char* keys;                    // 指向内存缓冲区内的 NodePage 的 关键字 数组区
+//	RID* rids;                     // 指向内存缓冲区内的 NodePage 的 指针区
+//} IX_Node;
 
 typedef struct {
 	SlotNum slotNum;
@@ -112,5 +112,7 @@ RC CloseIndexScan(IX_IndexScan *indexScan);
 RC CreateBucket(IX_IndexHandle *indexHandle, PageNum *pageNum);
 RC InsertRIDIntoBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, RID rid);
 RC DeleteRIDFromBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, const RID *rid);
+
+RC splitChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent, int idx, PageNum child);
 
 #endif

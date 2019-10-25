@@ -446,6 +446,102 @@ void shift (IX_IndexHandle* indexHandle, char *entry, char *key, int idx, int le
 	}
 }
 
+//
+// splitChild 不负责 parent 页面的释放，但是负责子节点页面和新页面的释放
+// 
+RC splitChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent, int idx, PageNum child)
+{
+	RC rc;
+	char* data, * par_entry, * par_key;
+	char* child_entry, * child_key;
+	char* new_entry, * new_key;
+	PF_PageHandle childPageHandle, newPageHandle;
+	PageNum newPageNum;
+	IX_NodePageHeader* parentHdr, * childHdr, * newPageHdr;
+	int childKeyNum;
+	int attrLen = indexHandle->fileHeader.attrLength;
+
+	if (rc = GetData(parent, &data))
+		return rc;
+
+	parentHdr = (IX_NodePageHeader*)data;
+	par_entry = data + indexHandle->fileHeader.nodeEntryListOffset;
+	par_key = data + indexHandle->fileHeader.nodeKeyListOffset;
+
+	if ((rc = GetThisPage(&(indexHandle->fileHandle), child, &childPageHandle)) ||
+		(rc = GetData(&childPageHandle, &data)))
+		return rc;
+
+	childHdr = (IX_NodePageHeader*)data;
+	childKeyNum = childHdr->keynum;
+	child_entry = data + indexHandle->fileHeader.nodeEntryListOffset;
+	child_key = data + indexHandle->fileHeader.nodeKeyListOffset;
+
+	if ((rc = AllocatePage(&(indexHandle->fileHandle), &newPageHandle)) ||
+		(rc = GetData(&newPageHandle, &data)))
+		return rc;
+
+	newPageHdr = (IX_NodePageHeader*)data;
+	newPageNum = newPageHandle.pFrame->page.pageNum;
+	new_entry = data + indexHandle->fileHeader.nodeEntryListOffset;
+	new_key = data + indexHandle->fileHeader.nodeKeyListOffset;
+
+	IX_NodeEntry* midChildEntry = (IX_NodeEntry*)(child_entry + sizeof(IX_NodeEntry) * (childKeyNum / 2));
+
+	if (childHdr->is_leaf) {
+		// 子节点是一个叶子节点
+		// 将叶子节点从 childKeyNum / 2 开始的所有信息拷贝到新节点位置
+		memcpy(new_entry, child_entry + sizeof(IX_NodeEntry) * (childKeyNum / 2),
+			sizeof(IX_NodeEntry) * (childKeyNum - (childKeyNum / 2)));
+		memcpy(new_key, child_key + attrLen * (childKeyNum / 2),
+			attrLen * (childKeyNum - (childKeyNum / 2)));
+
+		newPageHdr->firstChild = IX_NULL_CHILD;
+		newPageHdr->is_leaf = true;
+		newPageHdr->keynum = childKeyNum - (childKeyNum / 2);
+		newPageHdr->sibling = childHdr->sibling;
+	} else {
+		// 子节点是内部节点
+		// 将叶子节点从 childKeyNum / 2 + 1 开始的所有信息拷贝到新节点位置
+		memcpy(new_entry, child_entry + sizeof(IX_NodeEntry) * (childKeyNum / 2 + 1), 
+			sizeof(IX_NodeEntry) * (childKeyNum - (childKeyNum / 2) - 1));
+		memcpy(new_key, child_key + attrLen * (childKeyNum / 2 + 1),
+			attrLen * (childKeyNum - (childKeyNum / 2) - 1));
+
+		newPageHdr->firstChild = midChildEntry->rid.pageNum;
+		newPageHdr->is_leaf = false;
+		newPageHdr->keynum = childKeyNum - (childKeyNum / 2) - 1;
+		newPageHdr->sibling = childHdr->sibling;
+	}
+
+	childHdr->keynum = childKeyNum / 2;
+	childHdr->sibling = newPageNum;
+
+	// 移动父节点数据
+	shift(indexHandle, par_entry, par_key, idx + 1, parentHdr->keynum, true);
+	// 把孩子节点的中间数据写入到父节点
+	IX_NodeEntry* parEntry = (IX_NodeEntry*)(par_entry + sizeof(IX_NodeEntry) * (idx + 1));
+	parEntry->tag = OCCUPIED;
+	parEntry->rid.pageNum = newPageNum;
+	parEntry->rid.slotNum = IX_USELESS_SLOTNUM;
+	
+	memcpy(par_key + attrLen * (idx + 1), child_key + attrLen * (childKeyNum / 2), attrLen);
+
+	parentHdr->keynum++;
+
+	if ((rc = MarkDirty(&childPageHandle)) ||
+		(rc = MarkDirty(&newPageHandle)) ||
+		(rc = MarkDirty(parent)) ||
+		(rc = UnpinPage(&childPageHandle)) ||
+		(rc = UnpinPage(&newPageHandle)))
+		return rc;
+
+	return SUCCESS;
+}
+
+//
+// InsertEntry 的帮助函数
+//
 RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, const RID* rid)
 {
 	RC rc;
@@ -522,13 +618,13 @@ RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, c
 			pIdxEntry->tag = OCCUPIED;
 			pIdxEntry->rid = *rid;
 
-			nodePageHdr->keynum++;
+			int parentKeyNum = ++(nodePageHdr->keynum);
 
 			if ((rc = MarkDirty(&nodePage)) ||
 				(rc = UnpinPage(&nodePage)))
 				return rc;
 
-			return (nodePageHdr->keynum >= indexHandle->fileHeader.order) ? IX_CHILD_NODE_OVERFLOW : SUCCESS;
+			return (parentKeyNum >= indexHandle->fileHeader.order) ? IX_CHILD_NODE_OVERFLOW : SUCCESS;
 		}
 	} else {
 		// 当前节点是内部节点
@@ -551,9 +647,22 @@ RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, c
 
 		if (rc == IX_CHILD_NODE_OVERFLOW) {
 			// 子节点发生了 overflow
-			// Get 当前节点的 Page 以及 子节点的 Page
-
+			// Get 当前节点的 Page
+			if (rc = GetThisPage(&(indexHandle->fileHandle), node, &nodePage))
+				return rc;
 			// split 子节点
+			if (rc = splitChild(indexHandle, &nodePage, idx, child))
+				return rc;
+			
+			if (rc = GetData(&nodePage, &data))
+				return rc;
+
+			int parentKeyNum = ((IX_NodePageHeader*)data)->keynum;
+
+			if (rc = UnpinPage(&nodePage))
+				return rc;
+
+			return (parentKeyNum >= indexHandle->fileHeader.order) ? IX_CHILD_NODE_OVERFLOW : SUCCESS;
 		}
 
 		return rc;
@@ -563,12 +672,43 @@ RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, c
 }
 
 // 
-// 目的: 
+// 目的: 向 index file 中插入新的 key - rid 对
 //
 RC InsertEntry (IX_IndexHandle* indexHandle, void* pData, const RID* rid)
 {
+	RC rc;
+	PF_PageHandle newRootHandle;
+	char* data;
+	IX_NodePageHeader* newRootHdr;
 
-	return SUCCESS;
+	rc = InsertEntryIntoTree(indexHandle, indexHandle->fileHeader.rootPage, pData, rid);
+
+	if (rc == IX_CHILD_NODE_OVERFLOW) {
+		// 根节点满了
+		// 创建一个新的 page 作为新的根节点
+		if ((rc = AllocatePage(&(indexHandle->fileHandle), &newRootHandle)) || 
+			(rc = GetData(&newRootHandle, &data)))
+			return rc;
+
+		newRootHdr = (IX_NodePageHeader*)data;
+		newRootHdr->firstChild = indexHandle->fileHeader.rootPage;
+		newRootHdr->is_leaf = false;
+		newRootHdr->keynum = 0;
+		newRootHdr->sibling = IX_NO_MORE_NEXT_LEAF;
+
+		if (rc = splitChild(indexHandle, &newRootHandle, -1, newRootHdr->firstChild))
+			return rc;
+
+		indexHandle->fileHeader.rootPage = newRootHandle.pFrame->page.pageNum;
+		indexHandle->isHdrDirty = true;
+
+		if (rc = UnpinPage(&newRootHandle))
+			return rc;
+
+		return SUCCESS;
+	}
+
+	return rc;
 }
 
 RC DeleteEntry (IX_IndexHandle* indexHandle, void* pData, const RID* rid)
