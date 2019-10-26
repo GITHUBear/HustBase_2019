@@ -876,7 +876,7 @@ RC DeleteEntryFromTree (IX_IndexHandle* indexHandle, PageNum node, void* pData, 
 		return IX_DELETE_NO_KEY;
 	} else {
 		// 当前节点是内部节点
-		// 找到 小于等于 输入关键字的最大索引位置，递归执行 InsertEntryIntoTree
+		// 找到 小于等于 输入关键字的最大索引位置，递归执行 DeleteEntryFromTree
 		int idx;
 		bool findRes = findKeyInNode(indexHandle, pData, key, 0, keyNum - 1, &idx);
 		IX_NodeEntry* nodeEntry = (IX_NodeEntry*)entry;
@@ -1132,7 +1132,7 @@ RC DeleteEntry (IX_IndexHandle* indexHandle, void* pData, const RID* rid)
 	char* data;
 	IX_NodePageHeader* rootPageHdr;
 
-	rc = InsertEntryIntoTree(indexHandle, indexHandle->fileHeader.rootPage, pData, rid);
+	rc = DeleteEntryFromTree(indexHandle, indexHandle->fileHeader.rootPage, pData, rid);
 
 	if (rc == IX_CHILD_NODE_UNDERFLOW) {
 		// 删除的情况下 即时根节点返回了 IX_CHILD_NODE_UNDERFLOW 也无妨
