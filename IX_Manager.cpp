@@ -719,11 +719,78 @@ RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, c
 	return SUCCESS;
 }
 
+//
+// mergeChild 不负责 parent 页面的释放，但是负责子节点页面释放
+// 
 RC mergeChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent, 
 	          int lidx, int ridx, 
 	          PageNum lchild, PageNum rchild)
 {
-	// TODO
+	RC rc;
+	char* parentKey, * leftKey, * rightKey;
+	PF_PageHandle leftNode, rightNode;
+	char* parentData, * leftData, * rightData;
+	IX_NodeEntry* parentEntry, * leftEntry, * rightEntry;
+	IX_NodePageHeader* parentHdr, * leftHdr, * rightHdr;
+	int attrLen = indexHandle->fileHeader.attrLength;
+
+	if ((rc = GetThisPage(&(indexHandle->fileHandle), lchild, &leftNode)) ||
+		(rc = GetData(&leftNode, &leftData)) ||
+		(rc = GetThisPage(&(indexHandle->fileHandle), rchild, &rightNode)) ||
+		(rc = GetData(&rightNode, &rightData)) ||
+		(rc = GetData(parent, &parentData)))
+		return rc;
+
+	parentHdr = (IX_NodePageHeader*)parentData;
+	parentKey = parentData + indexHandle->fileHeader.nodeKeyListOffset;
+	parentEntry = (IX_NodeEntry*)(parentData + indexHandle->fileHeader.nodeEntryListOffset);
+
+	leftHdr = (IX_NodePageHeader*)leftData;
+	leftKey = leftData + indexHandle->fileHeader.nodeKeyListOffset;
+	leftEntry = (IX_NodeEntry*)(leftData + indexHandle->fileHeader.nodeEntryListOffset);
+
+	rightHdr = (IX_NodePageHeader*)rightData;
+	rightKey = rightData + indexHandle->fileHeader.nodeKeyListOffset;
+	rightEntry = (IX_NodeEntry*)(rightData + indexHandle->fileHeader.nodeEntryListOffset);
+
+	if (!(leftHdr->is_leaf)) {
+		// 子节点是内部节点
+		leftEntry[leftHdr->keynum].rid.pageNum = rightHdr->firstChild;
+		leftEntry[leftHdr->keynum].rid.slotNum = IX_USELESS_SLOTNUM;
+		leftEntry[leftHdr->keynum].tag = OCCUPIED;
+
+		memcpy(leftKey + attrLen * (leftHdr->keynum), parentKey + attrLen * ridx, attrLen);
+
+		leftHdr->keynum++;
+	}
+
+	// 把 rchild 的 数据区 和 指针区 拷贝到 lchild
+	for (int i = 0; i < rightHdr->keynum; i++) {
+		leftEntry[leftHdr->keynum].rid = rightEntry[i].rid;
+		leftEntry[leftHdr->keynum].tag = rightEntry[i].tag;
+
+		memcpy(leftKey + attrLen * (leftHdr->keynum), rightKey + attrLen * i, attrLen);
+
+		leftHdr->keynum++;
+	}
+
+	// 维护 sibling 链
+	leftHdr->sibling = rightHdr->sibling;
+
+	// 父节点左移
+	shift(indexHandle, (char*)parentEntry, parentKey, ridx + 1, parentHdr->keynum, false);
+	parentHdr->keynum--;
+
+	// dispose 掉 rchild 节点
+	if ((rc = UnpinPage(&rightNode)) ||
+		(rc = DisposePage(&(indexHandle->fileHandle), rchild)))
+		return rc;
+
+	if ((rc = MarkDirty(parent)) ||
+		(rc = MarkDirty(&leftNode)) ||
+		(rc = UnpinPage(&leftNode)))
+		return rc;
+
 	return SUCCESS;
 }
 
@@ -983,26 +1050,36 @@ RC DeleteEntryFromTree (IX_IndexHandle* indexHandle, PageNum node, void* pData, 
 			if (idx >= 0) {
 				// 左兄弟存在
 				siblingChild = (idx - 1 == -1) ? (nodePageHdr->firstChild) : (nodeEntry[idx - 1].rid.pageNum);
-				rc = mergeChild(indexHandle, &nodePage,
+				if (rc = mergeChild(indexHandle, &nodePage,
 					idx - 1, idx,
-					siblingChild, child);
-				
-				// TODO
+					siblingChild, child))
+					return rc;
+
+				int curKeyNum = nodePageHdr->keynum;
+
+				if (rc = UnpinPage(&nodePage))
+					return rc;
+
+				return (curKeyNum < (indexHandle->fileHeader.order - 1) / 2) ? IX_CHILD_NODE_UNDERFLOW : SUCCESS;
 			}
 
 			if (idx + 1 < nodePageHdr->keynum) {
 				// 右兄弟存在
 				siblingChild = nodeEntry[idx + 1].rid.pageNum;
-				rc = mergeChild(indexHandle, &nodePage,
+				if (rc = mergeChild(indexHandle, &nodePage,
 					idx, idx + 1,
-					child, siblingChild);
+					child, siblingChild))
+					return rc;
 
-				// TODO
+				int curKeyNum = nodePageHdr->keynum;
+
+				if (rc = UnpinPage(&nodePage))
+					return rc;
+
+				return (curKeyNum < (indexHandle->fileHeader.order - 1) / 2) ? IX_CHILD_NODE_UNDERFLOW : SUCCESS;
 			}
 		}
-
 		return rc;
-
 	}
 
 	return SUCCESS;
@@ -1050,5 +1127,39 @@ RC InsertEntry (IX_IndexHandle* indexHandle, void* pData, const RID* rid)
 
 RC DeleteEntry (IX_IndexHandle* indexHandle, void* pData, const RID* rid)
 {
-	return SUCCESS;
+	RC rc;
+	PF_PageHandle rootPage;
+	char* data;
+	IX_NodePageHeader* rootPageHdr;
+
+	rc = InsertEntryIntoTree(indexHandle, indexHandle->fileHeader.rootPage, pData, rid);
+
+	if (rc == IX_CHILD_NODE_UNDERFLOW) {
+		// 删除的情况下 即时根节点返回了 IX_CHILD_NODE_UNDERFLOW 也无妨
+		// 但是需要检查 根节点 是否被删空
+		if ((rc = GetThisPage(&(indexHandle->fileHandle), indexHandle->fileHeader.rootPage, &rootPage)) ||
+			(rc = GetData(&rootPage, &data)))
+			return rc;
+
+		rootPageHdr = (IX_NodePageHeader*)data;
+
+		if (!(rootPageHdr->keynum)) {
+			// 根节点被删空了
+			// 更新 index 文件的根节点
+			if ((rc = UnpinPage(&rootPage)) ||
+				(rc = DisposePage(&(indexHandle->fileHandle), indexHandle->fileHeader.rootPage)))
+				return rc;
+
+			indexHandle->fileHeader.rootPage = rootPageHdr->firstChild;
+			indexHandle->isHdrDirty = true;
+			return SUCCESS;
+		}
+
+		if (rc = UnpinPage(&rootPage))
+			return rc;
+
+		return SUCCESS;
+	}
+
+	return rc;
 }
