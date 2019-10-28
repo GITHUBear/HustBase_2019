@@ -134,8 +134,8 @@ const RC AllocateBlock(Frame **buffer)
 		if(_write(bf_manager.frame[min].fileDesc,&(bf_manager.frame[min].page),sizeof(Page))!=sizeof(Page))
 			return PF_FILEERR;
 			
-		//bf_manager.frame[min].bDirty==flase 这里应该修改成false。虽然openFile会设置，但是为了确保正确还是加上。
-		//或者这里可以直接调用DisposeBlock？
+		//bf_manager.frame[min].bDirty==flase 这里应该修改成false。虽然openFile会设置，但是为了确保正确还是加上�?
+		//或者这里可以直接调用DisposeBlock�?
 	}
 
 	*buffer=bf_manager.frame+min;
