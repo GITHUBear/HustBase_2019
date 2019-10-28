@@ -564,6 +564,7 @@ RC RM_CreateFile (char *fileName, int recordSize)
 	return SUCCESS;
 }
 
+<<<<<<< HEAD
 // 
 // 目的: 打开文件，建立 RM_fileHandle
 // 1. 调用 PF_Manager::OpenFile，获得一个 PF_FileHandle
@@ -601,6 +602,21 @@ RC RM_OpenFile(char *fileName, RM_FileHandle *fileHandle)
 	// 4. 释放内存缓冲区
 	if ((rc = UnpinPage(&pfPageHandle)))
 		return rc;
+=======
+//目的；读取文件，设置RM_FileHandle
+RC RM_OpenFile(char *fileName, RM_FileHandle *fileHandle)
+{
+	RC rc;
+	PF_PageHandle pfPageHandle;
+	RM_FileHdr *rm_FileHdr;
+    if((rc=openFile(fileName,&fileHandle->pfFileHandle)) ||
+		rc=GetThisPage(&fileHandle->pfFileHandle,1,&pfPageHandle))
+		return rc;
+	fileHandle->bOpen=true;
+	rm_FileHdr = (RM_FileHdr*)pfPageHandle.pFrame->page.pData;
+	
+	fileHandle->rmFileHdr = *rm_FileHdr;
+>>>>>>> f0594f8d9057450446ce7c495932a73b2b65bf97
 
 	return SUCCESS;
 }

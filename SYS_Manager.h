@@ -5,6 +5,9 @@
 #include "PF_Manager.h"
 #include "RM_Manager.h"
 #include "str.h"
+#include <assert.h>
+#include <vector>
+#include <map>
 
 void ExecuteAndMessage(char * ,CEditArea*);
 bool CanButtonClick();
