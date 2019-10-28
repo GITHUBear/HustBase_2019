@@ -1583,3 +1583,54 @@ RC printBPlusTree(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen, int
 		return SUCCESS;
 	}
 }
+
+RC printBPlusTreeSeq(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen)
+{
+	RC rc;
+	PF_PageHandle nodePageHandle;
+	char* data, * key;
+	IX_NodePageHeader* nodePageHdr;
+	IX_NodeEntry* nodeEntry;
+
+	int attrLen = indexHandle->fileHeader.attrLength;
+
+	char* tmp;
+	tmp = new char[keyShowLen + 1];
+	if (tmp)
+		tmp[keyShowLen] = '\0';
+	else
+		return FAIL;
+
+	while (node != IX_NO_MORE_NEXT_LEAF) {
+		if ((rc = GetThisPage(&(indexHandle->fileHandle), node, &nodePageHandle)) ||
+			(rc = GetData(&nodePageHandle, &data)))
+			return rc;
+
+		nodePageHdr = (IX_NodePageHeader*)data;
+		key = data + indexHandle->fileHeader.nodeKeyListOffset;
+		nodeEntry = (IX_NodeEntry*)(data + indexHandle->fileHeader.nodeEntryListOffset);
+
+		std::cout << "Leaf Node : { ";
+		for (int i = 0; i < nodePageHdr->keynum; i++) {
+			memcpy(tmp, key + attrLen * i, keyShowLen);
+			std::cout << " " << tmp << " : ";
+			if (nodeEntry[i].tag == DUP) {
+				// ´æÔÚ Bucket Page
+				if (rc = printBucket(indexHandle, nodeEntry[i].rid.pageNum))
+					return rc;
+
+			} else {
+				std::cout << "( [ pN: " << nodeEntry[i].rid.pageNum << " , sN: " <<
+					nodeEntry[i].rid.slotNum << " ] )";
+			}
+		}
+		std::cout << "} " << std::endl;
+
+		if (rc = UnpinPage(&nodePageHandle))
+			return rc;
+
+		node = nodePageHdr->sibling;
+	}
+
+	return SUCCESS;
+}

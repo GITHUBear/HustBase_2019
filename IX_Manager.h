@@ -117,5 +117,6 @@ RC splitChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent, int idx, PageN
 RC mergeChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent, int lidx, int ridx, PageNum lchild, PageNum rchild);
 
 RC printBPlusTree(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen, int level);
+RC printBPlusTreeSeq(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen);
 
 #endif
