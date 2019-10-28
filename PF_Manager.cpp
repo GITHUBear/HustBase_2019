@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "PF_Manager.h"
 
-BF_Manager bf_manager;                          // [dim dew] ½¨Á¢ÔÚÈ«¾ÖÇøµÄ»º³åÇø
+BF_Manager bf_manager;                          // [dim dew] å»ºç«‹åœ¨å…¨å±€åŒºçš„ç¼“å†²åŒº
 
 const RC AllocateBlock(Frame **buf);
 const RC DisposeBlock(Frame *buf);
@@ -28,12 +28,12 @@ const RC CreateFile(const char *fileName)
 	fd=open(fileName,_O_RDWR);
 	Page page;
 	memset(&page,0,PF_PAGESIZE);
-	bitmap=page.pData+(int)PF_FILESUBHDR_SIZE;         // [dim dew] bitmapµÄ´óĞ¡ÊÜÏŞµ¼ÖÂ Paged File µÄ´óĞ¡Ò²ÊÇÊÜÏŞÖÆµÄ
-													   // µ«ÊÇÏÂÃæµÄ´úÂëµ±ÖĞ¶ÔÉêÇëµÄ pageNum ²¢Ã»ÓĞ½øĞĞÏŞÖÆ
-	// TODO: ÔÚ PF_FileHdrÖĞ±£´æ Paged File µÄÏŞÖÆ, ²¢ÔÚÏà¹Ø´úÂë´¦½øĞĞ¼ì²é
+	bitmap=page.pData+(int)PF_FILESUBHDR_SIZE;         // [dim dew] bitmapçš„å¤§å°å—é™å¯¼è‡´ Paged File çš„å¤§å°ä¹Ÿæ˜¯å—é™åˆ¶çš„
+													   // ä½†æ˜¯ä¸‹é¢çš„ä»£ç å½“ä¸­å¯¹ç”³è¯·çš„ pageNum å¹¶æ²¡æœ‰è¿›è¡Œé™åˆ¶
+	// TODO: åœ¨ PF_FileHdrä¸­ä¿å­˜ Paged File çš„é™åˆ¶, å¹¶åœ¨ç›¸å…³ä»£ç å¤„è¿›è¡Œæ£€æŸ¥
 	fileSubHeader=(PF_FileSubHeader *)page.pData;
-	fileSubHeader->nAllocatedPages=1;                  // [dim dew] ·ÖÅäµÄÊ×Ò³¿ØÖÆÒ³
-	bitmap[0]|=0x01;                                   // [dim dew] ±êÖ¾¿ØÖÆÒ³used
+	fileSubHeader->nAllocatedPages=1;                  // [dim dew] åˆ†é…çš„é¦–é¡µæ§åˆ¶é¡µ
+	bitmap[0]|=0x01;                                   // [dim dew] æ ‡å¿—æ§åˆ¶é¡µused
 	if(_lseek(fd,0,SEEK_SET)==-1)
 		return PF_FILEERR;
 	if(_write(fd,(char *)&page,sizeof(Page))!=sizeof(Page)){
@@ -44,7 +44,7 @@ const RC CreateFile(const char *fileName)
 		return PF_FILEERR;
 	return SUCCESS;
 }
-PF_FileHandle * getPF_FileHandle(void )                  // [dim dew] ??? ÕâÒ²ÄÜ½Ğget? Ó¦¸ÃÊÇÁô×Å´«¸øopenFileµÄ
+PF_FileHandle * getPF_FileHandle(void )                  // [dim dew] ??? è¿™ä¹Ÿèƒ½å«get? åº”è¯¥æ˜¯ç•™ç€ä¼ ç»™openFileçš„
 {
 	PF_FileHandle *p=(PF_FileHandle *)malloc(sizeof( PF_FileHandle));
 	p->bopen=false;
@@ -61,7 +61,7 @@ const RC openFile(char *fileName,PF_FileHandle *fileHandle)
 	pfilehandle->bopen=true;
 	pfilehandle->fileName=fileName;
 	pfilehandle->fileDesc=fd;
-	// ·ÖÅäÒ³ÃæÁô¸øÊ×Ò³
+	// åˆ†é…é¡µé¢ç•™ç»™é¦–é¡µ
 	if((tmp=AllocateBlock(&pfilehandle->pHdrFrame))!=SUCCESS){
 		_close(fd);
 		return tmp;
@@ -76,7 +76,7 @@ const RC openFile(char *fileName,PF_FileHandle *fileHandle)
 		_close(fd);
 		return PF_FILEERR;
 	}
-	// Íê³ÉÊ×Ò³µ½ÄÚ´æµÄĞ´Èë
+	// å®Œæˆé¦–é¡µåˆ°å†…å­˜çš„å†™å…¥
 	if(_read(fd,&(pfilehandle->pHdrFrame->page),sizeof(Page))!=sizeof(Page)){
 		DisposeBlock(pfilehandle->pHdrFrame);
 		_close(fd);
@@ -120,7 +120,7 @@ const RC AllocateBlock(Frame **buffer)
 			min=i;
 			mintime=bf_manager.frame[i].accTime;
 		}
-		if(bf_manager.frame[i].accTime<mintime){           // Õæ¡¤LRU
+		if(bf_manager.frame[i].accTime<mintime){           // çœŸÂ·LRU
 			min=i;
 			mintime=bf_manager.frame[i].accTime;
 		}
@@ -129,15 +129,11 @@ const RC AllocateBlock(Frame **buffer)
 		return PF_NOBUF;
 	if(bf_manager.frame[min].bDirty==true){
 		offset=(bf_manager.frame[min].page.pageNum)*sizeof(Page);
-		if(_lseek(bf_manager.frame[min].fileDesc,offset,SEEK_SET)==offset-1)           // ÎªÊ²Ã´²»ÊÇ-1£¿£¿
+		if(_lseek(bf_manager.frame[min].fileDesc,offset,SEEK_SET)==offset-1)           // ä¸ºä»€ä¹ˆä¸æ˜¯-1ï¼Ÿï¼Ÿ
 			return PF_FILEERR;
 		if(_write(bf_manager.frame[min].fileDesc,&(bf_manager.frame[min].page),sizeof(Page))!=sizeof(Page))
 			return PF_FILEERR;
-			
-		//bf_manager.frame[min].bDirty==flase è¿™é‡Œåº”è¯¥ä¿®æ”¹æˆfalseã€‚è™½ç„¶openFileä¼šè®¾ç½®ï¼Œä½†æ˜¯ä¸ºäº†ç¡®ä¿æ­£ç¡®è¿˜æ˜¯åŠ ä¸Šã€?
-		//æˆ–è€…è¿™é‡Œå¯ä»¥ç›´æ¥è°ƒç”¨DisposeBlockï¼?
 	}
-
 	*buffer=bf_manager.frame+min;
 	return SUCCESS;
 }
@@ -157,7 +153,6 @@ const RC DisposeBlock(Frame *buf)
 	return SUCCESS;
 }
 
-//æ”¹åå«Create_PF_PageHandleä¼šæ›´å¥½ã€‚è°è®©ç”¨æ˜¯cï¼Œæ²¡æœ‰æ„é€ å‡½æ•°å‘¢
 PF_PageHandle* getPF_PageHandle()
 {
 	PF_PageHandle *p=(PF_PageHandle *)malloc(sizeof(PF_PageHandle));
@@ -171,7 +166,7 @@ const RC GetThisPage(PF_FileHandle *fileHandle,PageNum pageNum,PF_PageHandle *pa
 	RC tmp;
 	PF_PageHandle *pPageHandle=pageHandle;
 
-	// [?bug?] ÕâÀï²»Ó¦¸ÃÈ·±£Ò»ÏÂ assert(fileHandle->bopen) Âğ
+	// [?bug?] è¿™é‡Œä¸åº”è¯¥ç¡®ä¿ä¸€ä¸‹ assert(fileHandle->bopen) å—
 	if (!(fileHandle->bopen))
 		return PF_FHCLOSED;
 
@@ -180,7 +175,7 @@ const RC GetThisPage(PF_FileHandle *fileHandle,PageNum pageNum,PF_PageHandle *pa
 	if((fileHandle->pBitmap[pageNum/8]&(1<<(pageNum%8)))==0)
 		return PF_INVALIDPAGENUM;
 	pPageHandle->bOpen=true;
-	// ÅĞ¶ÏÒ»ÏÂµ±Ç°»º³åÇøÖĞÊÇ·ñ´æÔÚ fd(fileNameÃãÇ¿Ò²ĞĞ°É) + pageNum
+	// åˆ¤æ–­ä¸€ä¸‹å½“å‰ç¼“å†²åŒºä¸­æ˜¯å¦å­˜åœ¨ fd(fileNameå‹‰å¼ºä¹Ÿè¡Œå§) + pageNum
 	for(i=0;i<PF_BUFFER_SIZE;i++){
 		if(bf_manager.allocated[i]==false)
 			continue;
@@ -193,7 +188,7 @@ const RC GetThisPage(PF_FileHandle *fileHandle,PageNum pageNum,PF_PageHandle *pa
 			return SUCCESS;
 		}
 	}
-	// »º³åÇøÄÚ²»´æÔÚ£¬Å²ÓÃ»º³åÇø¶ÁÈëpage
+	// ç¼“å†²åŒºå†…ä¸å­˜åœ¨ï¼ŒæŒªç”¨ç¼“å†²åŒºè¯»å…¥page
 	if((tmp=AllocateBlock(&(pPageHandle->pFrame)))!=SUCCESS){
 		return tmp;
 	}
@@ -220,7 +215,7 @@ const RC AllocatePage(PF_FileHandle *fileHandle,PF_PageHandle *pageHandle)
 	RC tmp;
 	int i,byte,bit;
 	fileHandle->pHdrFrame->bDirty=true;
-	// ÏÈÓÃÖ®Ç°·ÖÅäµ«ÊÇDisposeµôµÄÒ³Ãæ£¬Ôö¼Ó´ÅÅÌÀûÓÃÂÊ
+	// å…ˆç”¨ä¹‹å‰åˆ†é…ä½†æ˜¯Disposeæ‰çš„é¡µé¢ï¼Œå¢åŠ ç£ç›˜åˆ©ç”¨ç‡
 	if((fileHandle->pFileSubHeader->nAllocatedPages)<=(fileHandle->pFileSubHeader->pageCount)){
 		for(i=0;i<=fileHandle->pFileSubHeader->pageCount;i++){
 			byte=i/8;
@@ -235,7 +230,7 @@ const RC AllocatePage(PF_FileHandle *fileHandle,PF_PageHandle *pageHandle)
 			return GetThisPage(fileHandle,i,pageHandle);
 		
 	}
-	// Ö®Ç°¶¼ÊÇ·ÖÅä×ÅµÄ£¬ÉêÇëÒ»¸ö»º³åÇø·ÅÖÃĞÂµÄpageNum¶ÔÓ¦µÄÒ³
+	// ä¹‹å‰éƒ½æ˜¯åˆ†é…ç€çš„ï¼Œç”³è¯·ä¸€ä¸ªç¼“å†²åŒºæ”¾ç½®æ–°çš„pageNumå¯¹åº”çš„é¡µ
 	fileHandle->pFileSubHeader->nAllocatedPages++;
 	fileHandle->pFileSubHeader->pageCount++;
 	byte=fileHandle->pFileSubHeader->pageCount/8;
@@ -250,7 +245,7 @@ const RC AllocatePage(PF_FileHandle *fileHandle,PF_PageHandle *pageHandle)
 	pPageHandle->pFrame->pinCount=1;
 	pPageHandle->pFrame->accTime=clock();
 	memset(&(pPageHandle->pFrame->page),0,sizeof(Page));
-	// ËùÒÔÃ¿¸öpageÇ°4¸ö×Ö½Ú´æ¶ÔÓ¦µÄpage±àºÅÓĞÉ¶ÒâÒåÄØ
+	// æ‰€ä»¥æ¯ä¸ªpageå‰4ä¸ªå­—èŠ‚å­˜å¯¹åº”çš„pageç¼–å·æœ‰å•¥æ„ä¹‰å‘¢
 	pPageHandle->pFrame->page.pageNum=fileHandle->pFileSubHeader->pageCount;
 	if(_lseek(fileHandle->fileDesc,0,SEEK_END)==-1){
 		bf_manager.allocated[pPageHandle->pFrame-bf_manager.frame]=false;
@@ -285,7 +280,7 @@ const RC DisposePage(PF_FileHandle *fileHandle,PageNum pageNum)
 	int i;
 	char tmp;
 
-	// Ò²ÇëÎñ±Ø±£Ö¤ fileHandle->bOpen ÎªÕæ
+	// ä¹Ÿè¯·åŠ¡å¿…ä¿è¯ fileHandle->bOpen ä¸ºçœŸ
 	if (!(fileHandle->bopen))
 		return PF_FHCLOSED;
 
@@ -314,7 +309,7 @@ const RC DisposePage(PF_FileHandle *fileHandle,PageNum pageNum)
 
 const RC MarkDirty(PF_PageHandle *pageHandle)
 {
-	// ±£Ö¤Ò»ÏÂ pageHandle->bopen ÎªÕæ
+	// ä¿è¯ä¸€ä¸‹ pageHandle->bopen ä¸ºçœŸ
 	if (!(pageHandle->bOpen))
 		return PF_PHCLOSED;
 
@@ -324,7 +319,7 @@ const RC MarkDirty(PF_PageHandle *pageHandle)
 
 const RC UnpinPage(PF_PageHandle *pageHandle)
 {
-	// ±£Ö¤Ò»ÏÂ pageHandle->bopen ÎªÕæ
+	// ä¿è¯ä¸€ä¸‹ pageHandle->bopen ä¸ºçœŸ
 	if (!(pageHandle->bOpen))
 		return PF_PHCLOSED;
 
@@ -336,7 +331,7 @@ const RC ForcePage(PF_FileHandle *fileHandle,PageNum pageNum)
 {
 	int i;
 
-	// Ò²ÇëÎñ±Ø±£Ö¤ fileHandle->bOpen ÎªÕæ
+	// ä¹Ÿè¯·åŠ¡å¿…ä¿è¯ fileHandle->bOpen ä¸ºçœŸ
 	if (!(fileHandle->bopen))
 		return PF_FHCLOSED;
 
@@ -364,7 +359,7 @@ const RC ForceAllPages(PF_FileHandle *fileHandle)
 {
 	int i,offset;
 
-	// Ò²ÇëÎñ±Ø±£Ö¤ fileHandle->bOpen ÎªÕæ
+	// ä¹Ÿè¯·åŠ¡å¿…ä¿è¯ fileHandle->bOpen ä¸ºçœŸ
 	if (!(fileHandle->bopen))
 		return PF_FHCLOSED;
 

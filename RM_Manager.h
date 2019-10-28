@@ -19,20 +19,20 @@ const int RM_NO_MORE_FREE_SLOT = -2;
 typedef int SlotNum;
 
 typedef struct {	
-	PageNum pageNum;	       // ¼ÇÂ¼ËùÔÚÒ³µÄÒ³ºÅ
-	SlotNum slotNum;		   // ¼ÇÂ¼µÄ²å²ÛºÅ
+	PageNum pageNum;	       // è®°å½•æ‰€åœ¨é¡µçš„é¡µå·
+	SlotNum slotNum;		   // è®°å½•çš„æ’æ§½å·
 } RID;
 
 typedef struct{
-	bool bValid;		       // False±íÊ¾»¹Î´±»¶ÁÈë¼ÇÂ¼
-	RID  rid; 		           // ¼ÇÂ¼µÄ±êÊ¶·û 
-	char *pData; 		       // ¼ÇÂ¼Ëù´æ´¢µÄÊı¾İ 
+	bool bValid;		       // Falseè¡¨ç¤ºè¿˜æœªè¢«è¯»å…¥è®°å½•
+	RID  rid; 		           // è®°å½•çš„æ ‡è¯†ç¬¦ 
+	char *pData; 		       // è®°å½•æ‰€å­˜å‚¨çš„æ•°æ® 
 } RM_Record;
 
 
 typedef struct
 {
-	int bLhsIsAttr,bRhsIsAttr;//×ó¡¢ÓÒÊÇÊôĞÔ£¨1£©»¹ÊÇÖµ£¨0£©
+	int bLhsIsAttr,bRhsIsAttr;//å·¦ã€å³æ˜¯å±æ€§ï¼ˆ1ï¼‰è¿˜æ˜¯å€¼ï¼ˆ0ï¼‰
 	AttrType attrType;
 	int LattrLength,RattrLength;
 	int LattrOffset,RattrOffset;
@@ -41,35 +41,35 @@ typedef struct
 } Con;
 
 typedef struct {
-	int nextFreePage;          // Óë RM_FileHdr ½¨Á¢Ò»¸ö freePage Á´
-	int firstFreeSlot;         // µÚ 1 ¸ö free slot
-	int slotCount;             // ÒÑ¾­·ÖÅäµÄ slot ¸öÊı °üÀ¨É¾³ıÖ®ºóµÄ¿Õ slot
-	char slotBitMap[0];        // ±ê¼Ç slot ÊÇ·ñÊ¹ÓÃµÄ bitMap£¬´Ë´¦½ö×öÎªµØÖ·ÓÃ (´úÂëÖĞÊµ¼Ê·ÖÅä¿Õ¼ä)
+	int nextFreePage;          // ä¸ RM_FileHdr å»ºç«‹ä¸€ä¸ª freePage é“¾
+	int firstFreeSlot;         // ç¬¬ 1 ä¸ª free slot
+	int slotCount;             // å·²ç»åˆ†é…çš„ slot ä¸ªæ•° åŒ…æ‹¬åˆ é™¤ä¹‹åçš„ç©º slot
+	char slotBitMap[0];        // æ ‡è®° slot æ˜¯å¦ä½¿ç”¨çš„ bitMapï¼Œæ­¤å¤„ä»…åšä¸ºåœ°å€ç”¨ (ä»£ç ä¸­å®é™…åˆ†é…ç©ºé—´)
 } RM_PageHdr;
 
 typedef struct {
-	int recordSize;             // Ò»Ìõ¼ÇÂ¼µÄ´óĞ¡
-	int recordsPerPage;			// Ã¿Ò»Ò³ÖĞ¿ÉÒÔ´æ·ÅµÄrecordÊıÁ¿
-	int firstFreePage;          // µÚÒ»¸ö¿ÉÒÔ·ÅÏÂ¼ÇÂ¼µÄpageĞòºÅ (>= 2)
-	int slotsOffset;            // Ã¿¸öÒ³ÃæÖĞ¼ÇÂ¼²ÛÏà¶ÔÓÚ PF_Page.pData µÄÆ«ÒÆ
-	// ÎªÁË¼õÉÙ FileHdr µÄË¢Ğ´ÕâÀï²»Î¬»¤ÎÄ¼şÖĞ¼ÇÂ¼µÄ¸öÊı
+	int recordSize;             // ä¸€æ¡è®°å½•çš„å¤§å°
+	int recordsPerPage;			// æ¯ä¸€é¡µä¸­å¯ä»¥å­˜æ”¾çš„recordæ•°é‡
+	int firstFreePage;          // ç¬¬ä¸€ä¸ªå¯ä»¥æ”¾ä¸‹è®°å½•çš„pageåºå· (>= 2)
+	int slotsOffset;            // æ¯ä¸ªé¡µé¢ä¸­è®°å½•æ§½ç›¸å¯¹äº PF_Page.pData çš„åç§»
+	// ä¸ºäº†å‡å°‘ FileHdr çš„åˆ·å†™è¿™é‡Œä¸ç»´æŠ¤æ–‡ä»¶ä¸­è®°å½•çš„ä¸ªæ•°
 } RM_FileHdr;
 
-typedef struct{                 // ÎÄ¼ş¾ä±ú
+typedef struct{                 // æ–‡ä»¶å¥æŸ„
 	bool bOpen;
-	PF_FileHandle pfFileHandle; // ±£´æ PF_FileHandle
+	PF_FileHandle pfFileHandle; // ä¿å­˜ PF_FileHandle
 	RM_FileHdr rmFileHdr;       
-	bool isRMHdrDirty;          // µÚ 1 Ò³ÊÇ·ñÔà
+	bool isRMHdrDirty;          // ç¬¬ 1 é¡µæ˜¯å¦è„
 } RM_FileHandle;
 
 typedef struct{
-	bool  bOpen;		//É¨ÃèÊÇ·ñ´ò¿ª 
-	RM_FileHandle  *pRMFileHandle;		//É¨ÃèµÄ¼ÇÂ¼ÎÄ¼ş¾ä±ú
-	int  conNum;		//É¨ÃèÉæ¼°µÄÌõ¼şÊıÁ¿ 
-	Con  *conditions;	//É¨ÃèÉæ¼°µÄÌõ¼şÊı×éÖ¸Õë
-    PF_PageHandle  PageHandle; //´¦ÀíÖĞµÄÒ³Ãæ¾ä±ú
-	PageNum  pn; 	//É¨Ãè¼´½«´¦ÀíµÄÒ³ÃæºÅ
-	SlotNum  sn;		//É¨Ãè¼´½«´¦ÀíµÄ²å²ÛºÅ
+	bool  bOpen;		//æ‰«ææ˜¯å¦æ‰“å¼€ 
+	RM_FileHandle  *pRMFileHandle;		//æ‰«æçš„è®°å½•æ–‡ä»¶å¥æŸ„
+	int  conNum;		//æ‰«ææ¶‰åŠçš„æ¡ä»¶æ•°é‡ 
+	Con  *conditions;	//æ‰«ææ¶‰åŠçš„æ¡ä»¶æ•°ç»„æŒ‡é’ˆ
+    PF_PageHandle  PageHandle; //å¤„ç†ä¸­çš„é¡µé¢å¥æŸ„
+	PageNum  pn; 	//æ‰«æå³å°†å¤„ç†çš„é¡µé¢å·
+	SlotNum  sn;		//æ‰«æå³å°†å¤„ç†çš„æ’æ§½å·
 }RM_FileScan;
 
 
