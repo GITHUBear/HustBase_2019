@@ -133,7 +133,11 @@ const RC AllocateBlock(Frame **buffer)
 			return PF_FILEERR;
 		if(_write(bf_manager.frame[min].fileDesc,&(bf_manager.frame[min].page),sizeof(Page))!=sizeof(Page))
 			return PF_FILEERR;
+			
+		//bf_manager.frame[min].bDirty==flase 这里应该修改成false。虽然openFile会设置，但是为了确保正确还是加上。
+		//或者这里可以直接调用DisposeBlock？
 	}
+
 	*buffer=bf_manager.frame+min;
 	return SUCCESS;
 }
@@ -153,6 +157,7 @@ const RC DisposeBlock(Frame *buf)
 	return SUCCESS;
 }
 
+//改名叫Create_PF_PageHandle会更好。谁让用是c，没有构造函数呢
 PF_PageHandle* getPF_PageHandle()
 {
 	PF_PageHandle *p=(PF_PageHandle *)malloc(sizeof(PF_PageHandle));
