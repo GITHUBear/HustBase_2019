@@ -4,7 +4,7 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-typedef enum{
+typedef enum {
 	SUCCESS,
 	SQL_SYNTAX,
 	PF_EXIST,
@@ -31,6 +31,10 @@ typedef enum{
 	IX_INVALIDKEYSIZE,
 	IX_IHOPENNED,
 	IX_IHCLOSED,
+	IX_DELETE_NO_RID,
+	IX_DELETE_NO_KEY,
+	IX_CHILD_NODE_UNDERFLOW,
+	IX_CHILD_NODE_OVERFLOW,
 	IX_INVALIDKEY,
 	IX_NOMEM,
 	RM_NOMOREIDXINMEM,

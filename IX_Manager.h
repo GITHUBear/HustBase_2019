@@ -11,13 +11,13 @@
 #include "PF_Manager.h"
 
 const int IX_NO_MORE_BUCKET_SLOT = -1;  
-const int IX_USELESS_SLOTNUM = -2;      // 内部节点中只需要用 pagenum
+const int IX_USELESS_SLOTNUM = -2;      // 内部节点中只需要用 pagenum，以及 DUPLICATE 的叶子节点
 const int IX_NULL_CHILD = -3;
 const int IX_NO_MORE_NEXT_LEAF = -4;
 const int IX_NO_MORE_BUCKET_PAGE = -5;
 
 const char OCCUPIED = 'o';
-const char DUPLICATE = 'd';
+const char DUP = 'd';
 
 typedef struct{
 	int attrLength;
@@ -50,12 +50,12 @@ typedef struct {
 	PageNum firstChild;            // 内部节点的第一个子节点
 } IX_NodePageHeader; 
 
-typedef struct {
-	IX_NodePageHeader* nodeHdr;    // 指向内存缓冲区内的 NodePageHeader, 便于更新数据
-
-	char* keys;                    // 指向内存缓冲区内的 NodePage 的 关键字 数组区
-	RID* rids;                     // 指向内存缓冲区内的 NodePage 的 指针区
-} IX_Node;
+//typedef struct {
+//	IX_NodePageHeader* nodeHdr;    // 指向内存缓冲区内的 NodePageHeader, 便于更新数据
+//
+//	char* keys;                    // 指向内存缓冲区内的 NodePage 的 关键字 数组区
+//	RID* rids;                     // 指向内存缓冲区内的 NodePage 的 指针区
+//} IX_Node;
 
 typedef struct {
 	SlotNum slotNum;
@@ -63,6 +63,16 @@ typedef struct {
 	SlotNum firstFreeSlot;
 	PageNum nextBucket;
 } IX_BucketPageHeader;
+
+typedef struct {
+	SlotNum nextFreeSlot;
+	RID rid;
+} IX_BucketEntry;
+
+typedef struct {
+	char tag;
+	RID rid;
+} IX_NodeEntry;
 
 typedef struct{
 	bool bOpen;		                               /*扫描是否打开 */
@@ -100,6 +110,10 @@ RC CloseIndexScan(IX_IndexScan *indexScan);
 // RC GetIndexTree(char *fileName, Tree *index);
 
 RC CreateBucket(IX_IndexHandle *indexHandle, PageNum *pageNum);
-RC GetThisBucket(IX_IndexHandle* indexHandle, PF_PageHandle* pageHandle);
+RC InsertRIDIntoBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, RID rid);
+RC DeleteRIDFromBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, const RID* rid, PageNum nodePage, RID* nodeRid);
+
+RC splitChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent, int idx, PageNum child);
+RC mergeChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent, int lidx, int ridx, PageNum lchild, PageNum rchild);
 
 #endif
