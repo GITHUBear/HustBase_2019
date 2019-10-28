@@ -1,4 +1,3 @@
-  
 //
 // File:        IX_Manager.cpp
 // Description: Implementation for IX_Manager
@@ -10,7 +9,7 @@
 #include <cassert>
 #include <iostream>
 
-int IXComp(IX_IndexHandle *indexHandle, void *ldata, void *rdata, int llen, int rlen)
+int IXComp(IX_IndexHandle* indexHandle, void* ldata, void* rdata, int llen, int rlen)
 {
 	switch (indexHandle->fileHeader.attrType) {
 	case chars:
@@ -38,7 +37,7 @@ int IXComp(IX_IndexHandle *indexHandle, void *ldata, void *rdata, int llen, int 
 	}
 }
 
-bool innerCmp(IX_IndexScan* indexScan, char *data)
+bool innerCmp(IX_IndexScan* indexScan, char* data)
 {
 	int attrLen = indexScan->pIXIndexHandle->fileHeader.attrLength;
 	int cmpres = IXComp(indexScan->pIXIndexHandle, data, indexScan->value, attrLen, attrLen);
@@ -62,12 +61,12 @@ bool innerCmp(IX_IndexScan* indexScan, char *data)
 	}
 }
 
-bool ridEqual(const RID *lrid, const RID *rrid)
+bool ridEqual(const RID* lrid, const RID* rrid)
 {
 	return (lrid->pageNum == rrid->pageNum && lrid->slotNum == rrid->slotNum);
 }
 
-RC OpenIndexScan (IX_IndexScan *indexScan,IX_IndexHandle *indexHandle,CompOp compOp,char *value)
+RC OpenIndexScan(IX_IndexScan* indexScan, IX_IndexHandle* indexHandle, CompOp compOp, char* value)
 {
 	RC rc;
 
@@ -127,7 +126,7 @@ RC OpenIndexScan (IX_IndexScan *indexScan,IX_IndexHandle *indexHandle,CompOp com
 	return SUCCESS;
 }
 
-RC IX_GetNextEntry (IX_IndexScan *indexScan,RID * rid)
+RC IX_GetNextEntry(IX_IndexScan* indexScan, RID* rid)
 {
 	// ¼ì²éµ±Ç°Î»ÖÃÊÇ·ñÂú×ã
 	RC rc;
@@ -140,7 +139,7 @@ RC IX_GetNextEntry (IX_IndexScan *indexScan,RID * rid)
 	return SUCCESS;
 }
 
-RC CloseIndexScan (IX_IndexScan *indexScan)
+RC CloseIndexScan(IX_IndexScan* indexScan)
 {
 	return SUCCESS;
 }
@@ -151,20 +150,20 @@ RC CloseIndexScan (IX_IndexScan *indexScan)
 
 
 // 
-// ç›®çš„: åˆ›å»ºä¸€ä¸ª Index Fileï¼Œ
-//       è¯¥ Index File åŸºäº é•¿åº¦ä¸º attrlength ç±»å‹ä¸º attrType çš„ key
-// å®ç°éå¸¸ç±»ä¼¼ RM_Manager ä¸­çš„ CreateFile
-// 1. è®¡ç®—å‡ºä¸€ä¸ª Page ä¸­èƒ½å¤Ÿå­˜æ”¾çš„ key entry ç»“æ„çš„æ•°é‡ï¼Œæˆ–è€…è¯´åˆå§‹åŒ– B+æ ‘ çš„ order
-// 2. è°ƒç”¨ PF_Manager::CreateFile() å°† Paged File çš„ç›¸å…³æ§åˆ¶ä¿¡æ¯è¿›è¡Œåˆå§‹åŒ–
-// 3. è°ƒç”¨ PF_Manager::OpenFile() æ‰“å¼€è¯¥æ–‡ä»¶ è·å– PF_FileHandle
-// 4. é€šè¿‡è¯¥ PF_FileHandle çš„ AllocatePage æ–¹æ³•ç”³è¯·å†…å­˜ç¼“å†²åŒº æ‹¿åˆ°ç¬¬ 1 é¡µçš„ pData æŒ‡é’ˆ
-// 5. åˆå§‹åŒ–ä¸€ä¸ª IX_FileHdr ç»“æ„ï¼Œå†™åˆ° pData æŒ‡å‘çš„å†…å­˜åŒº
-// 6. é€šè¿‡è¯¥ PF_FileHandle çš„ AllocatePage æ–¹æ³•ç”³è¯·å†…å­˜ç¼“å†²åŒº æ‹¿åˆ°ç¬¬ 2 é¡µçš„ pData æŒ‡é’ˆ
-// 7. åˆå§‹åŒ–ä¸€ä¸ª IX_NodeHdr ç»“æ„ï¼Œå†™åˆ° pData æŒ‡å‘çš„å†…å­˜åŒº, åˆå§‹åŒ–ä¸€ä¸ªç©ºçš„ Root èŠ‚ç‚¹
-// 6. æ ‡è®° ç¬¬ 1ï¼Œ2 é¡µ ä¸ºè„
-// 7. PF_Manager::CloseFile() å°†è°ƒç”¨ ForceAllPage
+// Ä¿µÄ: ´´½¨Ò»¸ö Index File£¬
+//       ¸Ã Index File »ùÓÚ ³¤¶ÈÎª attrlength ÀàĞÍÎª attrType µÄ key
+// ÊµÏÖ·Ç³£ÀàËÆ RM_Manager ÖĞµÄ CreateFile
+// 1. ¼ÆËã³öÒ»¸ö Page ÖĞÄÜ¹»´æ·ÅµÄ key entry ½á¹¹µÄÊıÁ¿£¬»òÕßËµ³õÊ¼»¯ B+Ê÷ µÄ order
+// 2. µ÷ÓÃ PF_Manager::CreateFile() ½« Paged File µÄÏà¹Ø¿ØÖÆĞÅÏ¢½øĞĞ³õÊ¼»¯
+// 3. µ÷ÓÃ PF_Manager::OpenFile() ´ò¿ª¸ÃÎÄ¼ş »ñÈ¡ PF_FileHandle
+// 4. Í¨¹ı¸Ã PF_FileHandle µÄ AllocatePage ·½·¨ÉêÇëÄÚ´æ»º³åÇø ÄÃµ½µÚ 1 Ò³µÄ pData Ö¸Õë
+// 5. ³õÊ¼»¯Ò»¸ö IX_FileHdr ½á¹¹£¬Ğ´µ½ pData Ö¸ÏòµÄÄÚ´æÇø
+// 6. Í¨¹ı¸Ã PF_FileHandle µÄ AllocatePage ·½·¨ÉêÇëÄÚ´æ»º³åÇø ÄÃµ½µÚ 2 Ò³µÄ pData Ö¸Õë
+// 7. ³õÊ¼»¯Ò»¸ö IX_NodeHdr ½á¹¹£¬Ğ´µ½ pData Ö¸ÏòµÄÄÚ´æÇø, ³õÊ¼»¯Ò»¸ö¿ÕµÄ Root ½Úµã
+// 6. ±ê¼Ç µÚ 1£¬2 Ò³ ÎªÔà
+// 7. PF_Manager::CloseFile() ½«µ÷ÓÃ ForceAllPage
 //
-RC CreateIndex (const char* fileName, AttrType attrType, int attrLength)
+RC CreateIndex(const char* fileName, AttrType attrType, int attrLength)
 {
 	std::cout << "Bucket Entry Size: " << sizeof(IX_BucketEntry) << std::endl;
 	std::cout << "Node Entry Size: " << sizeof(IX_NodeEntry) << std::endl;
@@ -172,26 +171,26 @@ RC CreateIndex (const char* fileName, AttrType attrType, int attrLength)
 	RC rc;
 	PF_FileHandle pfFileHandle;
 	PF_PageHandle pfHdrPage, pfFirstRootPage;
-	char* fileHdrData, *nodeHdrData;
+	char* fileHdrData, * nodeHdrData;
 	IX_FileHeader* ixFileHdr;
 	IX_NodePageHeader* ixNodeHdr;
 
-	// B+æ ‘ æœ€å° order éœ€è¦ä¸º 3ï¼Œ splitæƒ…å†µä¸‹è‡³å°‘è¦åœ¨ä¸€ä¸ª node ä¸­å­˜ä¸‹ 3æ¡ keyè®°å½•
-	maxKeysNum = (PF_PAGE_SIZE - sizeof(IX_NodePageHeader)) 
-					/ (sizeof(IX_NodeEntry) + attrLength);
+	// B+Ê÷ ×îĞ¡ order ĞèÒªÎª 3£¬ splitÇé¿öÏÂÖÁÉÙÒªÔÚÒ»¸ö node ÖĞ´æÏÂ 3Ìõ key¼ÇÂ¼
+	maxKeysNum = (PF_PAGE_SIZE - sizeof(IX_NodePageHeader))
+		/ (sizeof(IX_NodeEntry) + attrLength);
 	maxBucketEntryNum = (PF_PAGE_SIZE - sizeof(IX_BucketPageHeader)) / sizeof(IX_BucketEntry);
 
 	if (maxKeysNum < 3)
 		return IX_INVALIDKEYSIZE;
 
-	// 2. è°ƒç”¨ PF_Manager::CreateFile() å°† Paged File çš„ç›¸å…³æ§åˆ¶ä¿¡æ¯è¿›è¡Œåˆå§‹åŒ–
-	// 3. è°ƒç”¨ PF_Manager::OpenFile() æ‰“å¼€è¯¥æ–‡ä»¶ è·å– PF_FileHandle
+	// 2. µ÷ÓÃ PF_Manager::CreateFile() ½« Paged File µÄÏà¹Ø¿ØÖÆĞÅÏ¢½øĞĞ³õÊ¼»¯
+	// 3. µ÷ÓÃ PF_Manager::OpenFile() ´ò¿ª¸ÃÎÄ¼ş »ñÈ¡ PF_FileHandle
 	if ((rc = CreateFile(fileName)) ||
 		(rc = openFile((char*)fileName, &pfFileHandle)))
 		return rc;
 
 	if ((rc = AllocatePage(&pfFileHandle, &pfHdrPage)) ||
-		(rc = GetData(&pfHdrPage, &fileHdrData)) || 
+		(rc = GetData(&pfHdrPage, &fileHdrData)) ||
 		(rc = AllocatePage(&pfFileHandle, &pfFirstRootPage)) ||
 		(rc = GetData(&pfFirstRootPage, &nodeHdrData)))
 		return rc;
@@ -226,12 +225,12 @@ RC CreateIndex (const char* fileName, AttrType attrType, int attrLength)
 
 
 //
-// ç›®çš„: æ‰“å¼€å·²ç»åˆ›å»ºçš„ Index Fileï¼Œå¹¶åˆå§‹åŒ–ä¸€ä¸ª IX_IndexHandle
-// 1. æ£€æŸ¥åˆæ³•æ€§
-// 2. è°ƒç”¨ PF_Manager::OpenFileï¼Œè·å¾—ä¸€ä¸ª PF_FileHandle
-// 3. é€šè¿‡ PF_FileHandle æ¥è·å–1å·é¡µé¢ä¸Šçš„ RM_FileHdr ä¿¡æ¯
+// Ä¿µÄ: ´ò¿ªÒÑ¾­´´½¨µÄ Index File£¬²¢³õÊ¼»¯Ò»¸ö IX_IndexHandle
+// 1. ¼ì²éºÏ·¨ĞÔ
+// 2. µ÷ÓÃ PF_Manager::OpenFile£¬»ñµÃÒ»¸ö PF_FileHandle
+// 3. Í¨¹ı PF_FileHandle À´»ñÈ¡1ºÅÒ³ÃæÉÏµÄ RM_FileHdr ĞÅÏ¢
 //
-RC OpenIndex (const char* fileName, IX_IndexHandle* indexHandle)
+RC OpenIndex(const char* fileName, IX_IndexHandle* indexHandle)
 {
 	RC rc;
 	PF_FileHandle pfFileHandle;
@@ -261,12 +260,12 @@ RC OpenIndex (const char* fileName, IX_IndexHandle* indexHandle)
 }
 
 // 
-// ç›®çš„: å…³é—­æ–‡ä»¶ï¼Œå°†ä¿®æ”¹çš„æ•°æ®åˆ·å†™åˆ°ç£ç›˜
-// æ£€æŸ¥ indexHandle->isHdrDirty æ˜¯å¦ä¸ºçœŸ
-// å¦‚æœä¸ºçœŸï¼Œéœ€è¦GetThisPageè·å¾—æ–‡ä»¶ç¬¬1é¡µï¼Œå°†indexHandleä¸­ç»´æŠ¤çš„IX_FileHeader
-// ä¿å­˜åˆ°ç›¸åº”çš„ç¼“å†²åŒº
+// Ä¿µÄ: ¹Ø±ÕÎÄ¼ş£¬½«ĞŞ¸ÄµÄÊı¾İË¢Ğ´µ½´ÅÅÌ
+// ¼ì²é indexHandle->isHdrDirty ÊÇ·ñÎªÕæ
+// Èç¹ûÎªÕæ£¬ĞèÒªGetThisPage»ñµÃÎÄ¼şµÚ1Ò³£¬½«indexHandleÖĞÎ¬»¤µÄIX_FileHeader
+// ±£´æµ½ÏàÓ¦µÄ»º³åÇø
 // 
-RC CloseIndex (IX_IndexHandle* indexHandle)
+RC CloseIndex(IX_IndexHandle* indexHandle)
 {
 	RC rc;
 	PF_PageHandle pfPageHandle;
@@ -297,14 +296,14 @@ RC CloseIndex (IX_IndexHandle* indexHandle)
 }
 
 //
-// ç›®çš„: åˆå§‹åŒ–ä¸€ä¸ª Bucket Pageï¼Œå°†åˆå§‹åŒ–å¥½çš„ Bucket Page çš„ pageNum è¿”å›
+// Ä¿µÄ: ³õÊ¼»¯Ò»¸ö Bucket Page£¬½«³õÊ¼»¯ºÃµÄ Bucket Page µÄ pageNum ·µ»Ø
 //
 RC CreateBucket(IX_IndexHandle* indexHandle, PageNum* pageNum)
 {
 	RC rc;
 	PF_PageHandle pfPageHandle;
 	char* data;
-	IX_BucketEntry *slotRid;
+	IX_BucketEntry* slotRid;
 	IX_BucketPageHeader* bucketPageHdr;
 
 	if ((rc = AllocatePage(&(indexHandle->fileHandle), &pfPageHandle)) ||
@@ -333,7 +332,7 @@ RC CreateBucket(IX_IndexHandle* indexHandle, PageNum* pageNum)
 }
 
 // 
-// ç›®çš„: å‘ç»™å®šçš„ bucket Page(s) å†™å…¥ RID
+// Ä¿µÄ: Ïò¸ø¶¨µÄ bucket Page(s) Ğ´Èë RID
 // 
 RC InsertRIDIntoBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, RID rid)
 {
@@ -343,7 +342,7 @@ RC InsertRIDIntoBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, RID r
 	IX_BucketEntry* entry;
 	PageNum lastPageNum = bucketPageNum;
 	char* data;
-	
+
 	while (bucketPageNum != IX_NO_MORE_BUCKET_PAGE)
 	{
 		lastPageNum = bucketPageNum;
@@ -356,8 +355,8 @@ RC InsertRIDIntoBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, RID r
 		entry = (IX_BucketEntry*)(data + indexHandle->fileHeader.bucketEntryListOffset);
 
 		if (bucketPageHdr->firstFreeSlot != IX_NO_MORE_BUCKET_SLOT) {
-			// å­˜åœ¨ free slot
-			// å†™å…¥ RID
+			// ´æÔÚ free slot
+			// Ğ´Èë RID
 			int free_idx = bucketPageHdr->firstFreeSlot;
 			int next_free_idx = entry[free_idx].nextFreeSlot;
 			entry[free_idx].nextFreeSlot = bucketPageHdr->firstValidSlot;
@@ -367,7 +366,7 @@ RC InsertRIDIntoBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, RID r
 
 			bucketPageHdr->slotNum++;
 
-			// æ ‡è®°è„
+			// ±ê¼ÇÔà
 			if ((rc = MarkDirty(&bucketPage)) ||
 				(rc = UnpinPage(&bucketPage)))
 				return rc;
@@ -378,12 +377,12 @@ RC InsertRIDIntoBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, RID r
 		bucketPageNum = bucketPageHdr->nextBucket;
 	}
 
-	// éå†å®Œäº†å…¨éƒ¨çš„ Bucket Page éƒ½æ²¡æœ‰å¯Œè£•ç©ºé—´äº†
-	// åˆ›å»ºä¸€ä¸ªæ–°çš„
+	// ±éÀúÍêÁËÈ«²¿µÄ Bucket Page ¶¼Ã»ÓĞ¸»Ô£¿Õ¼äÁË
+	// ´´½¨Ò»¸öĞÂµÄ
 	PageNum newPage;
 	PF_PageHandle newPageHandle, lastPageHandle;
-	char* newData, *lastData;
-	IX_BucketPageHeader* newHdr, *lastPageHdr;
+	char* newData, * lastData;
+	IX_BucketPageHeader* newHdr, * lastPageHdr;
 	IX_BucketEntry* newEntry;
 
 	if ((rc = CreateBucket(indexHandle, &newPage)) ||
@@ -421,19 +420,19 @@ RC InsertRIDIntoBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, RID r
 }
 
 //
-// ç›®çš„: åœ¨ Bucket Page(s) ä¸­æŸ¥æ‰¾åŒ¹é…çš„ ridï¼Œå¹¶åˆ é™¤ç›¸åº”çš„ rid
+// Ä¿µÄ: ÔÚ Bucket Page(s) ÖĞ²éÕÒÆ¥ÅäµÄ rid£¬²¢É¾³ıÏàÓ¦µÄ rid
 //
-RC DeleteRIDFromBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, const RID* rid, PageNum nodePage, RID *nodeRid)
+RC DeleteRIDFromBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, const RID* rid, PageNum nodePage, RID* nodeRid)
 {
 	RC rc;
 	PF_PageHandle bucketPageHandle, prePageHandle;
 	char* data, * preData;
 	IX_BucketPageHeader* bucketPageHdr, * preBucketHdr;
 	IX_BucketEntry* entry;
-	
+
 	PageNum prePageNum = nodePage;
 
-	while (bucketPageNum != IX_NO_MORE_BUCKET_PAGE) 
+	while (bucketPageNum != IX_NO_MORE_BUCKET_PAGE)
 	{
 		if ((rc = GetThisPage(&(indexHandle->fileHandle), bucketPageNum, &bucketPageHandle)) ||
 			(rc = GetData(&bucketPageHandle, &data)))
@@ -445,14 +444,15 @@ RC DeleteRIDFromBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, const
 		SlotNum validSlot = bucketPageHdr->firstValidSlot;
 		SlotNum preValidSlot = IX_NO_MORE_BUCKET_SLOT;
 
-		while (validSlot != IX_NO_MORE_BUCKET_SLOT) 
+		while (validSlot != IX_NO_MORE_BUCKET_SLOT)
 		{
 			SlotNum next_valid = entry[validSlot].nextFreeSlot;
 
 			if (ridEqual(&(entry[validSlot].rid), rid)) {
 				if (preValidSlot == IX_NO_MORE_BUCKET_SLOT) {
 					bucketPageHdr->firstValidSlot = next_valid;
-				} else {
+				}
+				else {
 					entry[preValidSlot].nextFreeSlot = next_valid;
 				}
 
@@ -461,12 +461,13 @@ RC DeleteRIDFromBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, const
 				bucketPageHdr->slotNum--;
 
 				if (!(bucketPageHdr->slotNum)) {
-					// å½“å‰ bucket åˆ ç©ºäº†
+					// µ±Ç° bucket É¾¿ÕÁË
 					if (prePageNum == nodePage) {
-						// å‰ä¸€ä¸ª Page æ˜¯ Node Page
+						// Ç°Ò»¸ö Page ÊÇ Node Page
 						nodeRid->pageNum = bucketPageHdr->nextBucket;
-					} else {
-						// å‰ä¸€ä¸ª Page æ˜¯ Bucket Page
+					}
+					else {
+						// Ç°Ò»¸ö Page ÊÇ Bucket Page
 						if ((rc = GetThisPage(&(indexHandle->fileHandle), prePageNum, &prePageHandle)) ||
 							(rc = GetData(&prePageHandle, &preData)))
 							return rc;
@@ -484,7 +485,7 @@ RC DeleteRIDFromBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, const
 						(rc = UnpinPage(&bucketPageHandle)))
 						return rc;
 
-					// dispose æ‰è¿™ä¸€é¡µç©ºè®°å½•çš„ bucket page
+					// dispose µôÕâÒ»Ò³¿Õ¼ÇÂ¼µÄ bucket page
 					if (rc = DisposePage(&(indexHandle->fileHandle), bucketPageNum))
 						return rc;
 
@@ -509,19 +510,19 @@ RC DeleteRIDFromBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, const
 		bucketPageNum = bucketPageHdr->nextBucket;
 	}
 
-	// éå†å®Œäº†ä¹Ÿæ²¡æœ‰æ‰¾åˆ°
+	// ±éÀúÍêÁËÒ²Ã»ÓĞÕÒµ½
 	return IX_DELETE_NO_RID;
 }
 
 //
-// ç›®çš„: åœ¨ Node æ–‡ä»¶é¡µä¸­ æŸ¥æ‰¾æŒ‡å®š pData
-//       æ‰¾åˆ°æœ€å¤§çš„å°äºç­‰äº pData çš„ç´¢å¼•ä½ç½®ä¿å­˜åœ¨ idx ä¸­
-//       å¦‚æœå­˜åœ¨ç­‰äº è¿”å› true å¦åˆ™è¿”å› false
-// pData: ç”¨æˆ·æŒ‡å®šçš„æ•°æ®æŒ‡é’ˆ
-// key: Node æ–‡ä»¶çš„å…³é”®å­—åŒºé¦–åœ°å€æŒ‡é’ˆ
-// s: æœç´¢èŒƒå›´èµ·å§‹ç´¢å¼•
-// e: æœç´¢èŒƒå›´ç»ˆæ­¢ç´¢å¼•
-// ä¸Šè¿°èŒƒå›´ä¸ºåŒ…å«
+// Ä¿µÄ: ÔÚ Node ÎÄ¼şÒ³ÖĞ ²éÕÒÖ¸¶¨ pData
+//       ÕÒµ½×î´óµÄĞ¡ÓÚµÈÓÚ pData µÄË÷ÒıÎ»ÖÃ±£´æÔÚ idx ÖĞ
+//       Èç¹û´æÔÚµÈÓÚ ·µ»Ø true ·ñÔò·µ»Ø false
+// pData: ÓÃ»§Ö¸¶¨µÄÊı¾İÖ¸Õë
+// key: Node ÎÄ¼şµÄ¹Ø¼ü×ÖÇøÊ×µØÖ·Ö¸Õë
+// s: ËÑË÷·¶Î§ÆğÊ¼Ë÷Òı
+// e: ËÑË÷·¶Î§ÖÕÖ¹Ë÷Òı
+// ÉÏÊö·¶Î§Îª°üº¬
 // 
 bool findKeyInNode(IX_IndexHandle* indexHandle, void* pData, void* key, int s, int e, int* idx)
 {
@@ -534,42 +535,46 @@ bool findKeyInNode(IX_IndexHandle* indexHandle, void* pData, void* key, int s, i
 
 		if (cmpres < 0) {
 			s = mid;
-		} else if (cmpres > 0) {
+		}
+		else if (cmpres > 0) {
 			e = mid - 1;
-		} else {
+		}
+		else {
 			*idx = mid;
 			return true;
 		}
 	}
 
-	if (s > e || 
+	if (s > e ||
 		(cmpres = IXComp(indexHandle, (char*)key + attrLen * s, pData, attrLen, attrLen)) > 0) {
 		*idx = s - 1;
 		return false;
-	} else {
+	}
+	else {
 		*idx = s;
 		return cmpres == 0;
 	}
 }
 
 // 
-// shift ä¸è´Ÿè´£è·å¾—é¡µé¢ï¼Œå¹¶è®¾ç½®é¡µé¢è„
-// entry: é¡µé¢æŒ‡é’ˆåŒºé¦–åœ°å€
-// key:   é¡µé¢å…³é”®å­—åŒºé¦–åœ°å€
-// idx:   ä»idxå¼€å§‹åˆ°ç»“æŸä½ç½® len - 1 è¿›è¡Œç§»åŠ¨
-// dir:   true è¡¨ç¤º å‘åç§»åŠ¨; false åä¹‹
+// shift ²»¸ºÔğ»ñµÃÒ³Ãæ£¬²¢ÉèÖÃÒ³ÃæÔà
+// entry: Ò³ÃæÖ¸ÕëÇøÊ×µØÖ·
+// key:   Ò³Ãæ¹Ø¼ü×ÖÇøÊ×µØÖ·
+// idx:   ´Óidx¿ªÊ¼µ½½áÊøÎ»ÖÃ len - 1 ½øĞĞÒÆ¶¯
+// dir:   true ±íÊ¾ ÏòºóÒÆ¶¯; false ·´Ö®
 //
-void shift (IX_IndexHandle* indexHandle, char *entry, char *key, int idx, int len, bool dir) 
+void shift(IX_IndexHandle* indexHandle, char* entry, char* key, int idx, int len, bool dir)
 {
 	int attrLen = indexHandle->fileHeader.attrLength;
 
 	if (dir) {
 		for (int i = len - 1; i >= idx; i--) {
 			memcpy(key + attrLen * (i + 1), key + attrLen * i, attrLen);
-			memcpy(entry + sizeof(IX_NodeEntry) * (i + 1), 
+			memcpy(entry + sizeof(IX_NodeEntry) * (i + 1),
 				entry + sizeof(IX_NodeEntry) * i, sizeof(IX_NodeEntry));
 		}
-	} else {
+	}
+	else {
 		for (int i = idx; i < len; i++) {
 			memcpy(key + attrLen * (i - 1), key + attrLen * i, attrLen);
 			memcpy(entry + sizeof(IX_NodeEntry) * (i - 1),
@@ -579,7 +584,7 @@ void shift (IX_IndexHandle* indexHandle, char *entry, char *key, int idx, int le
 }
 
 //
-// splitChild ä¸è´Ÿè´£ parent é¡µé¢çš„é‡Šæ”¾ï¼Œä½†æ˜¯è´Ÿè´£å­èŠ‚ç‚¹é¡µé¢å’Œæ–°é¡µé¢çš„é‡Šæ”¾
+// splitChild ²»¸ºÔğ parent Ò³ÃæµÄÊÍ·Å£¬µ«ÊÇ¸ºÔğ×Ó½ÚµãÒ³ÃæºÍĞÂÒ³ÃæµÄÊÍ·Å
 // 
 RC splitChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent, int idx, PageNum child)
 {
@@ -621,8 +626,8 @@ RC splitChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent, int idx, PageN
 	IX_NodeEntry* midChildEntry = (IX_NodeEntry*)(child_entry + sizeof(IX_NodeEntry) * (childKeyNum / 2));
 
 	if (childHdr->is_leaf) {
-		// å­èŠ‚ç‚¹æ˜¯ä¸€ä¸ªå¶å­èŠ‚ç‚¹
-		// å°†å¶å­èŠ‚ç‚¹ä» childKeyNum / 2 å¼€å§‹çš„æ‰€æœ‰ä¿¡æ¯æ‹·è´åˆ°æ–°èŠ‚ç‚¹ä½ç½®
+		// ×Ó½ÚµãÊÇÒ»¸öÒ¶×Ó½Úµã
+		// ½«Ò¶×Ó½Úµã´Ó childKeyNum / 2 ¿ªÊ¼µÄËùÓĞĞÅÏ¢¿½±´µ½ĞÂ½ÚµãÎ»ÖÃ
 		memcpy(new_entry, child_entry + sizeof(IX_NodeEntry) * (childKeyNum / 2),
 			sizeof(IX_NodeEntry) * (childKeyNum - (childKeyNum / 2)));
 		memcpy(new_key, child_key + attrLen * (childKeyNum / 2),
@@ -632,10 +637,11 @@ RC splitChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent, int idx, PageN
 		newPageHdr->is_leaf = true;
 		newPageHdr->keynum = childKeyNum - (childKeyNum / 2);
 		newPageHdr->sibling = childHdr->sibling;
-	} else {
-		// å­èŠ‚ç‚¹æ˜¯å†…éƒ¨èŠ‚ç‚¹
-		// å°†å¶å­èŠ‚ç‚¹ä» childKeyNum / 2 + 1 å¼€å§‹çš„æ‰€æœ‰ä¿¡æ¯æ‹·è´åˆ°æ–°èŠ‚ç‚¹ä½ç½®
-		memcpy(new_entry, child_entry + sizeof(IX_NodeEntry) * (childKeyNum / 2 + 1), 
+	}
+	else {
+		// ×Ó½ÚµãÊÇÄÚ²¿½Úµã
+		// ½«Ò¶×Ó½Úµã´Ó childKeyNum / 2 + 1 ¿ªÊ¼µÄËùÓĞĞÅÏ¢¿½±´µ½ĞÂ½ÚµãÎ»ÖÃ
+		memcpy(new_entry, child_entry + sizeof(IX_NodeEntry) * (childKeyNum / 2 + 1),
 			sizeof(IX_NodeEntry) * (childKeyNum - (childKeyNum / 2) - 1));
 		memcpy(new_key, child_key + attrLen * (childKeyNum / 2 + 1),
 			attrLen * (childKeyNum - (childKeyNum / 2) - 1));
@@ -649,14 +655,14 @@ RC splitChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent, int idx, PageN
 	childHdr->keynum = childKeyNum / 2;
 	childHdr->sibling = newPageNum;
 
-	// ç§»åŠ¨çˆ¶èŠ‚ç‚¹æ•°æ®
+	// ÒÆ¶¯¸¸½ÚµãÊı¾İ
 	shift(indexHandle, par_entry, par_key, idx + 1, parentHdr->keynum, true);
-	// æŠŠå­©å­èŠ‚ç‚¹çš„ä¸­é—´æ•°æ®å†™å…¥åˆ°çˆ¶èŠ‚ç‚¹
+	// °Ñº¢×Ó½ÚµãµÄÖĞ¼äÊı¾İĞ´Èëµ½¸¸½Úµã
 	IX_NodeEntry* parEntry = (IX_NodeEntry*)(par_entry + sizeof(IX_NodeEntry) * (idx + 1));
 	parEntry->tag = OCCUPIED;
 	parEntry->rid.pageNum = newPageNum;
 	parEntry->rid.slotNum = IX_USELESS_SLOTNUM;
-	
+
 	memcpy(par_key + attrLen * (idx + 1), child_key + attrLen * (childKeyNum / 2), attrLen);
 
 	parentHdr->keynum++;
@@ -672,14 +678,14 @@ RC splitChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent, int idx, PageN
 }
 
 //
-// InsertEntry çš„å¸®åŠ©å‡½æ•°
+// InsertEntry µÄ°ïÖúº¯Êı
 //
 RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, const RID* rid)
 {
 	RC rc;
 	PF_PageHandle nodePage;
-	char* data, *entry, *key;
-	IX_NodePageHeader *nodePageHdr;
+	char* data, * entry, * key;
+	IX_NodePageHeader* nodePageHdr;
 	int keyNum;
 	int attrLen = indexHandle->fileHeader.attrLength;
 
@@ -693,16 +699,16 @@ RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, c
 	key = data + indexHandle->fileHeader.nodeKeyListOffset;
 
 	if (nodePageHdr->is_leaf) {
-		// å½“å‰èŠ‚ç‚¹æ˜¯å¶å­èŠ‚ç‚¹
-		// 1. æŸ¥æ‰¾å¶å­èŠ‚ç‚¹ä¸­æ˜¯å¦å­˜åœ¨ç›¸åŒkeyçš„slot
+		// µ±Ç°½ÚµãÊÇÒ¶×Ó½Úµã
+		// 1. ²éÕÒÒ¶×Ó½ÚµãÖĞÊÇ·ñ´æÔÚÏàÍ¬keyµÄslot
 		int idx;
 		bool findRes = findKeyInNode(indexHandle, pData, key, 0, keyNum - 1, &idx);
 		if (findRes) {
-			std::cout << "ç›¸åŒ key æ’å…¥" << std::endl;
-			// å­˜åœ¨è¯¥key
-			// è·å–å¯¹åº”ç´¢å¼•ä½ç½® entry åŒºçš„ä¿¡æ¯
+			std::cout << "ÏàÍ¬ key ²åÈë" << std::endl;
+			// ´æÔÚ¸Ãkey
+			// »ñÈ¡¶ÔÓ¦Ë÷ÒıÎ»ÖÃ entry ÇøµÄĞÅÏ¢
 			IX_NodeEntry* pIdxEntry = (IX_NodeEntry*)(entry + sizeof(IX_NodeEntry) * idx);
-			// è¯»å–è¯¥é¡¹çš„æ ‡å¿—ä½ char tag
+			// ¶ÁÈ¡¸ÃÏîµÄ±êÖ¾Î» char tag
 			char tag = pIdxEntry->tag;
 			RID* thisRid = &(pIdxEntry->rid);
 			PageNum bucketPageNum;
@@ -711,10 +717,10 @@ RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, c
 			assert(tag != 0);
 
 			if (tag == OCCUPIED) {
-				// å°šæœªæ ‡è®°ä¸ºé‡å¤é”®å€¼, éœ€è¦åˆ›å»ºä¸€ä¸ª Bucket File
-				// è·å–æ–°åˆ†é…çš„ Bucket Page çš„ pageHandle,å¹¶æ’å…¥è®°å½•
-				if ((rc = CreateBucket(indexHandle, &bucketPageNum)) || 
-					(rc = InsertRIDIntoBucket(indexHandle, bucketPageNum, *thisRid)) || 
+				// ÉĞÎ´±ê¼ÇÎªÖØ¸´¼üÖµ, ĞèÒª´´½¨Ò»¸ö Bucket File
+				// »ñÈ¡ĞÂ·ÖÅäµÄ Bucket Page µÄ pageHandle,²¢²åÈë¼ÇÂ¼
+				if ((rc = CreateBucket(indexHandle, &bucketPageNum)) ||
+					(rc = InsertRIDIntoBucket(indexHandle, bucketPageNum, *thisRid)) ||
 					(rc = InsertRIDIntoBucket(indexHandle, bucketPageNum, *rid)))
 					return rc;
 
@@ -728,8 +734,9 @@ RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, c
 
 				return SUCCESS;
 
-			} else if (tag == DUP) {
-				// å·²ç»æ ‡è®°ä¸ºé‡å¤é”®å€¼ï¼Œè·å–å¯¹åº”çš„ Bucket Fileï¼Œæ’å…¥è®°å½•
+			}
+			else if (tag == DUP) {
+				// ÒÑ¾­±ê¼ÇÎªÖØ¸´¼üÖµ£¬»ñÈ¡¶ÔÓ¦µÄ Bucket File£¬²åÈë¼ÇÂ¼
 				bucketPageNum = thisRid->pageNum;
 				if (rc = InsertRIDIntoBucket(indexHandle, bucketPageNum, *rid))
 					return rc;
@@ -740,11 +747,12 @@ RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, c
 
 				return SUCCESS;
 			}
-		} else {
-			// ä¸å­˜åœ¨
-			// idx ä¸­ä¿å­˜äº† <= pData çš„ç´¢å¼•ä½ç½®
-			// éœ€è¦æŠŠ idx + 1 ä¹‹åçš„ æŒ‡é’ˆåŒº å’Œ å…³é”®å­—åŒº çš„å†…å®¹å‘åç§»åŠ¨
-			// å†æŠŠæ•°æ® RID å’Œ å…³é”®å­— å†™åˆ° idx + 1 ä½ç½®
+		}
+		else {
+			// ²»´æÔÚ
+			// idx ÖĞ±£´æÁË <= pData µÄË÷ÒıÎ»ÖÃ
+			// ĞèÒª°Ñ idx + 1 Ö®ºóµÄ Ö¸ÕëÇø ºÍ ¹Ø¼ü×ÖÇø µÄÄÚÈİÏòºóÒÆ¶¯
+			// ÔÙ°ÑÊı¾İ RID ºÍ ¹Ø¼ü×Ö Ğ´µ½ idx + 1 Î»ÖÃ
 			shift(indexHandle, entry, key, idx + 1, keyNum, true);
 
 			IX_NodeEntry* pIdxEntry = (IX_NodeEntry*)(entry + sizeof(IX_NodeEntry) * (idx + 1));
@@ -762,9 +770,10 @@ RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, c
 
 			return (parentKeyNum >= indexHandle->fileHeader.order) ? IX_CHILD_NODE_OVERFLOW : SUCCESS;
 		}
-	} else {
-		// å½“å‰èŠ‚ç‚¹æ˜¯å†…éƒ¨èŠ‚ç‚¹
-		// æ‰¾åˆ° å°äºç­‰äº è¾“å…¥å…³é”®å­—çš„æœ€å¤§ç´¢å¼•ä½ç½®ï¼Œé€’å½’æ‰§è¡Œ InsertEntryIntoTree
+	}
+	else {
+		// µ±Ç°½ÚµãÊÇÄÚ²¿½Úµã
+		// ÕÒµ½ Ğ¡ÓÚµÈÓÚ ÊäÈë¹Ø¼ü×ÖµÄ×î´óË÷ÒıÎ»ÖÃ£¬µİ¹éÖ´ĞĞ InsertEntryIntoTree
 		int idx;
 		bool findRes = findKeyInNode(indexHandle, pData, key, 0, keyNum - 1, &idx);
 		IX_NodeEntry* nodeEntry = (IX_NodeEntry*)entry;
@@ -775,21 +784,21 @@ RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, c
 		else
 			child = nodeEntry[idx].rid.pageNum;
 
-		// åœ¨æ·±å…¥ B+æ ‘ è¿›è¡Œé€’å½’ä¹‹å‰ï¼Œé‡Šæ”¾æ‰å½“å‰ page
+		// ÔÚÉîÈë B+Ê÷ ½øĞĞµİ¹éÖ®Ç°£¬ÊÍ·Åµôµ±Ç° page
 		if (rc = UnpinPage(&nodePage))
 			return rc;
 
 		rc = InsertEntryIntoTree(indexHandle, child, pData, rid);
 
 		if (rc == IX_CHILD_NODE_OVERFLOW) {
-			// å­èŠ‚ç‚¹å‘ç”Ÿäº† overflow
-			// Get å½“å‰èŠ‚ç‚¹çš„ Page
+			// ×Ó½Úµã·¢ÉúÁË overflow
+			// Get µ±Ç°½ÚµãµÄ Page
 			if (rc = GetThisPage(&(indexHandle->fileHandle), node, &nodePage))
 				return rc;
-			// split å­èŠ‚ç‚¹
+			// split ×Ó½Úµã
 			if (rc = splitChild(indexHandle, &nodePage, idx, child))
 				return rc;
-			
+
 			if (rc = GetData(&nodePage, &data))
 				return rc;
 
@@ -808,11 +817,11 @@ RC InsertEntryIntoTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, c
 }
 
 //
-// mergeChild ä¸è´Ÿè´£ parent é¡µé¢çš„é‡Šæ”¾ï¼Œä½†æ˜¯è´Ÿè´£å­èŠ‚ç‚¹é¡µé¢é‡Šæ”¾
+// mergeChild ²»¸ºÔğ parent Ò³ÃæµÄÊÍ·Å£¬µ«ÊÇ¸ºÔğ×Ó½ÚµãÒ³ÃæÊÍ·Å
 // 
-RC mergeChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent, 
-	          int lidx, int ridx, 
-	          PageNum lchild, PageNum rchild)
+RC mergeChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent,
+	int lidx, int ridx,
+	PageNum lchild, PageNum rchild)
 {
 	RC rc;
 	char* parentKey, * leftKey, * rightKey;
@@ -842,7 +851,7 @@ RC mergeChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent,
 	rightEntry = (IX_NodeEntry*)(rightData + indexHandle->fileHeader.nodeEntryListOffset);
 
 	if (!(leftHdr->is_leaf)) {
-		// å­èŠ‚ç‚¹æ˜¯å†…éƒ¨èŠ‚ç‚¹
+		// ×Ó½ÚµãÊÇÄÚ²¿½Úµã
 		leftEntry[leftHdr->keynum].rid.pageNum = rightHdr->firstChild;
 		leftEntry[leftHdr->keynum].rid.slotNum = IX_USELESS_SLOTNUM;
 		leftEntry[leftHdr->keynum].tag = OCCUPIED;
@@ -852,7 +861,7 @@ RC mergeChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent,
 		leftHdr->keynum++;
 	}
 
-	// æŠŠ rchild çš„ æ•°æ®åŒº å’Œ æŒ‡é’ˆåŒº æ‹·è´åˆ° lchild
+	// °Ñ rchild µÄ Êı¾İÇø ºÍ Ö¸ÕëÇø ¿½±´µ½ lchild
 	for (int i = 0; i < rightHdr->keynum; i++) {
 		leftEntry[leftHdr->keynum].rid = rightEntry[i].rid;
 		leftEntry[leftHdr->keynum].tag = rightEntry[i].tag;
@@ -862,14 +871,14 @@ RC mergeChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent,
 		leftHdr->keynum++;
 	}
 
-	// ç»´æŠ¤ sibling é“¾
+	// Î¬»¤ sibling Á´
 	leftHdr->sibling = rightHdr->sibling;
 
-	// çˆ¶èŠ‚ç‚¹å·¦ç§»
+	// ¸¸½Úµã×óÒÆ
 	shift(indexHandle, (char*)parentEntry, parentKey, ridx + 1, parentHdr->keynum, false);
 	parentHdr->keynum--;
 
-	// dispose æ‰ rchild èŠ‚ç‚¹
+	// dispose µô rchild ½Úµã
 	if ((rc = UnpinPage(&rightNode)) ||
 		(rc = DisposePage(&(indexHandle->fileHandle), rchild)))
 		return rc;
@@ -883,9 +892,9 @@ RC mergeChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent,
 }
 
 //
-// ç›®çš„: DeleteEntry çš„å¸®åŠ©å‡½æ•°
+// Ä¿µÄ: DeleteEntry µÄ°ïÖúº¯Êı
 //
-RC DeleteEntryFromTree (IX_IndexHandle* indexHandle, PageNum node, void* pData, const RID* rid)
+RC DeleteEntryFromTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, const RID* rid)
 {
 	RC rc;
 	PF_PageHandle nodePage;
@@ -904,25 +913,25 @@ RC DeleteEntryFromTree (IX_IndexHandle* indexHandle, PageNum node, void* pData, 
 	key = data + indexHandle->fileHeader.nodeKeyListOffset;
 
 	if (nodePageHdr->is_leaf) {
-		// å½“å‰èŠ‚ç‚¹æ˜¯å¶å­èŠ‚ç‚¹
+		// µ±Ç°½ÚµãÊÇÒ¶×Ó½Úµã
 		int idx;
 		bool findRes = findKeyInNode(indexHandle, pData, key, 0, keyNum - 1, &idx);
 		if (findRes) {
-			// key å€¼åœ¨ B+ æ ‘ä¸­å­˜åœ¨
-			// è·å–å¯¹åº”ç´¢å¼•ä½ç½® entry åŒºçš„ä¿¡æ¯
+			// key ÖµÔÚ B+ Ê÷ÖĞ´æÔÚ
+			// »ñÈ¡¶ÔÓ¦Ë÷ÒıÎ»ÖÃ entry ÇøµÄĞÅÏ¢
 			IX_NodeEntry* pIdxEntry = (IX_NodeEntry*)(entry + sizeof(IX_NodeEntry) * idx);
-			// è¯»å–è¯¥é¡¹çš„æ ‡å¿—ä½ char tag
+			// ¶ÁÈ¡¸ÃÏîµÄ±êÖ¾Î» char tag
 			char tag = pIdxEntry->tag;
 			RID* thisRid = &(pIdxEntry->rid);
 
 			assert(tag != 0);
 
 			if (tag == OCCUPIED) {
-				// ä¸å­˜åœ¨ Bucket Page
-				// åˆ¤æ–­ RID æ˜¯å¦åŒ¹é…
+				// ²»´æÔÚ Bucket Page
+				// ÅĞ¶Ï RID ÊÇ·ñÆ¥Åä
 				if (!ridEqual(thisRid, rid))
 					return IX_DELETE_NO_RID;
-				// åˆ æ‰ idx ä½ç½®çš„ æŒ‡é’ˆ å’Œ å…³é”®å­—
+				// É¾µô idx Î»ÖÃµÄ Ö¸Õë ºÍ ¹Ø¼ü×Ö
 				shift(indexHandle, entry, key, idx + 1, keyNum, false);
 
 				int curKeyNum = (--(nodePageHdr->keynum));
@@ -933,14 +942,15 @@ RC DeleteEntryFromTree (IX_IndexHandle* indexHandle, PageNum node, void* pData, 
 
 				return (curKeyNum < (indexHandle->fileHeader.order - 1) / 2) ? IX_CHILD_NODE_UNDERFLOW : SUCCESS;
 
-			} else if (tag == DUP) {
-				// å­˜åœ¨ Bucket Page
+			}
+			else if (tag == DUP) {
+				// ´æÔÚ Bucket Page
 				if (rc = DeleteRIDFromBucket(indexHandle, thisRid->pageNum, rid, node, thisRid))
 					return rc;
 
 				if (thisRid->pageNum == IX_NO_MORE_BUCKET_PAGE) {
-					// å‘ç° Bucket å·²ç»è¢«åˆ å®Œ
-					// åˆ æ‰ idx ä½ç½®çš„ æŒ‡é’ˆ å’Œ å…³é”®å­—
+					// ·¢ÏÖ Bucket ÒÑ¾­±»É¾Íê
+					// É¾µô idx Î»ÖÃµÄ Ö¸Õë ºÍ ¹Ø¼ü×Ö
 					shift(indexHandle, entry, key, idx + 1, keyNum, false);
 
 					int curKeyNum = (--(nodePageHdr->keynum));
@@ -960,35 +970,36 @@ RC DeleteEntryFromTree (IX_IndexHandle* indexHandle, PageNum node, void* pData, 
 			}
 		}
 
-		// key åœ¨ B+ æ ‘ ä¸­ä¸å­˜åœ¨ï¼Œé‚£ä¹ˆç›´æ¥è¿”å›é”™è¯¯
+		// key ÔÚ B+ Ê÷ ÖĞ²»´æÔÚ£¬ÄÇÃ´Ö±½Ó·µ»Ø´íÎó
 		return IX_DELETE_NO_KEY;
-	} else {
-		// å½“å‰èŠ‚ç‚¹æ˜¯å†…éƒ¨èŠ‚ç‚¹
-		// æ‰¾åˆ° å°äºç­‰äº è¾“å…¥å…³é”®å­—çš„æœ€å¤§ç´¢å¼•ä½ç½®ï¼Œé€’å½’æ‰§è¡Œ DeleteEntryFromTree
+	}
+	else {
+		// µ±Ç°½ÚµãÊÇÄÚ²¿½Úµã
+		// ÕÒµ½ Ğ¡ÓÚµÈÓÚ ÊäÈë¹Ø¼ü×ÖµÄ×î´óË÷ÒıÎ»ÖÃ£¬µİ¹éÖ´ĞĞ DeleteEntryFromTree
 		int idx;
 		bool findRes = findKeyInNode(indexHandle, pData, key, 0, keyNum - 1, &idx);
 		IX_NodeEntry* nodeEntry = (IX_NodeEntry*)entry;
 
 		PageNum child, siblingChild;
 		PF_PageHandle siblingChildPageHandle, childPageHandle;
-		char* siblingData, * siblingKey, *childData, *childKey, *nodeKey;
-		IX_NodePageHeader* siblingHdr, *childHdr;
-		IX_NodeEntry* siblingEntry, *childEntry;
+		char* siblingData, * siblingKey, * childData, * childKey, * nodeKey;
+		IX_NodePageHeader* siblingHdr, * childHdr;
+		IX_NodeEntry* siblingEntry, * childEntry;
 
 		if (idx == -1)
 			child = nodePageHdr->firstChild;
 		else
 			child = nodeEntry[idx].rid.pageNum;
 
-		// åœ¨æ·±å…¥ B+æ ‘ è¿›è¡Œé€’å½’ä¹‹å‰ï¼Œé‡Šæ”¾æ‰å½“å‰ page
+		// ÔÚÉîÈë B+Ê÷ ½øĞĞµİ¹éÖ®Ç°£¬ÊÍ·Åµôµ±Ç° page
 		if (rc = UnpinPage(&nodePage))
 			return rc;
 
 		rc = DeleteEntryFromTree(indexHandle, child, pData, rid);
 
 		if (rc == IX_CHILD_NODE_UNDERFLOW) {
-			// å­èŠ‚ç‚¹å‘ç”Ÿäº† underflow
-			// Get å½“å‰èŠ‚ç‚¹çš„ Page
+			// ×Ó½Úµã·¢ÉúÁË underflow
+			// Get µ±Ç°½ÚµãµÄ Page
 			if ((rc = GetThisPage(&(indexHandle->fileHandle), node, &nodePage)) ||
 				(rc = GetData(&nodePage, &data)))
 				return rc;
@@ -997,9 +1008,9 @@ RC DeleteEntryFromTree (IX_IndexHandle* indexHandle, PageNum node, void* pData, 
 			nodeEntry = (IX_NodeEntry*)(data + indexHandle->fileHeader.nodeEntryListOffset);
 			nodeKey = data + indexHandle->fileHeader.nodeKeyListOffset;
 
-			// å­èŠ‚ç‚¹åœ¨çˆ¶èŠ‚ç‚¹çš„ idx å¤„
+			// ×Ó½ÚµãÔÚ¸¸½ÚµãµÄ idx ´¦
 			if (idx >= 0) {
-				// å­èŠ‚ç‚¹å­˜åœ¨å·¦å…„å¼Ÿ idx - 1
+				// ×Ó½Úµã´æÔÚ×óĞÖµÜ idx - 1
 				siblingChild = (idx - 1 == -1) ? (nodePageHdr->firstChild) : (nodeEntry[idx - 1].rid.pageNum);
 
 				if ((rc = GetThisPage(&(indexHandle->fileHandle), siblingChild, &siblingChildPageHandle)) ||
@@ -1017,14 +1028,14 @@ RC DeleteEntryFromTree (IX_IndexHandle* indexHandle, PageNum node, void* pData, 
 				childKey = childData + indexHandle->fileHeader.nodeKeyListOffset;
 
 				if (siblingHdr->keynum > (indexHandle->fileHeader.order - 1) / 2) {
-					// å·¦å…„å¼Ÿæœ‰å¯Œä½™èŠ‚ç‚¹
-					// å°† child èŠ‚ç‚¹æ•°æ®ä» ç´¢å¼• 0 å¼€å§‹ å‘åç§»åŠ¨
+					// ×óĞÖµÜÓĞ¸»Óà½Úµã
+					// ½« child ½ÚµãÊı¾İ´Ó Ë÷Òı 0 ¿ªÊ¼ ÏòºóÒÆ¶¯
 					shift(indexHandle, (char*)childEntry, childKey, 0, childHdr->keynum, true);
 					childHdr->keynum++;
 
 					if (childHdr->is_leaf) {
-						// å­èŠ‚ç‚¹æ˜¯å¶å­èŠ‚ç‚¹
-						// æŠŠ siblingChild çš„æœ€åä¸€ä¸ª æ•°æ®æ§½ è½¬ç§»åˆ° å­èŠ‚ç‚¹çš„ç¬¬ 0 ä¸ªä½ç½®
+						// ×Ó½ÚµãÊÇÒ¶×Ó½Úµã
+						// °Ñ siblingChild µÄ×îºóÒ»¸ö Êı¾İ²Û ×ªÒÆµ½ ×Ó½ÚµãµÄµÚ 0 ¸öÎ»ÖÃ
 						int siblingLast = siblingHdr->keynum - 1;
 						childEntry[0].rid = siblingEntry[siblingLast].rid;
 						childEntry[0].tag = siblingEntry[siblingLast].tag;
@@ -1032,10 +1043,11 @@ RC DeleteEntryFromTree (IX_IndexHandle* indexHandle, PageNum node, void* pData, 
 						memcpy(childKey, siblingKey + attrLen * siblingLast, attrLen);
 
 						siblingHdr->keynum--;
-						// æŠŠæ–°çš„ä¸­é—´ key å€¼å†™å…¥åˆ°çˆ¶èŠ‚ç‚¹ idx ä½ç½®
+						// °ÑĞÂµÄÖĞ¼ä key ÖµĞ´Èëµ½¸¸½Úµã idx Î»ÖÃ
 						memcpy(nodeKey + attrLen * idx, childKey, attrLen);
-					} else {
-						// å­èŠ‚ç‚¹æ˜¯å†…éƒ¨èŠ‚ç‚¹
+					}
+					else {
+						// ×Ó½ÚµãÊÇÄÚ²¿½Úµã
 						int siblingLast = siblingHdr->keynum - 1;
 						memcpy(childKey, nodeKey + attrLen * idx, attrLen);
 						childEntry[0].rid.pageNum = childHdr->firstChild;
@@ -1049,7 +1061,7 @@ RC DeleteEntryFromTree (IX_IndexHandle* indexHandle, PageNum node, void* pData, 
 						siblingHdr->keynum--;
 					}
 
-					if ((rc = MarkDirty(&nodePage)) || 
+					if ((rc = MarkDirty(&nodePage)) ||
 						(rc = MarkDirty(&siblingChildPageHandle)) ||
 						(rc = MarkDirty(&childPageHandle)) ||
 						(rc = UnpinPage(&nodePage)) ||
@@ -1063,10 +1075,10 @@ RC DeleteEntryFromTree (IX_IndexHandle* indexHandle, PageNum node, void* pData, 
 				if ((rc = UnpinPage(&siblingChildPageHandle)) ||
 					(rc = UnpinPage(&childPageHandle)))
 					return rc;
-			} 
-			
+			}
+
 			if (idx + 1 < nodePageHdr->keynum) {
-				// å­èŠ‚ç‚¹å­˜åœ¨å³å…„å¼Ÿ idx + 1
+				// ×Ó½Úµã´æÔÚÓÒĞÖµÜ idx + 1
 				siblingChild = nodeEntry[idx + 1].rid.pageNum;
 
 				if ((rc = GetThisPage(&(indexHandle->fileHandle), siblingChild, &siblingChildPageHandle)) ||
@@ -1084,10 +1096,10 @@ RC DeleteEntryFromTree (IX_IndexHandle* indexHandle, PageNum node, void* pData, 
 				childKey = childData + indexHandle->fileHeader.nodeKeyListOffset;
 
 				if (siblingHdr->keynum > (indexHandle->fileHeader.order - 1) / 2) {
-					// å³å…„å¼Ÿæœ‰å¯Œä½™èŠ‚ç‚¹
+					// ÓÒĞÖµÜÓĞ¸»Óà½Úµã
 					if (childHdr->is_leaf) {
-						// å½“å‰èŠ‚ç‚¹æ˜¯å¶å­èŠ‚ç‚¹
-						// å°† å³èŠ‚ç‚¹ çš„ç¬¬0ä¸ªæ•°æ®å†™å…¥åˆ°å­èŠ‚ç‚¹çš„æœ€å
+						// µ±Ç°½ÚµãÊÇÒ¶×Ó½Úµã
+						// ½« ÓÒ½Úµã µÄµÚ0¸öÊı¾İĞ´Èëµ½×Ó½ÚµãµÄ×îºó
 						int childLast = childHdr->keynum;
 						childEntry[childLast].rid = siblingEntry[0].rid;
 						childEntry[childLast].tag = siblingEntry[0].tag;
@@ -1100,8 +1112,9 @@ RC DeleteEntryFromTree (IX_IndexHandle* indexHandle, PageNum node, void* pData, 
 
 						childHdr->keynum++;
 						siblingHdr->keynum--;
-					} else {
-						// å½“å‰èŠ‚ç‚¹æ˜¯å†…éƒ¨èŠ‚ç‚¹
+					}
+					else {
+						// µ±Ç°½ÚµãÊÇÄÚ²¿½Úµã
 						int childLast = childHdr->keynum;
 						memcpy(childKey + attrLen * childLast, nodeKey + attrLen * (idx + 1), attrLen);
 						childEntry[childLast].rid.pageNum = siblingHdr->firstChild;
@@ -1133,10 +1146,10 @@ RC DeleteEntryFromTree (IX_IndexHandle* indexHandle, PageNum node, void* pData, 
 					(rc = UnpinPage(&childPageHandle)))
 					return rc;
 			}
-			
-			// ä¸¤è¾¹éƒ½ä¸èƒ½æä¾›1ä¸ªæ•°æ®æ§½
+
+			// Á½±ß¶¼²»ÄÜÌá¹©1¸öÊı¾İ²Û
 			if (idx >= 0) {
-				// å·¦å…„å¼Ÿå­˜åœ¨
+				// ×óĞÖµÜ´æÔÚ
 				siblingChild = (idx - 1 == -1) ? (nodePageHdr->firstChild) : (nodeEntry[idx - 1].rid.pageNum);
 				if (rc = mergeChild(indexHandle, &nodePage,
 					idx - 1, idx,
@@ -1152,7 +1165,7 @@ RC DeleteEntryFromTree (IX_IndexHandle* indexHandle, PageNum node, void* pData, 
 			}
 
 			if (idx + 1 < nodePageHdr->keynum) {
-				// å³å…„å¼Ÿå­˜åœ¨
+				// ÓÒĞÖµÜ´æÔÚ
 				siblingChild = nodeEntry[idx + 1].rid.pageNum;
 				if (rc = mergeChild(indexHandle, &nodePage,
 					idx, idx + 1,
@@ -1174,9 +1187,9 @@ RC DeleteEntryFromTree (IX_IndexHandle* indexHandle, PageNum node, void* pData, 
 }
 
 // 
-// ç›®çš„: å‘ index file ä¸­æ’å…¥æ–°çš„ key - rid å¯¹
+// Ä¿µÄ: Ïò index file ÖĞ²åÈëĞÂµÄ key - rid ¶Ô
 //
-RC InsertEntry (IX_IndexHandle* indexHandle, void* pData, const RID* rid)
+RC InsertEntry(IX_IndexHandle* indexHandle, void* pData, const RID* rid)
 {
 	RC rc;
 	PF_PageHandle newRootHandle;
@@ -1186,9 +1199,9 @@ RC InsertEntry (IX_IndexHandle* indexHandle, void* pData, const RID* rid)
 	rc = InsertEntryIntoTree(indexHandle, indexHandle->fileHeader.rootPage, pData, rid);
 
 	if (rc == IX_CHILD_NODE_OVERFLOW) {
-		// æ ¹èŠ‚ç‚¹æ»¡äº†
-		// åˆ›å»ºä¸€ä¸ªæ–°çš„ page ä½œä¸ºæ–°çš„æ ¹èŠ‚ç‚¹
-		if ((rc = AllocatePage(&(indexHandle->fileHandle), &newRootHandle)) || 
+		// ¸ù½ÚµãÂúÁË
+		// ´´½¨Ò»¸öĞÂµÄ page ×÷ÎªĞÂµÄ¸ù½Úµã
+		if ((rc = AllocatePage(&(indexHandle->fileHandle), &newRootHandle)) ||
 			(rc = GetData(&newRootHandle, &data)))
 			return rc;
 
@@ -1213,7 +1226,7 @@ RC InsertEntry (IX_IndexHandle* indexHandle, void* pData, const RID* rid)
 	return rc;
 }
 
-RC DeleteEntry (IX_IndexHandle* indexHandle, void* pData, const RID* rid)
+RC DeleteEntry(IX_IndexHandle* indexHandle, void* pData, const RID* rid)
 {
 	RC rc;
 	PF_PageHandle rootPage;
@@ -1223,8 +1236,8 @@ RC DeleteEntry (IX_IndexHandle* indexHandle, void* pData, const RID* rid)
 	rc = DeleteEntryFromTree(indexHandle, indexHandle->fileHeader.rootPage, pData, rid);
 
 	if (rc == IX_CHILD_NODE_UNDERFLOW) {
-		// åˆ é™¤çš„æƒ…å†µä¸‹ å³æ—¶æ ¹èŠ‚ç‚¹è¿”å›äº† IX_CHILD_NODE_UNDERFLOW ä¹Ÿæ— å¦¨
-		// ä½†æ˜¯éœ€è¦æ£€æŸ¥ æ ¹èŠ‚ç‚¹ æ˜¯å¦è¢«åˆ ç©º
+		// É¾³ıµÄÇé¿öÏÂ ¼´Ê±¸ù½Úµã·µ»ØÁË IX_CHILD_NODE_UNDERFLOW Ò²ÎŞ·Á
+		// µ«ÊÇĞèÒª¼ì²é ¸ù½Úµã ÊÇ·ñ±»É¾¿Õ
 		if ((rc = GetThisPage(&(indexHandle->fileHandle), indexHandle->fileHeader.rootPage, &rootPage)) ||
 			(rc = GetData(&rootPage, &data)))
 			return rc;
@@ -1232,8 +1245,8 @@ RC DeleteEntry (IX_IndexHandle* indexHandle, void* pData, const RID* rid)
 		rootPageHdr = (IX_NodePageHeader*)data;
 
 		if (!(rootPageHdr->keynum)) {
-			// æ ¹èŠ‚ç‚¹è¢«åˆ ç©ºäº†
-			// æ›´æ–° index æ–‡ä»¶çš„æ ¹èŠ‚ç‚¹
+			// ¸ù½Úµã±»É¾¿ÕÁË
+			// ¸üĞÂ index ÎÄ¼şµÄ¸ù½Úµã
 			if ((rc = UnpinPage(&rootPage)) ||
 				(rc = DisposePage(&(indexHandle->fileHandle), indexHandle->fileHeader.rootPage)))
 				return rc;
@@ -1256,7 +1269,7 @@ RC SearchEntryInTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, Pag
 {
 	RC rc;
 	PF_PageHandle pfPageHandle;
-	char* data, *key;
+	char* data, * key;
 	IX_NodePageHeader* nodePageHdr;
 	IX_NodeEntry* nodeEntry;
 	int findIdx;
@@ -1274,7 +1287,8 @@ RC SearchEntryInTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, Pag
 		*pageNum = node;
 		*idx = findIdx;
 		return SUCCESS;
-	} else {
+	}
+	else {
 		PageNum child;
 		findKeyInNode(indexHandle, pData, key, 0, nodePageHdr->keynum - 1, &findIdx);
 
