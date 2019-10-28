@@ -162,8 +162,8 @@ RC CreateDB(char *dbpath,char *dbname){
 	strcat(createPath, dbname);
 	
 	//1. 向OS申请在dbpath路径创建文件夹。
-	if (CreateDirectory((LPCWSTR)createPath, NULL)) {
-		if (SetCurrentDirectory((LPCWSTR)createPath)){
+	if (CreateDirectory(createPath, NULL)) {
+		if (SetCurrentDirectory(createPath)){
 			//2. 创建SYSTABLES文件和SYSCOLUMNS文件
 			//SYSTABLES存放记录:tablename atrrcount 最多25个字节
 			//SYSCOLUMNS存放记录：tablename attrname attrtype attrlength attroffset ix_flag indexname，最多76个字节
@@ -312,7 +312,7 @@ RC CloseDB(){
 
 
 	//3. 切换到上级目录.
-	if (!SetCurrentDirectory((LPCWSTR)dbInfo.path))
+	if (!SetCurrentDirectory(dbInfo.path))
 		return SQL_SYNTAX;
 
 	return SUCCESS;
@@ -479,7 +479,7 @@ RC DropTable(char* relName) {
 		dbInfo.rmFileHandle_Map.erase(rmIter);
 	}
 	//	 3.2.删除relName对应的rm文件
-	DeleteFile((LPCWSTR)rmFileName.c_str());
+	DeleteFile(rmFileName.c_str());
 
 	//4. 删除ix文件
 
@@ -506,7 +506,7 @@ RC DropTable(char* relName) {
 				dbInfo.ixIndexHandle_Map.erase(ixIter);
 			}
 			//		 4.2.2 删除relName_atrrname对应的ix文件
-			DeleteFile((LPCWSTR)ixFileName.c_str());
+			DeleteFile(ixFileName.c_str());
 		}
 		//	 4.3.删除SYSCOLUMNS中atrrname对应的记录。
 		DeleteRec(dbInfo.sysFileHandle_Vec[1],&rmRecord.rid);
@@ -624,5 +624,5 @@ RC CreateIndex(char* indexName, char* relName, char* attrName) {
 //3. 删除ix文件
 RC DropIndex(char* indexName) {
 	//1. 检查当前是否打开了一个数据库。如果没有则报错。
-	
+	return SUCCESS;
 }

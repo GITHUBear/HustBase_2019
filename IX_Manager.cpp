@@ -69,6 +69,7 @@ bool ridEqual(const RID* lrid, const RID* rrid)
 RC OpenIndexScan(IX_IndexScan* indexScan, IX_IndexHandle* indexHandle, CompOp compOp, char* value)
 {
 	RC rc;
+	PF_PageHandle pfPageHandle;
 
 	memset(indexScan, 0, sizeof(IX_IndexScan));
 
@@ -82,9 +83,9 @@ RC OpenIndexScan(IX_IndexScan* indexScan, IX_IndexHandle* indexHandle, CompOp co
 	indexScan->compOp = compOp;
 	indexScan->pIXIndexHandle = indexHandle;
 	indexScan->value = value;
+	indexScan->inBucket = false;
 
-	if ((rc = SearchEntry(indexHandle, indexScan->value, &(indexScan->pnNext), &(indexScan->ridIx))) ||
-		(rc = GetThisPage(&(indexHandle->fileHandle), indexScan->pnNext, &(indexScan->pfPageHandle))))
+	if (rc = SearchEntry(indexHandle, indexScan->value, &(indexScan->pnNext), &(indexScan->ridIx)))
 		return rc;
 
 	// 因为重复键值的处理使用的是bucket Page
@@ -103,7 +104,8 @@ RC OpenIndexScan(IX_IndexScan* indexScan, IX_IndexHandle* indexHandle, CompOp co
 	case GreatT:
 	{
 		char* data;
-		if (rc = GetData(&(indexScan->pfPageHandle), &data))
+		if ((rc = GetThisPage(&(indexHandle->fileHandle), indexScan->pnNext, &pfPageHandle)) ||
+			(rc = GetData(&pfPageHandle, &data)))
 			return rc;
 		IX_NodePageHeader* nodeHdr = (IX_NodePageHeader*)data;
 
@@ -112,11 +114,10 @@ RC OpenIndexScan(IX_IndexScan* indexScan, IX_IndexHandle* indexHandle, CompOp co
 		if (indexScan->ridIx >= nodeHdr->keynum) {
 			indexScan->pnNext = nodeHdr->sibling;
 			indexScan->ridIx = 0;
-
-			if ((rc = UnpinPage(&(indexScan->pfPageHandle))) ||
-				(rc = GetThisPage(&(indexHandle->fileHandle), indexScan->pnNext, &(indexScan->pfPageHandle))))
-				return rc;
 		}
+
+		if (rc = UnpinPage(&pfPageHandle))
+			return rc;
 		break;
 	}
 	default:
@@ -126,21 +127,160 @@ RC OpenIndexScan(IX_IndexScan* indexScan, IX_IndexHandle* indexHandle, CompOp co
 	return SUCCESS;
 }
 
-RC IX_GetNextEntry(IX_IndexScan* indexScan, RID* rid)
+RC setRidGetNextInBucket(IX_IndexScan* indexScan, RID* rid, IX_NodePageHeader* nodePageHdr)
 {
-	// 检查当前位置是否满足
 	RC rc;
+	PF_PageHandle bucketPage;
 	char* data;
 
-	if (rc = GetData(&(indexScan->pfPageHandle), &data))
+	if ((rc = GetThisPage(&(indexScan->pIXIndexHandle->fileHandle), indexScan->nextBucketPage, &bucketPage)) ||
+		(rc = GetData(&bucketPage, &data)))
 		return rc;
 
+	IX_BucketPageHeader* bucketPageHdr = (IX_BucketPageHeader*)data;
+	IX_BucketEntry* bucketEntry = (IX_BucketEntry*)(data + indexScan->pIXIndexHandle->fileHeader.bucketEntryListOffset);
 
+	if (indexScan->nextBucketSlot == IX_I_DONT_KNOW_BUCKET_SLOT)
+		indexScan->nextBucketSlot = bucketPageHdr->firstValidSlot;
+
+	*rid = bucketEntry[indexScan->nextBucketSlot].rid;
+
+	if (bucketEntry[indexScan->nextBucketSlot].nextFreeSlot == IX_NO_MORE_BUCKET_SLOT) {
+		// 当前页没有可用slot了
+		if (bucketPageHdr->nextBucket != IX_NO_MORE_BUCKET_PAGE) {
+			// 还有下一页
+			indexScan->nextBucketPage = bucketPageHdr->nextBucket;
+
+			PF_PageHandle nextBucketPage;
+
+			if ((rc = GetThisPage(&(indexScan->pIXIndexHandle->fileHandle), indexScan->nextBucketPage, &nextBucketPage)) ||
+				(rc = GetData(&nextBucketPage, &data)))
+				return rc;
+
+			IX_BucketPageHeader* nextBucketPageHdr = (IX_BucketPageHeader*)data;
+
+			indexScan->nextBucketSlot = nextBucketPageHdr->firstValidSlot;
+
+			if (rc = UnpinPage(&nextBucketPage))
+				return rc;
+
+		}
+		else {
+			// 没有了
+			indexScan->inBucket = false;
+
+			indexScan->ridIx++;
+
+			if (indexScan->ridIx >= nodePageHdr->keynum) {
+				indexScan->pnNext = nodePageHdr->sibling;
+				indexScan->ridIx = 0;
+			}
+		}
+	}
+	else {
+		// 当前页还有可用slot
+		indexScan->nextBucketSlot = bucketEntry[indexScan->nextBucketSlot].nextFreeSlot;
+	}
+
+	if (rc = UnpinPage(&bucketPage))
+		return rc;
+	return SUCCESS;
+}
+
+RC IX_GetNextEntry(IX_IndexScan* indexScan, RID* rid)
+{
+	RC rc;
+	char* data, *key, *curKey;
+	PF_PageHandle pageHandle;
+	IX_NodePageHeader* nodePageHdr;
+	IX_NodeEntry* nodeEntry;
+	int attrLen = indexScan->pIXIndexHandle->fileHeader.attrLength;
+
+	if (indexScan->pnNext == IX_NO_MORE_NEXT_LEAF) {
+		return IX_EOF;
+	}
+
+	if ((rc = GetThisPage(&(indexScan->pIXIndexHandle->fileHandle), indexScan->pnNext, &pageHandle)) ||
+		(rc = GetData(&pageHandle, &data)))
+		return rc;
+
+	nodePageHdr = (IX_NodePageHeader*)data;
+	key = data + (indexScan->pIXIndexHandle->fileHeader.nodeKeyListOffset);
+	nodeEntry = (IX_NodeEntry*)(data + (indexScan->pIXIndexHandle->fileHeader.nodeEntryListOffset));
+
+	curKey = key + (attrLen * (indexScan->ridIx));
+
+	if (indexScan->inBucket) {
+		if ((rc = setRidGetNextInBucket(indexScan, rid, nodePageHdr)) ||
+			(rc = UnpinPage(&pageHandle)))
+			return rc;
+
+		return SUCCESS;
+	}
+
+	// 扫描 leaf 节点状态
+	bool cmpres = innerCmp(indexScan, curKey);
+
+	switch (indexScan->compOp)
+	{
+	case LEqual:
+	case EQual:
+	case LessT:
+	{
+		if (!cmpres) {
+			if (rc = UnpinPage(&pageHandle))
+				return rc;
+
+			return IX_EOF;
+		}
+		break;
+	}
+	case NEqual:
+	{
+		if (!cmpres) {
+			indexScan->ridIx++;
+
+			if (indexScan->ridIx >= nodePageHdr->keynum) {
+				indexScan->pnNext = nodePageHdr->sibling;
+				indexScan->ridIx = 0;
+			}
+		}
+		break;
+	}
+	default:
+		break;
+	}
+
+	if (nodeEntry[indexScan->ridIx].tag == DUP) {
+		indexScan->inBucket = true;
+		indexScan->nextBucketPage = nodeEntry[indexScan->ridIx].rid.pageNum;
+		indexScan->nextBucketSlot = IX_I_DONT_KNOW_BUCKET_SLOT;
+
+		if (rc = setRidGetNextInBucket(indexScan, rid, nodePageHdr))
+			return rc;
+	} else {
+		*rid = nodeEntry[indexScan->ridIx].rid;
+		indexScan->ridIx++;
+
+		if (indexScan->ridIx >= nodePageHdr->keynum) {
+			indexScan->pnNext = nodePageHdr->sibling;
+			indexScan->ridIx = 0;
+		}
+	}
+
+	if (rc = UnpinPage(&pageHandle))
+		return rc;
 	return SUCCESS;
 }
 
 RC CloseIndexScan(IX_IndexScan* indexScan)
 {
+	RC rc;
+
+	if (!(indexScan->bOpen))
+		return IX_ISCLOSED;
+
+	indexScan->bOpen = false;
 	return SUCCESS;
 }
 
@@ -513,6 +653,8 @@ RC DeleteRIDFromBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, const
 	// 遍历完了也没有找到
 	return IX_DELETE_NO_RID;
 }
+
+
 
 //
 // 目的: 在 Node 文件页中 查找指定 pData
@@ -1282,6 +1424,8 @@ RC SearchEntryInTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, Pag
 	key = data + (indexHandle->fileHeader.nodeKeyListOffset);
 	nodeEntry = (IX_NodeEntry*)(data + indexHandle->fileHeader.nodeEntryListOffset);
 
+	findKeyInNode(indexHandle, pData, key, 0, nodePageHdr->keynum - 1, &findIdx);
+
 	if (nodePageHdr->is_leaf) {
 		// 当前节点是叶子节点
 		*pageNum = node;
@@ -1290,7 +1434,6 @@ RC SearchEntryInTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, Pag
 	}
 	else {
 		PageNum child;
-		findKeyInNode(indexHandle, pData, key, 0, nodePageHdr->keynum - 1, &findIdx);
 
 		if (findIdx == -1)
 			child = nodePageHdr->firstChild;
@@ -1307,4 +1450,136 @@ RC SearchEntryInTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, Pag
 RC SearchEntry(IX_IndexHandle* indexHandle, void* pData, PageNum* pageNum, int* idx)
 {
 	return SearchEntryInTree(indexHandle, indexHandle->fileHeader.rootPage, pData, pageNum, idx);
+}
+
+inline void printLevelTab(int level)
+{
+	for (int i = 0; i < level; i++)
+		std::cout << "\t";
+}
+
+RC printBucket(IX_IndexHandle* indexHandle, PageNum bucket) 
+{
+	RC rc;
+	PF_PageHandle bucketPage;
+	char* data;
+	IX_BucketPageHeader* bucketPageHdr;
+	IX_BucketEntry* bucketEntry;
+
+	std::cout << "( ";
+
+	while (bucket != IX_NO_MORE_BUCKET_PAGE) {
+		if ((rc = GetThisPage(&(indexHandle->fileHandle), bucket, &bucketPage)) ||
+			(rc = GetData(&bucketPage, &data)))
+			return rc;
+
+		bucketPageHdr = (IX_BucketPageHeader*)data;
+		bucketEntry = (IX_BucketEntry*)(data + indexHandle->fileHeader.bucketEntryListOffset);
+
+		SlotNum slotNum = bucketPageHdr->firstValidSlot;
+		while (slotNum != IX_NO_MORE_BUCKET_SLOT) {
+			std::cout << "[ pN: " << bucketEntry[slotNum].rid.pageNum << " , sN: " << 
+			 	 bucketEntry[slotNum].rid.slotNum << " ], ";
+			slotNum = bucketEntry[slotNum].nextFreeSlot;
+		}
+
+		if (rc = UnpinPage(&bucketPage))
+			return rc;
+
+		bucket = bucketPageHdr->nextBucket;
+	}
+
+	std::cout << " )";
+	return SUCCESS;
+}
+
+//
+// 目的: 可视化打印出文件的 B+ 树结构
+// root: 根节点页号
+// keyShowLen: key 关键字截断输出的长度
+// 
+RC printBPlusTree(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen, int level)
+{
+	RC rc;
+	PF_PageHandle nodePageHandle;
+	char* data, * key;
+	IX_NodePageHeader* nodePageHdr;
+	IX_NodeEntry* nodeEntry;
+
+	int attrLen = indexHandle->fileHeader.attrLength;
+
+	char* tmp;
+	tmp = new char[keyShowLen + 1];
+	if (tmp)
+		tmp[keyShowLen] = '\0';
+	else
+		return FAIL;
+
+	if ((rc = GetThisPage(&(indexHandle->fileHandle), node, &nodePageHandle)) ||
+		(rc = GetData(&nodePageHandle, &data)))
+		return rc;
+
+	nodePageHdr = (IX_NodePageHeader*)data;
+	key = data + indexHandle->fileHeader.nodeKeyListOffset;
+	nodeEntry = (IX_NodeEntry*)(data + indexHandle->fileHeader.nodeEntryListOffset);
+
+	if (nodePageHdr->is_leaf) {
+		// 叶子节点
+		printLevelTab(level);
+		std::cout << "Leaf Node: {";
+		for (int i = 0; i < nodePageHdr->keynum; i++) {
+			memcpy(tmp, key + attrLen * i, keyShowLen);
+			std::cout << " " << tmp << " : ";
+			if (nodeEntry[i].tag == DUP) {
+				// 存在 Bucket Page
+				if (rc = printBucket(indexHandle, nodeEntry[i].rid.pageNum))
+					return rc;
+
+			} else {
+				std::cout << "( [ pN: " << nodeEntry[i].rid.pageNum << " , sN: " <<
+					nodeEntry[i].rid.slotNum << " ] )";
+			}
+		}
+		std::cout << " }" << std::endl;
+		if (rc = UnpinPage(&nodePageHandle))
+			return rc;
+		delete[] tmp;
+		return SUCCESS;
+	} else {
+		printLevelTab(level);
+		std::cout << "Node : { " << std::endl;
+		PageNum child = nodePageHdr->firstChild;
+		if (rc = UnpinPage(&nodePageHandle))
+			return rc;
+		printBPlusTree(indexHandle, child, keyShowLen, level + 1);
+		if ((rc = GetThisPage(&(indexHandle->fileHandle), node, &nodePageHandle)) ||
+			(rc = GetData(&nodePageHandle, &data)))
+			return rc;
+
+		nodePageHdr = (IX_NodePageHeader*)data;
+		key = data + indexHandle->fileHeader.nodeKeyListOffset;
+		nodeEntry = (IX_NodeEntry*)(data + indexHandle->fileHeader.nodeEntryListOffset);
+		for (int i = 0; i < nodePageHdr->keynum; i++) {
+			memcpy(tmp, key + attrLen * i, keyShowLen);
+			printLevelTab(level);
+			std::cout << tmp << std::endl;
+			child = nodeEntry[i].rid.pageNum;
+			if (rc = UnpinPage(&nodePageHandle))
+				return rc;
+			printBPlusTree(indexHandle, child, keyShowLen, level + 1);
+			if ((rc = GetThisPage(&(indexHandle->fileHandle), node, &nodePageHandle)) ||
+				(rc = GetData(&nodePageHandle, &data)))
+				return rc;
+
+			nodePageHdr = (IX_NodePageHeader*)data;
+			key = data + indexHandle->fileHeader.nodeKeyListOffset;
+			nodeEntry = (IX_NodeEntry*)(data + indexHandle->fileHeader.nodeEntryListOffset);
+		}
+		printLevelTab(level);
+		std::cout << "} " << std::endl;
+		if (rc = UnpinPage(&nodePageHandle))
+			return rc;
+		delete[] tmp;
+		return SUCCESS;
+	}
 }

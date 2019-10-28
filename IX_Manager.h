@@ -15,6 +15,7 @@ const int IX_USELESS_SLOTNUM = -2;      // 内部节点中只需要用 pagenum，以及 DUPL
 const int IX_NULL_CHILD = -3;
 const int IX_NO_MORE_NEXT_LEAF = -4;
 const int IX_NO_MORE_BUCKET_PAGE = -5;
+const int IX_I_DONT_KNOW_BUCKET_SLOT = -6;
 
 const char OCCUPIED = 'o';
 const char DUP = 'd';
@@ -72,9 +73,13 @@ typedef struct{
 	IX_IndexHandle *pIXIndexHandle;	               //指向索引文件操作的指针
 	CompOp compOp;                                 /* 用于比较的操作符*/
 	char *value;		                           /* 与属性行比较的值 */
-    PF_PageHandle pfPageHandle;   // 固定在缓冲区页面所对应的页面操作列表
+    // PF_PageHandle pfPageHandle;   // 固定在缓冲区页面所对应的页面操作列表
 	PageNum pnNext; 	                           //下一个将要被读入的页面号
 	int ridIx;
+
+	bool inBucket;
+	PageNum nextBucketPage;
+	SlotNum nextBucketSlot;
 } IX_IndexScan;
 
 typedef struct Tree_Node{
@@ -110,5 +115,7 @@ RC DeleteRIDFromBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, const
 
 RC splitChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent, int idx, PageNum child);
 RC mergeChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent, int lidx, int ridx, PageNum lchild, PageNum rchild);
+
+RC printBPlusTree(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen, int level);
 
 #endif
