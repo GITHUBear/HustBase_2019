@@ -7,7 +7,7 @@
 #include "str.h"
 #include <assert.h>
 #include <vector>
-
+#include <map>
 
 void ExecuteAndMessage(char * ,CEditArea*);
 bool CanButtonClick();
