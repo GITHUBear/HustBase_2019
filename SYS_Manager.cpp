@@ -624,32 +624,5 @@ RC CreateIndex(char* indexName, char* relName, char* attrName) {
 //3. 删除ix文件
 RC DropIndex(char* indexName) {
 	//1. 检查当前是否打开了一个数据库。如果没有则报错。
-	if (strcmp(dbInfo.curDbName, "") == 0)
-		return SQL_SYNTAX;
-
-	RM_FileScan rmFileScan;
-	RM_Record rmRecord;
-	Con conditions[3];
-	RC rc;
-
-	conditions[0].attrType = chars; conditions[0].bLhsIsAttr = 1; conditions[0].bRhsIsAttr = 0;
-	conditions[0].compOp = EQual; conditions[0].LattrLength = 21; conditions[0].LattrOffset = 0;
-	conditions[0].Lvalue = NULL; conditions[0].RattrLength = 21; conditions[0].RattrOffset = 0;
-	conditions[0].Rvalue = relName;
-
-	conditions[1].attrType = chars; conditions[1].bLhsIsAttr = 1; conditions[1].bRhsIsAttr = 0;
-	conditions[1].compOp = EQual; conditions[1].LattrLength = 21; conditions[1].LattrOffset = 21;
-	conditions[1].Lvalue = NULL; conditions[1].RattrLength = 21; conditions[1].RattrOffset = 0;
-	conditions[1].Rvalue = attrName;
-
-	char str_one[1];//因为ix_flag是一个字节的标识位，所以用chars的方式来比较。
-	str_one[0] = 1;
-	conditions[2].attrType = chars; conditions[2].bLhsIsAttr = 1; conditions[2].bRhsIsAttr = 0;
-	conditions[2].compOp = EQual; conditions[2].LattrLength = 1; conditions[2].LattrOffset = +21 + 21 + 4 + 4 + 4 + 1;
-	conditions[2].Lvalue = NULL; conditions[2].RattrLength = 1; conditions[2].RattrOffset = 0;
-	conditions[2].Rvalue = str_one;
-
-	rmRecord.bValid = false;
-	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[1], 3, conditions))
-		return SQL_SYNTAX;
+	
 }
