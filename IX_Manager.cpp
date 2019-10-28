@@ -37,6 +37,30 @@ int IXComp(IX_IndexHandle *indexHandle, void *ldata, void *rdata, int llen, int 
 	}
 }
 
+bool innerCmp(IX_IndexScan* indexScan, char *data)
+{
+	int attrLen = indexScan->pIXIndexHandle->fileHeader.attrLength;
+	int cmpres = IXComp(indexScan->pIXIndexHandle, data, indexScan->value, attrLen, attrLen);
+
+	switch (indexScan->compOp)
+	{
+	case EQual:
+		return cmpres == 0;
+	case LEqual:
+		return cmpres <= 0;
+	case NEqual:
+		return cmpres != 0;
+	case LessT:
+		return cmpres < 0;
+	case GEqual:
+		return cmpres >= 0;
+	case GreatT:
+		return cmpres > 0;
+	case NO_OP:
+		return true;
+	}
+}
+
 bool ridEqual(const RID *lrid, const RID *rrid)
 {
 	return (lrid->pageNum == rrid->pageNum && lrid->slotNum == rrid->slotNum);
@@ -44,11 +68,74 @@ bool ridEqual(const RID *lrid, const RID *rrid)
 
 RC OpenIndexScan (IX_IndexScan *indexScan,IX_IndexHandle *indexHandle,CompOp compOp,char *value)
 {
+	RC rc;
+
+	memset(indexScan, 0, sizeof(IX_IndexScan));
+
+	if (indexScan->bOpen)
+		return IX_SCANOPENNED;
+
+	if (!(indexHandle->bOpen))
+		return IX_IHCLOSED;
+
+	indexScan->bOpen = true;
+	indexScan->compOp = compOp;
+	indexScan->pIXIndexHandle = indexHandle;
+	indexScan->value = value;
+
+	if ((rc = SearchEntry(indexHandle, indexScan->value, &(indexScan->pnNext), &(indexScan->ridIx))) ||
+		(rc = GetThisPage(&(indexHandle->fileHandle), indexScan->pnNext, &(indexScan->pfPageHandle))))
+		return rc;
+
+	// 因为重复键值的处理使用的是bucket Page
+	// 虽然查找的是最大的小于等于目标值的位置
+	// 但是只需要自增1即可移到最小的大于目标值的位置
+	switch (indexScan->compOp) {
+	case LEqual:
+	case NEqual:
+	case LessT:
+	case NO_OP:
+	{
+		indexScan->pnNext = indexHandle->fileHeader.first_leaf;
+		indexScan->ridIx = 0;
+		break;
+	}
+	case GreatT:
+	{
+		char* data;
+		if (rc = GetData(&(indexScan->pfPageHandle), &data))
+			return rc;
+		IX_NodePageHeader* nodeHdr = (IX_NodePageHeader*)data;
+
+		indexScan->ridIx++;
+
+		if (indexScan->ridIx >= nodeHdr->keynum) {
+			indexScan->pnNext = nodeHdr->sibling;
+			indexScan->ridIx = 0;
+
+			if ((rc = UnpinPage(&(indexScan->pfPageHandle))) ||
+				(rc = GetThisPage(&(indexHandle->fileHandle), indexScan->pnNext, &(indexScan->pfPageHandle))))
+				return rc;
+		}
+		break;
+	}
+	default:
+		break;
+	}
+
 	return SUCCESS;
 }
 
 RC IX_GetNextEntry (IX_IndexScan *indexScan,RID * rid)
 {
+	// 检查当前位置是否满足
+	RC rc;
+	char* data;
+
+	if (rc = GetData(&(indexScan->pfPageHandle), &data))
+		return rc;
+
+
 	return SUCCESS;
 }
 
@@ -454,8 +541,8 @@ bool findKeyInNode(IX_IndexHandle* indexHandle, void* pData, void* key, int s, i
 		}
 	}
 
-	cmpres = IXComp(indexHandle, (char*)key + attrLen * s, pData, attrLen, attrLen);
-	if (s > e || cmpres > 0) {
+	if (s > e || 
+		(cmpres = IXComp(indexHandle, (char*)key + attrLen * s, pData, attrLen, attrLen)) > 0) {
 		*idx = s - 1;
 		return false;
 	} else {
@@ -1162,4 +1249,47 @@ RC DeleteEntry (IX_IndexHandle* indexHandle, void* pData, const RID* rid)
 	}
 
 	return rc;
+}
+
+RC SearchEntryInTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, PageNum* pageNum, int* idx)
+{
+	RC rc;
+	PF_PageHandle pfPageHandle;
+	char* data, *key;
+	IX_NodePageHeader* nodePageHdr;
+	IX_NodeEntry* nodeEntry;
+	int findIdx;
+
+	if ((rc = GetThisPage(&(indexHandle->fileHandle), node, &pfPageHandle)) ||
+		(rc = GetData(&pfPageHandle, &data)))
+		return rc;
+
+	nodePageHdr = (IX_NodePageHeader*)data;
+	key = data + (indexHandle->fileHeader.nodeKeyListOffset);
+	nodeEntry = (IX_NodeEntry*)(data + indexHandle->fileHeader.nodeEntryListOffset);
+
+	if (nodePageHdr->is_leaf) {
+		// 当前节点是叶子节点
+		*pageNum = node;
+		*idx = findIdx;
+		return SUCCESS;
+	} else {
+		PageNum child;
+		findKeyInNode(indexHandle, pData, key, 0, nodePageHdr->keynum - 1, &findIdx);
+
+		if (findIdx == -1)
+			child = nodePageHdr->firstChild;
+		else
+			child = nodeEntry[findIdx].rid.pageNum;
+
+		if (rc = SearchEntryInTree(indexHandle, child, pData, pageNum, idx))
+			return rc;
+
+		return SUCCESS;
+	}
+}
+
+RC SearchEntry(IX_IndexHandle* indexHandle, void* pData, PageNum* pageNum, int* idx)
+{
+	return SearchEntryInTree(indexHandle, indexHandle->fileHeader.rootPage, pData, pageNum, idx);
 }
