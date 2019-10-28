@@ -50,13 +50,6 @@ typedef struct {
 	PageNum firstChild;            // 内部节点的第一个子节点
 } IX_NodePageHeader; 
 
-//typedef struct {
-//	IX_NodePageHeader* nodeHdr;    // 指向内存缓冲区内的 NodePageHeader, 便于更新数据
-//
-//	char* keys;                    // 指向内存缓冲区内的 NodePage 的 关键字 数组区
-//	RID* rids;                     // 指向内存缓冲区内的 NodePage 的 指针区
-//} IX_Node;
-
 typedef struct {
 	SlotNum slotNum;
 	SlotNum firstValidSlot;
@@ -79,8 +72,9 @@ typedef struct{
 	IX_IndexHandle *pIXIndexHandle;	               //指向索引文件操作的指针
 	CompOp compOp;                                 /* 用于比较的操作符*/
 	char *value;		                           /* 与属性行比较的值 */
-    PF_PageHandle pfPageHandles[PF_BUFFER_SIZE];   // 固定在缓冲区页面所对应的页面操作列表
+    PF_PageHandle pfPageHandle;   // 固定在缓冲区页面所对应的页面操作列表
 	PageNum pnNext; 	                           //下一个将要被读入的页面号
+	int ridIx;
 } IX_IndexScan;
 
 typedef struct Tree_Node{
@@ -104,6 +98,7 @@ RC CloseIndex(IX_IndexHandle *indexHandle);
 
 RC InsertEntry(IX_IndexHandle *indexHandle,void *pData,const RID * rid);
 RC DeleteEntry(IX_IndexHandle *indexHandle,void *pData,const RID * rid);
+RC SearchEntry(IX_IndexHandle* indexHandle, void* pData, PageNum* pageNum, int* idx);
 RC OpenIndexScan(IX_IndexScan *indexScan,IX_IndexHandle *indexHandle,CompOp compOp,char *value);
 RC IX_GetNextEntry(IX_IndexScan *indexScan,RID * rid);
 RC CloseIndexScan(IX_IndexScan *indexScan);
