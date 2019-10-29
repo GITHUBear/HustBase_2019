@@ -102,7 +102,7 @@ RC OpenIndex(const char *fileName,IX_IndexHandle *indexHandle);
 RC CloseIndex(IX_IndexHandle *indexHandle);
 
 RC InsertEntry(IX_IndexHandle *indexHandle,void *pData,const RID * rid);
-RC DeleteEntry(IX_IndexHandle *indexHandle,void *pData,const RID * rid);
+RC DeleteEntry(IX_IndexHandle *indexHandle,void *pData,const RID * rid, bool ignoreRid = false);
 RC SearchEntry(IX_IndexHandle* indexHandle, void* pData, PageNum* pageNum, int* idx);
 RC OpenIndexScan(IX_IndexScan *indexScan,IX_IndexHandle *indexHandle,CompOp compOp,char *value);
 RC IX_GetNextEntry(IX_IndexScan *indexScan,RID * rid);
@@ -112,6 +112,7 @@ RC CloseIndexScan(IX_IndexScan *indexScan);
 RC CreateBucket(IX_IndexHandle *indexHandle, PageNum *pageNum);
 RC InsertRIDIntoBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, RID rid);
 RC DeleteRIDFromBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, const RID* rid, PageNum nodePage, RID* nodeRid);
+RC DisposeAllBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum);
 
 RC splitChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent, int idx, PageNum child);
 RC mergeChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent, int lidx, int ridx, PageNum lchild, PageNum rchild);

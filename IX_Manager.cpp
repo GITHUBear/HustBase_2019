@@ -667,7 +667,34 @@ RC DeleteRIDFromBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, const
 	return IX_DELETE_NO_RID;
 }
 
+//
+// 目的: dispose 掉 全部的 BucketPage
+//
+RC DisposeAllBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum)
+{
+	RC rc;
+	PF_PageHandle bucketPageHandle;
+	char* data;
+	IX_BucketPageHeader* bucketPageHdr;
+	PageNum nextPage;
 
+	while (bucketPageNum != IX_NO_MORE_BUCKET_PAGE) {
+		if ((rc = GetThisPage(&(indexHandle->fileHandle), bucketPageNum, &bucketPageHandle)) ||
+			(rc = GetData(&bucketPageHandle, &data)))
+			return rc;
+
+		bucketPageHdr = (IX_BucketPageHeader*)data;
+		nextPage = bucketPageHdr->nextBucket;
+
+		if ((rc = UnpinPage(&bucketPageHandle)) ||
+			(rc = DisposePage(&(indexHandle->fileHandle), bucketPageNum)))
+			return rc;
+
+		bucketPageNum = nextPage;
+	}
+
+	return SUCCESS;
+}
 
 //
 // 目的: 在 Node 文件页中 查找指定 pData
@@ -1048,8 +1075,12 @@ RC mergeChild(IX_IndexHandle* indexHandle, PF_PageHandle* parent,
 
 //
 // 目的: DeleteEntry 的帮助函数
+// 开启 ignoreRid 之后将不再对重复键值位置的 rid 进行检查再一一删除，
+// 而是进行高效的批量删除
+// 不过将不再对重复键中的 rid 的有效性进行检查
+// 遇到找不到的 key 也不再提示找不到 key 的错误
 //
-RC DeleteEntryFromTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, const RID* rid)
+RC DeleteEntryFromTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, const RID* rid, bool ignoreRid)
 {
 	RC rc;
 	PF_PageHandle nodePage;
@@ -1100,12 +1131,15 @@ RC DeleteEntryFromTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, c
 			}
 			else if (tag == DUP) {
 				// 存在 Bucket Page
-				if (rc = DeleteRIDFromBucket(indexHandle, thisRid->pageNum, rid, node, thisRid))
+				if (!ignoreRid && (rc = DeleteRIDFromBucket(indexHandle, thisRid->pageNum, rid, node, thisRid)))
 					return rc;
 
-				if (thisRid->pageNum == IX_NO_MORE_BUCKET_PAGE) {
+				if (ignoreRid || thisRid->pageNum == IX_NO_MORE_BUCKET_PAGE) {
 					// 发现 Bucket 已经被删完
 					// 删掉 idx 位置的 指针 和 关键字
+					if (ignoreRid)
+						DisposeAllBucket(indexHandle, thisRid->pageNum);
+
 					shift(indexHandle, entry, key, idx + 1, keyNum, false);
 
 					int curKeyNum = (--(nodePageHdr->keynum));
@@ -1126,7 +1160,7 @@ RC DeleteEntryFromTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, c
 		}
 
 		// key 在 B+ 树 中不存在，那么直接返回错误
-		return IX_DELETE_NO_KEY;
+		return  (ignoreRid) ? SUCCESS : IX_DELETE_NO_KEY;
 	}
 	else {
 		// 当前节点是内部节点
@@ -1150,7 +1184,7 @@ RC DeleteEntryFromTree(IX_IndexHandle* indexHandle, PageNum node, void* pData, c
 		if (rc = UnpinPage(&nodePage))
 			return rc;
 
-		rc = DeleteEntryFromTree(indexHandle, child, pData, rid);
+		rc = DeleteEntryFromTree(indexHandle, child, pData, rid, ignoreRid);
 
 		if (rc == IX_CHILD_NODE_UNDERFLOW) {
 			// 子节点发生了 underflow
@@ -1381,14 +1415,14 @@ RC InsertEntry(IX_IndexHandle* indexHandle, void* pData, const RID* rid)
 	return rc;
 }
 
-RC DeleteEntry(IX_IndexHandle* indexHandle, void* pData, const RID* rid)
+RC DeleteEntry(IX_IndexHandle* indexHandle, void* pData, const RID* rid, bool ignoreRid)
 {
 	RC rc;
 	PF_PageHandle rootPage;
 	char* data;
 	IX_NodePageHeader* rootPageHdr;
 
-	rc = DeleteEntryFromTree(indexHandle, indexHandle->fileHeader.rootPage, pData, rid);
+	rc = DeleteEntryFromTree(indexHandle, indexHandle->fileHeader.rootPage, pData, rid, ignoreRid);
 
 	if (rc == IX_CHILD_NODE_UNDERFLOW) {
 		// 删除的情况下 即时根节点返回了 IX_CHILD_NODE_UNDERFLOW 也无妨
