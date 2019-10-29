@@ -5,14 +5,27 @@
 #include <iostream>
 
 //放在SYS_Manager.h中会发生冲突
+
+// #define MAX_CONDITIONS_NUM 100;
+//SYSTABLE和SYSCOLUMNS中记录每一项的长度
+#define SIZE_TABLE_NAME 21
+#define SIZE_ATTR_COUNT 4
+#define SIZE_ATTR_NAME 21
+#define SIZE_ATTR_TYPE 4
+#define SIZE_ATTR_LENGTH 4
+#define SIZE_ATTR_OFFSET 4
+#define SIZE_IX_FLAG 1
+#define SIZE_INDEX_NAME 21
+#define SIZE_SYS_TABLE 25
+#define SIZE_SYS_COLUMNS 76
+#define MAX_CON_LEN 100 //用来声明局部数组
+
 typedef struct db_info {
 	std::vector< RM_FileHandle* > sysFileHandle_Vec; //保存系统文件的句柄
-	std::map<std::string,RM_FileHandle*> rmFileHandle_Map; //从文件名映射到对应的记录文件句柄
-	std::map<std::string,IX_IndexHandle*> ixIndexHandle_Map; //从文件名映射到对应的索引文件句柄
 
 	int MAXATTRS=20;		 //最大属性数量
-	char curDbName[300]=""; //存放当前DB名称
-	char path[300]= "C:\C++\HBASE\DB";		 //存放所有DB公共的上级目录
+	std::string curDbName; //存放当前DB名称
+	std::string path	 //调用CreateDB传入的路径
 }DB_INFO;
 
 DB_INFO dbInfo;
@@ -144,31 +157,39 @@ RC execute(char * sql){
 
 //
 //目的：在路径 dbPath 下创建一个名为 dbName 的空库，生成相应的系统文件。
-//1. 向OS申请在dbpath路径创建文件夹。
-//2. 创建SYSTABLES文件和SYSCOLUMNS文件
+//1. 检查dbpath和dbname的合法性。
+//2. 判断dbpath以及dbname是否和dbInfo中保存相同。如果不同则调用CloseDb，并设置dbInfo。
+//3. 向OS申请在dbpath路径创建文件夹。
+//4. 创建SYSTABLES文件和SYSCOLUMNS文件。
+//5. 设置dbPath和curDbName。
 RC CreateDB(char *dbpath,char *dbname){
 
+	//1. 检查dbpath和dbname的合法性。
 	if (dbpath == NULL || dbname == NULL)
 		return SQL_SYNTAX;
 
-	if (strcmp(dbpath,dbInfo.path))//如果传入的参数和默认的参数不一致则报错
-		return SQL_SYNTAX;
+	//2. 判断dbpath以及dbname是否和dbInfo中保存相同。如果不同则调用CloseDb。
+	if ( dbInfo.path.size() && dbInfo.curDbName.size())
+		if(dbInfo.path.compare(dbpath) != 0 || dbInfo.curDbName.compare(dbname) != 0)
+			if(CloseDB())
+				return SQL_SYNTAX;
 
-	char createPath[40];
 	RC rc;
-	memset(createPath, 0, 40);
-	strcat(createPath, dbpath);
-	strcat(createPath, "\\");
-	strcat(createPath, dbname);
 	
-	//1. 向OS申请在dbpath路径创建文件夹。
-	if (CreateDirectory((LPCWSTR)createPath, NULL)) {
-		if (SetCurrentDirectory((LPCWSTR)createPath)){
-			//2. 创建SYSTABLES文件和SYSCOLUMNS文件
-			//SYSTABLES存放记录:tablename atrrcount 最多25个字节
-			//SYSCOLUMNS存放记录：tablename attrname attrtype attrlength attroffset ix_flag indexname，最多76个字节
-			if ((rc= RM_CreateFile("SYSTABLES", 25)) ||  (rc= RM_CreateFile("SYSCOLUMNS", 76)))
+	//3. 向OS申请在dbpath路径创建文件夹。
+	std::string dbPath = dbpath;
+	dbPath += "\\";
+	dbPath +=dbname;
+	if (CreateDirectory(dbPath.c_str(), NULL)) {
+		if (SetCurrentDirectory(dbpath)){
+			//4. 创建SYSTABLES文件和SYSCOLUMNS文件
+			std::string sysTablePath = dbPath + "\\SYSTABLES";
+			std::string sysColumnsPath = dbPath + "\\SYSCOLUMNS";
+			if ((rc= RM_CreateFile((char *)sysTablePath.c_str(), SIZE_SYS_TABLE)) ||  (rc= RM_CreateFile((char *)sysColumnsPath.c_str(), SIZE_SYS_COLUMNS)))
 				return rc;
+			//5. 设置dbPath和curDbName。
+			dbInfo.path = dbpath;
+			dbInfo.curDbName = dbname;
 			return SUCCESS;
 		}
 		return SQL_SYNTAX;
@@ -180,87 +201,77 @@ RC CreateDB(char *dbpath,char *dbname){
 
 //
 //目的：删除数据库对应的目录以及目录下的所有文件
-//      由于不存在子文件夹，所以不需要进行递归处理
-//1. 判断删除的是否是当前DB。如果则要关闭当前目录.
-//2. 否则搜索得到dbname目录下的所有文件名并删除,注意要跳过.和..目录
-//3. 删除dbname目录
-
+//      默认不存在子文件夹，所以不进行递归处理
+//1. 判断dbInfo.path是否为空，或者dbInfo.path下是否存在dbname。如果不存在则报错。
+//2. 判断删除的是否是当前DB。如果则要关闭当前目录.
+//3. 搜索得到dbname目录下的所有文件名并删除,注意要跳过.和..目录
+//4. 删除dbname目录
 RC DropDB(char *dbname){
 
-	//1. 判断删除的是否是当前DB
-	if (!strcmp(dbInfo.curDbName, dbname)) {
+	//1. 判断dbInfo.path路径下是否存在dbname。如果不存在则报错。
+	std::string dbPath = dbInfo.path+"\\"+dbname;
+	if (!dbInfo.path.size() || access(dbPath.c_str(),0)==-1)
+		return SQL_SYNTAX;
+
+	//2. 判断删除的是否是当前DB
+	if (dbInfo.curDbName.compare(dbname)==0) {
 		//关闭当前目录
 		CloseDB();
 	}
 
-	char dbPath[300], fileName[300];
 	HANDLE hFile;
 	WIN32_FIND_DATA  pNextInfo;
 
-	//设置路径
-	memset(dbPath, 0, 300);
-	strcat(dbPath, dbInfo.path);
-	strcat(dbPath, dbname);
-	strcat(dbPath, "\\*.*");
-
-	hFile = FindFirstFile((LPCTSTR)dbPath, &pNextInfo);
+	dbPath += "\\*.*";
+	hFile = FindFirstFile(dbPath.c_str(), &pNextInfo);
 	if (hFile == INVALID_HANDLE_VALUE)
 		return SQL_SYNTAX;
 
-	//2. 遍历删除文件夹下的所有文件
+	//3. 遍历删除文件夹下的所有文件
 	while (FindNextFile(hFile, &pNextInfo)) {
 		if (pNextInfo.cFileName[0] == '.')//跳过.和..目录
 			continue;
-		memset(fileName, 0, 300);
-		strcat(fileName, dbInfo.path);
-		strcat(fileName, dbname);
-		strcat(fileName, "\\");
-		strcat(fileName, pNextInfo.cFileName);
-		DeleteFile(fileName);
+		if(!DeleteFile(pNextInfo.cFileName))
+			return SQL_SYNTAX;
 	}
 
-	//3. 删除dbname目录
+	//4. 删除dbname目录
 	if (!RemoveDirectory(dbname))
 		return SQL_SYNTAX;
-
 
 	return SUCCESS;
 }
 
 //
 //目的：改变系统的当前数据库为 dbName 对应的文件夹中的数据库
-//1. 设置进程当前工作目录为dbnmae
-//2. 关闭当前打开的目录。
-//3. 打开SYSTABLES和SYSCOLUMNS，设置sysFileHandle_Vec
-//4. 设置curDbName
+//1. 如果当前打开了db，则关闭当前打开的目录。
+//2. 打开SYSTABLES和SYSCOLUMNS,设置dbInfo
+//3. 设置curDbName
 RC OpenDB(char *dbname){
 
 	RC rc;
-	HANDLE hFile;
-	WIN32_FIND_DATA  pNextInfo;
-	char dbPath[300];
 
-	//1. 设置进程当前工作目录为dbnmae
-	if (!SetCurrentDirectory(dbInfo.path) || !SetCurrentDirectory(dbname))
+	//1.  关闭当前打开的目录。打开SYSTABLES和SYSCOLUMNS，设置sysFileHandle_Vec
+	if (dbInfo.curDbName.size() && CloseDB())
 		return SQL_SYNTAX;
 
-	//2.  关闭当前打开的目录。打开SYSTABLES和SYSCOLUMNS，设置sysFileHandle_Vec
-	CloseDB();
-
-	//3. 打开SYSTABLES和SYSCOLUMNS，设置sysFileHandle_Vec
+	//2. 打开SYSTABLES和SYSCOLUMNS,设置dbInfo
 	RM_FileHandle* sysTables, * sysColumns;
 	sysTables = (RM_FileHandle*)malloc(sizeof(RM_FileHandle));
 	sysColumns = (RM_FileHandle*)malloc(sizeof(RM_FileHandle));
 
-	if ((rc = RM_OpenFile("SYSTABLES", sysTables)) || (rc = RM_OpenFile("SYSCOLUMNS", sysColumns)))
+	std::string sysTablePath = dbname;
+	sysTablePath+="\\SYSTABLES";
+	std::string sysColumnsPath = dbname;
+	sysColumnsPath+="\\SYSCOLUMNS";
+	if ((rc = RM_OpenFile((char *)sysTablePath.c_str(), sysTables)) || (rc = RM_OpenFile((char*)sysColumnsPath.c_str(), sysColumns)))
 		return SQL_SYNTAX;
 	
 	dbInfo.sysFileHandle_Vec.push_back(sysTables);
 	dbInfo.sysFileHandle_Vec.push_back(sysColumns);
 
-	//4. 设置curDbName
-	memset(dbInfo.curDbName, 0, 300);
-	strcpy(dbInfo.curDbName, dbname);
+	//3. 设置curDbName
+	dbInfo.curDbName = dbname;
 	
 	return SUCCESS;
 }
@@ -269,51 +280,20 @@ RC OpenDB(char *dbname){
 
 //
 //目的:关闭当前数据库。关闭当前数据库中打开的所有文件
-//1. 检查当前是否打开了DB。即检查保存的curDbName是否为空。
-//2. 调用保存句柄中对应的Close函数。
-//	2.1 关闭RM文件
-//	2.2 关闭IX文件
-//	2.3 关闭SYS文件
-//3. 切换到上级目录.
+//1. 检查当前是否打开了DB。如果curDbName为空则报错，否则设置curDbName为空。
+//2. 调用保存的SYS文件句柄close函数，关闭SYS文件。
 RC CloseDB(){
-	//1. 检查当前是否打开了DB。即检查保存的curDbName是否为空。
-	if (dbInfo.curDbName[0] == 0)
+	//1. 检查当前是否打开了DB。如果curDbName为空则报错，否则设置curDbName为空。
+	if (!dbInfo.curDbName.size())
 		return SQL_SYNTAX;
+	dbInfo.curDbName.clear();
 
-	//2. 调用保存句柄中对应的Close函数。
-
-	//	2.1 关闭RM文件
-	std::map<std::string, RM_FileHandle*>::iterator rmIter;
-	RM_FileHandle* rmFileHandle;
-	for (rmIter = dbInfo.rmFileHandle_Map.begin(); rmIter != dbInfo.rmFileHandle_Map.end(); rmIter++) {
-		rmFileHandle = rmIter->second;
-		RM_CloseFile(rmFileHandle);
-		free(rmFileHandle);
-	}
-	dbInfo.rmFileHandle_Map.clear();
-
-
-	//	2.2 关闭IX文件
-	std::map<std::string, IX_IndexHandle*>::iterator ixIter;
-	IX_IndexHandle* ixIndexHandle;
-	for (ixIter = dbInfo.ixIndexHandle_Map.begin(); ixIter != dbInfo.ixIndexHandle_Map.end(); ixIter++) {
-		ixIndexHandle = ixIter->second;
-		CloseIndex(ixIndexHandle);
-		free(ixIndexHandle);
-	}
-	dbInfo.ixIndexHandle_Map.clear();
-	
-	//	2.3 关闭SYS文件
+	//2. 调用保存的SYS文件句柄close函数，关闭SYS文件。
 	RM_CloseFile(dbInfo.sysFileHandle_Vec[0]);
 	RM_CloseFile(dbInfo.sysFileHandle_Vec[1]);
 	free(dbInfo.sysFileHandle_Vec[0]);
 	free(dbInfo.sysFileHandle_Vec[1]);
 	dbInfo.sysFileHandle_Vec.clear();
-
-
-	//3. 切换到上级目录.
-	if (!SetCurrentDirectory((LPCWSTR)dbInfo.path))
-		return SQL_SYNTAX;
 
 	return SUCCESS;
 }
@@ -339,7 +319,7 @@ RC CreateTable(char* relName, int attrCount, AttrInfo* attributes) {
 	//attributes 数组中的第 i 个元素包含名称、 类型和属性的长度（见 AttrInfo 结构定义）
 
 	//1. 检查当前是否打开了一个数据库。如果没有则报错。
-	if (strcmp(dbInfo.curDbName, "") == 0)
+	if (dbInfo.curDbName[0] == 0)
 		return SQL_SYNTAX;
 
 	//2. 检查是否已经存在relName表
@@ -350,8 +330,8 @@ RC CreateTable(char* relName, int attrCount, AttrInfo* attributes) {
 	RC rc;
 
 	conditions[0].attrType = chars; conditions[0].bLhsIsAttr = 1; conditions[0].bRhsIsAttr = 0;
-	conditions[0].compOp = EQual; conditions[0].LattrLength = 21; conditions[0].LattrOffset = 0;
-	conditions[0].Lvalue = NULL; conditions[0].RattrLength = 21; conditions[0].RattrOffset = 0;
+	conditions[0].compOp = EQual; conditions[0].LattrLength = SIZE_TABLE_NAME; conditions[0].LattrOffset = 0;
+	conditions[0].Lvalue = NULL; conditions[0].RattrLength = SIZE_TABLE_NAME; conditions[0].RattrOffset = 0;
 	conditions[0].Rvalue = relName;
 	OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[0], 1, conditions); 
 
@@ -369,14 +349,14 @@ RC CreateTable(char* relName, int attrCount, AttrInfo* attributes) {
 
 	//4. 向SYSTABLE和SYSCOLUMNS表中传入元信息
 	int rmRecordSize=0;//计算记录大小
-	char sysData[76];
+	char sysData[SIZE_SYS_COLUMNS];
 	int* sysData_attrcount;
 	RID rid;
 	//表名（tablename） 占 21 个字节， 即表名为最大长度为 20 的字符串。
-	memset(sysData, 0, 76);
-	strncpy(sysData, relName, 20);
+	memset(sysData, 0, SIZE_SYS_COLUMNS);
+	strncpy(sysData, relName, SIZE_TABLE_NAME);
 	//属性的数量（attrcount） 为 int 类型， 占 4 个字节。
-	sysData_attrcount = (int*)(sysData + 21);
+	sysData_attrcount = (int*)(sysData + SIZE_TABLE_NAME);
 	*sysData_attrcount = attrCount;
 	
 	if (rc = InsertRec(dbInfo.sysFileHandle_Vec[0], sysData, &rid))//插入失败
@@ -386,23 +366,23 @@ RC CreateTable(char* relName, int attrCount, AttrInfo* attributes) {
 	//向SYSCOLUMNS表插入数据。
 	//SYSCOLUMNS:tablename attrname attrtype attrlength attroffset ix_flag indexname
 	for (int i = 0; i < attrCount; i++) {
-		strncpy(sysData + 21, attributes[i].attrName, 20);//表名（tablename） 与属性名（attrname） 各占 21 个字节
+		strncpy(sysData + SIZE_TABLE_NAME, attributes[i].attrName, SIZE_ATTR_NAME-1);//表名（tablename） 与属性名（attrname） 各占 21 个字节
 		//attrtype int类型		
-		sysData_attrcount = (int*)(sysData + 21+21);// 属性的类型（attrtype） 为 int 类型， 占 4 个字节
+		sysData_attrcount = (int*)(sysData + SIZE_TABLE_NAME + SIZE_ATTR_NAME);// 属性的类型（attrtype） 为 int 类型， 占 4 个字节
 		*sysData_attrcount = attributes[i].attrType;
 		//atrrlength int类型
-		sysData_attrcount = (int*)(sysData + 21 + 21+4);// 属性的长度（attrlength） 为 int 类型，各占 4 个字节
+		sysData_attrcount = (int*)(sysData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE);// 属性的长度（attrlength） 为 int 类型，各占 4 个字节
 		*sysData_attrcount = attributes[i].attrLength;
-		rmRecordSize+= attributes[i].attrLength;
+		rmRecordSize += attributes[i].attrLength;
 		//atrroffset int类型
-		sysData_attrcount = (int*)(sysData + 21 + 21 + 4 + 4);// 记录中的偏移量（atrroffset） 为 int 类型，各占 4 个字节
+		sysData_attrcount = (int*)(sysData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH);// 记录中的偏移量（atrroffset） 为 int 类型，各占 4 个字节
 		*sysData_attrcount = i;
 		//ix_flag bool类型
-		sysData_attrcount = (int*)(sysData + 21 + 21 + 4 + 4 + 4);//该属性列上是否存在索引的标识(ix_flag)占 1 个字节
-		*sysData_attrcount = 0;									//没有主键概率，初始都没有索引
+		sysData_attrcount = (int*)(sysData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET);//该属性列上是否存在索引的标识(ix_flag)占 1 个字节
+		*sysData_attrcount = 0;									//没有主键概念，初始都没有索引
 		//indexname string类型
-		sysData_attrcount += 1;
-		memset(sysData_attrcount, 0, 21);					//索引的名称(indexname)占 21 个字节
+		sysData_attrcount = (int*)(sysData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET + SIZE_IX_FLAG);
+		memset(sysData_attrcount, 0, SIZE_INDEX_NAME);					//索引的名称(indexname)占 21 个字节
 
 		if (rc = InsertRec(dbInfo.sysFileHandle_Vec[1], sysData, &rid))//插入失败
 			return SQL_SYNTAX;
@@ -410,11 +390,11 @@ RC CreateTable(char* relName, int attrCount, AttrInfo* attributes) {
 
 	//5. 计算记录的大小。创建对应的RM文件
 	//根据约定，文件名为了relName.rm。
-	char fileName[24];//21+".rm"
-	memset(fileName, 0, 24);
-	strcat(fileName, relName);
-	strcat(fileName, ".rm");
-	RM_CreateFile(fileName,rmRecordSize);
+	std::string filePath = dbInfo.curDbName + "\\" + relName + ".rm";
+	if(RM_CreateFile((char *)filePath.c_str(),rmRecordSize))
+		return SQL_SYNTAX;
+
+	return SUCCESS;
 }
 
 //
@@ -423,18 +403,14 @@ RC CreateTable(char* relName, int attrCount, AttrInfo* attributes) {
 //2. 判断是否存在表relName.
 //	 2.1. 如果已经存在则报错。
 //	 3.2. 否则从SYSTABLES中删除relName对应的一项记录
-//3. 删除rm文件。
-//	 3.1.在dbInfo的rmFileHandle_Map中查找relName对应的rm文件是否被打开，如果已经打开则调用close函数，并从Map中删除。
-//	 3.2.删除relName对应的rm文件
+//3. 删除relName对应的rm文件
 //4. 删除ix文件
 //	 4.1.读取SYSCOLUMNS。得到relName的atrrname。
-//	 4.2.判断是否创建了索引。如果创建了索引：
-//		 4.2.1 在dbInfo的ixIndexHandle_Map中查找relName_atrrname对应的ix文件是否被打开，如果已经打开则调用close函数，并从Map中删除。
-//		 4.2.2 删除relName_atrrname对应的ix文件
+//	 4.2.判断是否创建了索引。如果创建了索引：删除relName_atrrname对应的ix文件
 //	 4.3.删除SYSCOLUMNS中atrrname对应的记录。
 RC DropTable(char* relName) {
 	//1. 检查当前是否打开了一个数据库。如果没有则报错。
-	if (strcmp(dbInfo.curDbName, "") == 0)
+	if (dbInfo.curDbName[0] == 0)
 		return SQL_SYNTAX;
 
 	//2. 判断是否存在表relName
@@ -444,8 +420,8 @@ RC DropTable(char* relName) {
 	RC rc;
 
 	conditions[0].attrType = chars; conditions[0].bLhsIsAttr = 1; conditions[0].bRhsIsAttr = 0;
-	conditions[0].compOp = EQual; conditions[0].LattrLength = 21; conditions[0].LattrOffset = 0;
-	conditions[0].Lvalue = NULL; conditions[0].RattrLength = 21; conditions[0].RattrOffset = 0;
+	conditions[0].compOp = EQual; conditions[0].LattrLength = SIZE_TABLE_NAME; conditions[0].LattrOffset = 0;
+	conditions[0].Lvalue = NULL; conditions[0].RattrLength = SIZE_TABLE_NAME; conditions[0].RattrOffset = 0;
 	conditions[0].Rvalue = relName;
 	rmRecord.bValid = false;
 	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[0], 1, conditions))
@@ -461,25 +437,15 @@ RC DropTable(char* relName) {
 		return SQL_SYNTAX;
 
 	//	 2.2. 否则从SYSTABLES中删除relName对应的一项记录
-	DeleteRec(dbInfo.sysFileHandle_Vec[0],&rmRecord.rid);
+	if(DeleteRec(dbInfo.sysFileHandle_Vec[0],&rmRecord.rid))
+		return SQL_SYNTAX;
 
-	//3. 删除rm文件。
-	//	 3.1.在dbInfo的rmFileHandle_Map中查找relName对应的rm文件是否被打开
-	std::map<std::string, RM_FileHandle*>::iterator rmIter;
-	RM_FileHandle* rmFileHandle;
+	//3. 删除relName对应的rm文件
 	std::string rmFileName="";
 	rmFileName += relName;
 	rmFileName += ".rm";
-	rmIter = dbInfo.rmFileHandle_Map.find(rmFileName);
-	if (rmIter != dbInfo.rmFileHandle_Map.end()) {
-		//如果已经打开则调用close函数，并从Map中删除。
-		if(RM_CloseFile(rmIter->second))
-			return SQL_SYNTAX;
-		free(rmIter->second);
-		dbInfo.rmFileHandle_Map.erase(rmIter);
-	}
-	//	 3.2.删除relName对应的rm文件
-	DeleteFile((LPCWSTR)rmFileName.c_str());
+	if(!DeleteFile((LPCSTR)rmFileName.c_str()))
+		return SQL_SYNTAX;
 
 	//4. 删除ix文件
 
@@ -489,27 +455,18 @@ RC DropTable(char* relName) {
 		return SQL_SYNTAX;
 	}
 
-	std::map<std::string, IX_IndexHandle*>::iterator ixIter;
-	IX_IndexHandle* ixIndexHandle;
-	std::string ixFileName = "";
+	std::string ixFileName ;
 	while (!GetNextRec(&rmFileScan, &rmRecord)) { //无法区分RM_EOF和其他错误，所以无法做错误处理
-		//	 4.2.判断是否创建了索引。如果创建了索引：
-		if ((*(rmRecord.pData + 21 + 21 + 4 + 4 + 4)) == (char)1) {
-			//		 4.2.1 在dbInfo的ixIndexHandle_Map中查找relName_atrrname对应的ix文件是否被打开
-			ixFileName += rmRecord.pData + 21 + 21 + 4 + 4 + 4 + 1;
-			ixIter = dbInfo.ixIndexHandle_Map.find(ixFileName);
-			if (ixIter != dbInfo.ixIndexHandle_Map.end()) {
-				//如果已经打开则调用close函数，并从Map中删除
-				if (CloseIndex(ixIter->second))
-					return SQL_SYNTAX;
-				free(ixIter->second);
-				dbInfo.ixIndexHandle_Map.erase(ixIter);
-			}
-			//		 4.2.2 删除relName_atrrname对应的ix文件
-			DeleteFile((LPCWSTR)ixFileName.c_str());
+		//	 4.2.判断是否创建了索引。如果创建了索引：删除relName_atrrname对应的ix文件
+		if ((*(rmRecord.pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET)) == (char)1) {
+			ixFileName=dbInfo.curDbName+"\\";
+			ixFileName += rmRecord.pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET + SIZE_IX_FLAG;
+			if(!DeleteFile(ixFileName.c_str()))
+				return SQL_SYNTAX;
 		}
 		//	 4.3.删除SYSCOLUMNS中atrrname对应的记录。
-		DeleteRec(dbInfo.sysFileHandle_Vec[1],&rmRecord.rid);
+		if(DeleteRec(dbInfo.sysFileHandle_Vec[1],&rmRecord.rid))
+			return SQL_SYNTAX;
 	}
 	
 	if (CloseScan(&rmFileScan))
@@ -527,11 +484,11 @@ RC DropTable(char* relName) {
 //	 3.3. 更新SYS_COLUMNS
 RC CreateIndex(char* indexName, char* relName, char* attrName) {
 	//1. 检查当前是否打开了一个数据库。如果没有则报错。
-	if (strcmp(dbInfo.curDbName, "") == 0)
+	if (dbInfo.curDbName[0] == 0)
 		return SQL_SYNTAX;
 
-	char ixFileName[45];//relname+"_"+attrName+".ix"-1
-	memset(ixFileName, 0, 42);
+	char ixFileName[SIZE_TABLE_NAME+SIZE_ATTR_NAME+3];//relname+"_"+attrName+".ix"-1
+	memset(ixFileName, 0, SIZE_TABLE_NAME+SIZE_ATTR_NAME+3);
 	strcat(ixFileName,relName);
 	strcat(ixFileName, "_");
 	strcat(ixFileName, attrName);
@@ -548,29 +505,23 @@ RC CreateIndex(char* indexName, char* relName, char* attrName) {
 	RC rc;
 
 	conditions[0].attrType = chars; conditions[0].bLhsIsAttr = 1; conditions[0].bRhsIsAttr = 0;
-	conditions[0].compOp = EQual; conditions[0].LattrLength = 21; conditions[0].LattrOffset = 0;
-	conditions[0].Lvalue = NULL; conditions[0].RattrLength = 21; conditions[0].RattrOffset = 0;
+	conditions[0].compOp = EQual; conditions[0].LattrLength = SIZE_TABLE_NAME; conditions[0].LattrOffset = 0;
+	conditions[0].Lvalue = NULL; conditions[0].RattrLength = SIZE_TABLE_NAME; conditions[0].RattrOffset = 0;
 	conditions[0].Rvalue = relName;
 
 	conditions[1].attrType = chars; conditions[1].bLhsIsAttr = 1; conditions[1].bRhsIsAttr = 0;
-	conditions[1].compOp = EQual; conditions[1].LattrLength = 21; conditions[1].LattrOffset = 21;
-	conditions[1].Lvalue = NULL; conditions[1].RattrLength = 21; conditions[1].RattrOffset = 0;
+	conditions[1].compOp = EQual; conditions[1].LattrLength = SIZE_ATTR_NAME; conditions[1].LattrOffset = SIZE_TABLE_NAME;
+	conditions[1].Lvalue = NULL; conditions[1].RattrLength = SIZE_ATTR_NAME; conditions[1].RattrOffset = 0;
 	conditions[1].Rvalue = attrName;
 
-	char str_one[1];//因为ix_flag是一个字节的标识位，所以用chars的方式来比较。
-	str_one[0]=1;
-	conditions[2].attrType = chars; conditions[2].bLhsIsAttr = 1; conditions[2].bRhsIsAttr = 0;
-	conditions[2].compOp = EQual; conditions[2].LattrLength = 1; conditions[2].LattrOffset = + 21 + 21 + 4 + 4 + 4+1;
-	conditions[2].Lvalue = NULL; conditions[2].RattrLength = 1; conditions[2].RattrOffset = 0;
-	conditions[2].Rvalue = str_one;
-
 	rmRecord.bValid = false;
-	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[1], 3, conditions))
+	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[1], 2, conditions))
 		return SQL_SYNTAX;
 
-	rc = GetNextRec(&rmFileScan, &rmRecord);
+	 GetNextRec(&rmFileScan, &rmRecord);//没有办法对错误进行处理
 
-	if (rc == SUCCESS || rmRecord.bValid) {//已经创建了对应的索引
+	char* ix_flag = rmRecord.pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET;//无法在Scan的Conditions中加入ix_flag的判断。即使用chars也无法比较。
+	if (rmRecord.bValid && (*ix_flag)==(char)1) {//已经创建了对应的索引
 		return SQL_SYNTAX;
 	}
 
@@ -592,27 +543,21 @@ RC CreateIndex(char* indexName, char* relName, char* attrName) {
 		return SQL_SYNTAX;
 
 	//	 3.2. 创建IX文件
-	int attrType = *((int*)rmRecord.pData + 21 + 21);
-	int attrLength = *((int*)rmRecord.pData + 21 + 21 + 4);
-	char* ix_Flag = (char*)rmRecord.pData + 21 + 21 + 4 + 4 + 4;
-	if (ix_Flag != 0)//检查ix_flag等于0
+	int attrType = *((int*)rmRecord.pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME);
+	int attrLength = *((int*)rmRecord.pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE);
+	char* ix_Flag = (char*)rmRecord.pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET;
+	if (*ix_Flag != 0)//检查ix_flag等于0
 		return SQL_SYNTAX;
 	//RC CreateIndex(const char * fileName,AttrType attrType,int attrLength);
 	if(CreateIndex(ixFileName,(AttrType)attrType,attrLength))
 		return SQL_SYNTAX;
 
 	//	 3.3. 更新SYS_COLUMNS
-	*ix_Flag = 1;
-	RM_FileHandle* rmFileHandle;
-	char rmFileName[24];//relName+".rm"
-	memset(rmFileName, 0, 24);
-	strcat(rmFileName, relName);
-	strcat(rmFileName, ".rm");
-	if(	RM_OpenFile(rmFileName,rmFileHandle)||
-		UpdateRec(rmFileHandle,&rmRecord)||
-		RM_CloseFile(rmFileHandle))
+	*ix_Flag =(char) 1;
+	if(	UpdateRec(dbInfo.sysFileHandle_Vec[1],&rmRecord))
 		return SQL_SYNTAX;
 	
+	return SUCCESS;
 }
 
 //
@@ -624,5 +569,267 @@ RC CreateIndex(char* indexName, char* relName, char* attrName) {
 //3. 删除ix文件
 RC DropIndex(char* indexName) {
 	//1. 检查当前是否打开了一个数据库。如果没有则报错。
+	if (dbInfo.curDbName[0] == 0)
+		return SQL_SYNTAX;
+
+	//2. 从SYSCOLUMNS中检查索引是否存在。（这里利用了我们约定的indexname具有唯一性来进行查找）
+	RM_FileScan rmFileScan;
+	RM_Record rmRecord;
+	Con conditions[3];
+
+	conditions[0].attrType = chars; conditions[0].bLhsIsAttr = 1; conditions[0].bRhsIsAttr = 0;
+	conditions[0].compOp = EQual; conditions[0].LattrLength = SIZE_INDEX_NAME; 
+	conditions[0].LattrOffset = SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET + SIZE_IX_FLAG;
+	conditions[0].Lvalue = NULL; conditions[0].RattrLength = SIZE_INDEX_NAME; conditions[0].RattrOffset = 0;
+	conditions[0].Rvalue = indexName;
+
+	rmRecord.bValid = false;
+	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[1], 1, conditions))
+		return SQL_SYNTAX;
+
+	GetNextRec(&rmFileScan, &rmRecord);//没有办法对错误进行处理
+
+	//	 2.1 如果不存在则报错。
+	char* ix_flag = rmRecord.pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET;//无法在Scan的Conditions中加入ix_flag的判断。即使用chars也无法比较。
+	if (!rmRecord.bValid || (*ix_flag) == (char)0)//没有创建索引。
+		return SQL_SYNTAX;
+
+	if (CloseScan(&rmFileScan))
+		return SQL_SYNTAX;
+
+	//	 2.2.否则修改SYSCOLUMNS中对应记录项ix_flag为0.
+	char* ix_Flag = rmRecord.pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET;
+	*ix_Flag =(char)0;
+	if (UpdateRec(dbInfo.sysFileHandle_Vec[1], &rmRecord))
+		return SQL_SYNTAX;
+	
+	//3. 删除ix文件
+	std::string ixFilePath = dbInfo.curDbName + "\\" + indexName;
+	if(!DeleteFile((LPCSTR)ixFilePath.c_str()))
+		return SQL_SYNTAX;
+
+	return SUCCESS;
+}
+
+//
+//目的：该函数用来在 relName 表中插入具有指定属性值的新元组，
+//1. 检查当前是否打开了一个数据库。如果没有则报错。
+//2. 检查传入参数的合法性
+//	 2.1. 扫描SYSTABLE
+//		 2.1.1 如果传入的relName表不存在就报错。
+//		 2.1.2 如果存在则保存attrcount。如果attrcount和传入的nValues不一致则报错。
+//	 2.2. 扫描SYSCOLUMNS文件。
+//		 2.2.1 检查传入values中属性值的类型是否和SYSCOLUMNS记录的相同。
+//		 2.2.2 对每一个保存建立了索引的attroffset和indexName
+//3. 利用relName打开RM文件，利用保存的indexName打开所有索引文件。对values的每一条记录
+//	 3.1. 调用InsertRec方法，向rm插入记录
+//	 3.2. 用保存的attroffse和ix文件句柄，向索引文件插入记录
+//4. 关闭文件句柄
+RC Insert(char* relName, int nValues, Value* values) {
+	//nValues 为属性值个数， values 为对应的属性值数组。 
+
+	//1. 检查当前是否打开了一个数据库。如果没有则报错。
+	if (dbInfo.curDbName[0] == 0)
+		return SQL_SYNTAX;
+
+	//2. 检查传入参数的合法性
+	//	 2.1. 扫描SYSTABLE
+	RM_FileScan rmFileScan;
+	RM_Record rmRecord;
+	Con conditions[3];
+	RC rc;
+	int attrCount=0;
+
+	conditions[0].attrType = chars; conditions[0].bLhsIsAttr = 1; conditions[0].bRhsIsAttr = 0;
+	conditions[0].compOp = EQual; conditions[0].LattrLength = SIZE_TABLE_NAME; conditions[0].LattrOffset = 0;
+	conditions[0].Lvalue = NULL; conditions[0].RattrLength = SIZE_TABLE_NAME; conditions[0].RattrOffset = 0;
+	conditions[0].Rvalue = relName;
+
+	rmRecord.bValid = false;
+	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[0], 1, conditions))
+		return SQL_SYNTAX;
+
+	rc = GetNextRec(&rmFileScan, &rmRecord);
+
+	//		 2.1.1 如果传入的relName表不存在就报错。
+	if (rc!=SUCCESS || !rmRecord.bValid )
+		return SQL_SYNTAX;
+	//		 2.1.2 如果存在则保存attrcount。如果attrcount和传入的nValues不一致则报错。
+	attrCount = *((int *)rmRecord.pData+SIZE_TABLE_NAME);
+	if (attrCount != nValues)
+		return SQL_SYNTAX;
+
+	if (CloseScan(&rmFileScan))
+		return SQL_SYNTAX;
+
+	//	 2.2. 扫描SYSCOLUMNS文件。
+	rmRecord.bValid = false;
+	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[1], 1, conditions))
+		return SQL_SYNTAX;
+
+	int site_Value = 0;
+	std::vector<int> attrOffsets;
+	std::vector<std::string> indexNames;
+	std::string str_indexName;
+
+	rc = GetNextRec(&rmFileScan, &rmRecord);
+	while (rc == SUCCESS && rmRecord.bValid){
+		//		 2.2.1 检查传入values中属性值的类型是否和SYSCOLUMNS记录的相同。
+		if (values[site_Value].type != (AttrType)(*((int*)rmRecord.pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME)))
+			return SQL_SYNTAX;
+		//		 2.2.2 保存建立了索引的attroffset和indexName
+		if (*((char*)rmRecord.pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET) == (char)1) {
+			attrOffsets.push_back(*((int*)rmRecord.pData  + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH));
+			str_indexName = dbInfo.curDbName;
+			str_indexName+=(char *)(rmRecord.pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET + SIZE_ATTR_OFFSET);
+			indexNames.push_back(str_indexName);
+		}
+		site_Value++;
+		rc = GetNextRec(&rmFileScan, &rmRecord);
+	}
+
+	if (CloseScan(&rmFileScan))
+		return SQL_SYNTAX;
+
+	//3. 利用relName打开RM文件，利用保存的indexName打开所有索引文件。对values的每一条记录
+	std::string rmFileName="";
+	int numIndexs = indexNames.size();
+	RM_FileHandle rmFileHandle;
+	std::vector<IX_IndexHandle> ixIndexHandles;
+	IX_IndexHandle curIndexHanle;
+
+	//打开RM文件
+	rmFileName = dbInfo.curDbName + "\\" + relName + ".rm";
+	if (RM_OpenFile((char *)rmFileName.c_str(), &rmFileHandle))
+		return SQL_SYNTAX;
+
+	//打开ix文件
+	for (int i = 0; i < numIndexs; i++) {
+		if (OpenIndex(indexNames[i].c_str(), &curIndexHanle))
+			return SQL_SYNTAX;
+		ixIndexHandles.push_back(curIndexHanle);
+	}
+
+	site_Value = 0;
+	std::vector<RID> rmInsertRids;
+	RID rid;
+	char* insertData;
+	while (site_Value < nValues) {
+		//	 3.1. 调用InsertRec方法，向rm插入记录
+		if (InsertRec(&rmFileHandle, (char*)(values[site_Value].data), &rid))
+			return SQL_SYNTAX;
+		//	 3.2. 用保存的attroffset和ix文件句柄，向索引文件插入记录
+		insertData = (char*)values[site_Value].data;
+		for (int i = 0; i < numIndexs; i++){			
+			curIndexHanle = ixIndexHandles[i];
+			if (InsertEntry(&curIndexHanle, (void*)(insertData + attrOffsets[i]), &rid))
+				return SQL_SYNTAX;
+		}
+	}
+
+	//4. 关闭文件句柄
+	if (RM_CloseFile(&rmFileHandle))
+		return SQL_SYNTAX;
+	for (int i = 0; i < numIndexs; i++) {
+		curIndexHanle = ixIndexHandles[i];
+		if (CloseIndex(&curIndexHanle))
+			return SQL_SYNTAX;
+	}
+
+	return SUCCESS;
+}
+
+
+//
+//目的：该函数用来删除 relName 表中所有满足指定条件的元组以及该元组对应的索
+//引项。 如果没有指定条件， 则此方法删除 relName 关系中所有元组。 如果包
+//含多个条件， 则这些条件之间为与关系。
+//1. 检查当前是否打开了一个数据库。如果没有则报错。
+//2. 检查传入参数的合法性
+//	 2.1. 扫描SYSTABLE.如果传入的relName表不存在就报错。
+//	 2.2. 扫描SYSCOLUMNS文件。对每一个保存建立了索引的indexName
+//3. 利用relName打开RM文件，利用保存的indexName打开所有索引文件。
+//4. 将输入的nConditions和conditions转换成RM_FileScan的参数。
+//5. 用rm句柄、nConditions和conditions创建rmFileScan。对筛选处的每一项记录
+//	 3.1. 调用rm句柄的DeleteRec方法进行删除。
+//	 3.2. 用保存ix文件句柄，删除ix记录。
+//6. 关闭文件句柄
+RC Delete(char* relName, int nConditions, Condition* conditions) {
+	//1. 检查当前是否打开了一个数据库。如果没有则报错。
+	if (dbInfo.curDbName[0] == 0)
+		return SQL_SYNTAX;
+
+	//2. 检查传入参数的合法性
+	//	 2.1. 扫描SYSTABLE.如果传入的relName表不存在就报错。
+	RM_FileScan rmFileScan;
+	RM_Record rmRecord;
+	Con cons[3];
+	RC rc;
+	int attrCount = 0;
+
+	cons[0].attrType = chars; cons[0].bLhsIsAttr = 1; cons[0].bRhsIsAttr = 0;
+	cons[0].compOp = EQual; cons[0].LattrLength = SIZE_TABLE_NAME; cons[0].LattrOffset = 0;
+	cons[0].Lvalue = NULL; cons[0].RattrLength = SIZE_TABLE_NAME; cons[0].RattrOffset = 0;
+	cons[0].Rvalue = relName;
+
+	rmRecord.bValid = false;
+	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[0], 1, cons))
+		return SQL_SYNTAX;
+
+	rc = GetNextRec(&rmFileScan, &rmRecord);
+	if (rc != SUCCESS || !rmRecord.bValid)//不存在relName表
+		return SQL_SYNTAX;
+
+	if (CloseScan(&rmFileScan))
+		return SQL_SYNTAX;
+
+	//	 2.2. 扫描SYSCOLUMNS文件。对每一个保存建立了索引的indexName
+	int site_Value = 0;
+	std::vector<std::string> indexNames;
+	std::string str_indexName;
+
+	char str_one[1];
+	str_one[0]=(char)1;
+	cons[1].attrType = chars; cons[1].bLhsIsAttr = 1; cons[1].bRhsIsAttr = 0;
+	cons[1].compOp = EQual; cons[1].LattrLength = 1; 
+	cons[1].LattrOffset = SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET;
+	cons[1].Lvalue = NULL; cons[1].RattrLength = 1; cons[1].RattrOffset = 0;
+	cons[1].Rvalue = str_one;
+
+	rmRecord.bValid = false;
+	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[1], 2, cons))
+		return SQL_SYNTAX;
+
+	rc = GetNextRec(&rmFileScan, &rmRecord);
+	while (rc == SUCCESS && rmRecord.bValid) {
+		//保存建立了索引的indexName
+		str_indexName = dbInfo.curDbName; 
+		str_indexName += (char *)(rmRecord.pData  + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET + SIZE_ATTR_OFFSET + SIZE_IX_FLAG);
+		indexNames.push_back(str_indexName);
+		rc = GetNextRec(&rmFileScan, &rmRecord);
+	}
+
+	if (CloseScan(&rmFileScan))
+		return SQL_SYNTAX;
+
+	//3. 利用relName打开RM文件，利用保存的indexName打开所有索引文件。
+	std::string rmFileName=dbInfo.curDbName+"\\"+relName+".rm";//relName+".rm";
+	int numIndexs = indexNames.size();
+	RM_FileHandle rmFileHandle;
+	std::vector<IX_IndexHandle> ixIndexHandles;
+	IX_IndexHandle curIndexHanle;
+
+	//打开RM文件
+	if (RM_OpenFile((char *)rmFileName.c_str(), &rmFileHandle))
+		return SQL_SYNTAX;
+
+	//打开ix文件
+	for (int i = 0; i < numIndexs; i++) {
+		if (OpenIndex(indexNames[i].c_str(), &curIndexHanle))
+			return SQL_SYNTAX;
+		ixIndexHandles.push_back(curIndexHanle);
+	}
+
+	//4. 将输入的nConditions和conditions转换成RM_FileScan的参数。
 	
 }

@@ -7,16 +7,16 @@
 #define MAX_DATA 50
 
 /*
-ÎÄ¼þ: str.h
-ÄÚÈÝ: the definition of sqls' structs
+ï¿½Ä¼ï¿½: str.h
+ï¿½ï¿½ï¿½ï¿½: the definition of sqls' structs
 */
 #include<stdlib.h>
 #include<string.h>
 
-//ÊôÐÔ½á¹¹Ìå
+//ï¿½ï¿½ï¿½Ô½á¹¹ï¿½ï¿½
 typedef struct  {
-  char *relName;     // relation name (may be NULL) ±íÃû
-  char *attrName;    // attribute name              ÊôÐÔÃû
+  char *relName;     // relation name (may be NULL) ï¿½ï¿½ï¿½ï¿½
+  char *attrName;    // attribute name              ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 }RelAttr;
 
 typedef enum {
@@ -29,13 +29,13 @@ typedef enum {
 	NO_OP
 }CompOp;
 
-//ÊôÐÔÖµÀàÐÍ
+//ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½ï¿½
 typedef enum {
 		chars,
 		ints,
 		floats
 }AttrType;
-//ÊôÐÔÖµ
+//ï¿½ï¿½ï¿½ï¿½Öµ
 typedef struct _Value Value;
 struct _Value{
 	AttrType type;     // type of value               
@@ -44,13 +44,13 @@ struct _Value{
 
 typedef struct  _Condition Condition;
 struct  _Condition{
-  int     bLhsIsAttr;   // TRUE if left-hand side is an attribute 1Ê±£¬²Ù×÷·ûÓÒ±ßÊÇÊôÐÔ£¬0Ê±£¬ÊÇÊôÐÔÖµ
+  int     bLhsIsAttr;   // TRUE if left-hand side is an attribute 1Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô£ï¿½0Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
   Value   lhsValue;		// left-hand side value if bLhsIsAttr = FALSE 
   RelAttr lhsAttr;      // left-hand side attribute                     
   CompOp  op;           // comparison operator                          
-  int     bRhsIsAttr;   // TRUE if right-hand side is an attribute 1Ê±£¬²Ù×÷·ûÓÒ±ßÊÇÊôÐÔ£¬0Ê±£¬ÊÇÊôÐÔÖµ
+  int     bRhsIsAttr;   // TRUE if right-hand side is an attribute 1Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô£ï¿½0Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
                         //   and not a value
-  RelAttr rhsAttr;      // right-hand side attribute if bRhsIsAttr = TRUE ÓÒ±ßµÄÊôÐÔ
+  RelAttr rhsAttr;      // right-hand side attribute if bRhsIsAttr = TRUE ï¿½Ò±ßµï¿½ï¿½ï¿½ï¿½ï¿½
   Value   rhsValue;     // right-hand side value if bRhsIsAttr = FALSE 
 
 };
