@@ -4,30 +4,6 @@
 #include "QU_Manager.h"
 #include <iostream>
 
-//放在SYS_Manager.h中会发生冲突
-
-// #define MAX_CONDITIONS_NUM 100;
-//SYSTABLE和SYSCOLUMNS中记录每一项的长度
-#define SIZE_TABLE_NAME 21
-#define SIZE_ATTR_COUNT 4
-#define SIZE_ATTR_NAME 21
-#define SIZE_ATTR_TYPE 4
-#define SIZE_ATTR_LENGTH 4
-#define SIZE_ATTR_OFFSET 4
-#define SIZE_IX_FLAG 1
-#define SIZE_INDEX_NAME 21
-#define SIZE_SYS_TABLE 25
-#define SIZE_SYS_COLUMNS 76
-#define MAX_CON_LEN 100 //用来声明局部数组
-
-typedef struct db_info {
-	std::vector< RM_FileHandle* > sysFileHandle_Vec; //保存系统文件的句柄
-	int MAXATTRS=20;		 //最大属性数量
-	std::string curDbName; //存放当前DB名称
-	std::string path;	 //调用CreateDB传入的路径
-
-}DB_INFO;
-DB_INFO dbInfo;
 
 void ExecuteAndMessage(char * sql,CEditArea* editArea){//根据执行的语句类型在界面上显示执行结果。此函数需修改
 	std::string s_sql = sql;
@@ -265,8 +241,8 @@ RC OpenDB(char *dbname){
 	if ((rc = RM_OpenFile((char *)sysTablePath.c_str(), sysTables)) || (rc = RM_OpenFile((char*)sysColumnsPath.c_str(), sysColumns)))
 		return SQL_SYNTAX;
 	
-	dbInfo.sysFileHandle_Vec.push_back(sysTables);
-	dbInfo.sysFileHandle_Vec.push_back(sysColumns);
+	dbInfo.sysTables=sysTables;
+	dbInfo.sysColumns=sysColumns;
 
 	//3. 设置curDbName
 	dbInfo.curDbName = dbname;
@@ -287,12 +263,11 @@ RC CloseDB(){
 	dbInfo.curDbName.clear();
 
 	//2. 调用保存的SYS文件句柄close函数，关闭SYS文件。
-	RM_CloseFile(dbInfo.sysFileHandle_Vec[0]);
-	RM_CloseFile(dbInfo.sysFileHandle_Vec[1]);
-	free(dbInfo.sysFileHandle_Vec[0]);
-	free(dbInfo.sysFileHandle_Vec[1]);
-	dbInfo.sysFileHandle_Vec.clear();
-
+	RM_CloseFile(dbInfo.sysTables);
+	RM_CloseFile(dbInfo.sysColumns);
+	free(dbInfo.sysTables);
+	free(dbInfo.sysColumns);
+	
 	return SUCCESS;
 }
 
@@ -331,7 +306,7 @@ RC CreateTable(char* relName, int attrCount, AttrInfo* attributes) {
 	conditions[0].compOp = EQual; conditions[0].LattrLength = SIZE_TABLE_NAME; conditions[0].LattrOffset = 0;
 	conditions[0].Lvalue = NULL; conditions[0].RattrLength = SIZE_TABLE_NAME; conditions[0].RattrOffset = 0;
 	conditions[0].Rvalue = relName;
-	OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[0], 1, conditions); 
+	OpenScan(&rmFileScan, dbInfo.sysTables, 1, conditions); 
 
 	rmRecord.bValid = false;
 	rc = GetNextRec(&rmFileScan,&rmRecord); //这里GetNextRec应该返回RM_EOF，因为无法识别RM_EOF，所以没有保存.但是两处SUCCESS的定义是一致的
@@ -357,7 +332,7 @@ RC CreateTable(char* relName, int attrCount, AttrInfo* attributes) {
 	sysData_attrcount = (int*)(sysData + SIZE_TABLE_NAME);
 	*sysData_attrcount = attrCount;
 	
-	if (rc = InsertRec(dbInfo.sysFileHandle_Vec[0], sysData, &rid))//插入失败
+	if (rc = InsertRec(dbInfo.sysTables, sysData, &rid))//插入失败
 		//这里直接返回没有做错误处理其实是有问题的，但是为了降低复杂度暂时这样实现了
 		return SQL_SYNTAX;
 
@@ -382,7 +357,7 @@ RC CreateTable(char* relName, int attrCount, AttrInfo* attributes) {
 		sysData_attrcount = (int*)(sysData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET + SIZE_IX_FLAG);
 		memset(sysData_attrcount, 0, SIZE_INDEX_NAME);					//索引的名称(indexname)占 21 个字节
 
-		if (rc = InsertRec(dbInfo.sysFileHandle_Vec[1], sysData, &rid))//插入失败
+		if (rc = InsertRec(dbInfo.sysColumns, sysData, &rid))//插入失败
 			return SQL_SYNTAX;
 	}
 
@@ -422,7 +397,7 @@ RC DropTable(char* relName) {
 	conditions[0].Lvalue = NULL; conditions[0].RattrLength = SIZE_TABLE_NAME; conditions[0].RattrOffset = 0;
 	conditions[0].Rvalue = relName;
 	rmRecord.bValid = false;
-	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[0], 1, conditions))
+	if (OpenScan(&rmFileScan, dbInfo.sysTables, 1, conditions))
 		return SQL_SYNTAX;
 
 	rc = GetNextRec(&rmFileScan, &rmRecord);
@@ -435,7 +410,7 @@ RC DropTable(char* relName) {
 		return SQL_SYNTAX;
 
 	//	 2.2. 否则从SYSTABLES中删除relName对应的一项记录
-	if(DeleteRec(dbInfo.sysFileHandle_Vec[0],&rmRecord.rid))
+	if(DeleteRec(dbInfo.sysTables,&rmRecord.rid))
 		return SQL_SYNTAX;
 
 	//3. 删除relName对应的rm文件
@@ -451,7 +426,7 @@ RC DropTable(char* relName) {
 
 	//	 4.1.读取SYSCOLUMNS。得到relName的atrrname。
 	rmRecord.bValid = false;
-	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[1], 1, conditions)) {//在SYSCOLUMNS文件中查找relName表的属性
+	if (OpenScan(&rmFileScan, dbInfo.sysColumns, 1, conditions)) {//在SYSCOLUMNS文件中查找relName表的属性
 		return SQL_SYNTAX;
 	}
 
@@ -467,7 +442,7 @@ RC DropTable(char* relName) {
 
 		}
 		//	 4.3.删除SYSCOLUMNS中atrrname对应的记录。
-		if(DeleteRec(dbInfo.sysFileHandle_Vec[1],&rmRecord.rid))
+		if(DeleteRec(dbInfo.sysColumns,&rmRecord.rid))
 			return SQL_SYNTAX;
 	}
 	
@@ -517,7 +492,7 @@ RC CreateIndex(char* indexName, char* relName, char* attrName) {
 	conditions[1].Rvalue = attrName;
 
 	rmRecord.bValid = false;
-	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[1], 2, conditions))
+	if (OpenScan(&rmFileScan, dbInfo.sysColumns, 2, conditions))
 		return SQL_SYNTAX;
 
 	 GetNextRec(&rmFileScan, &rmRecord);//没有办法对错误进行处理
@@ -533,7 +508,7 @@ RC CreateIndex(char* indexName, char* relName, char* attrName) {
 	//3. 创建对应的索引。
 	//	 3.1. 读取relName,atrrName在SYSCOLUMNS中的记录项，得到atrrType
 	rmRecord.bValid = false;
-	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[1], 2, conditions))
+	if (OpenScan(&rmFileScan, dbInfo.sysColumns, 2, conditions))
 		return SQL_SYNTAX;
 
 	rc = GetNextRec(&rmFileScan, &rmRecord);
@@ -556,7 +531,7 @@ RC CreateIndex(char* indexName, char* relName, char* attrName) {
 
 	//	 3.3. 更新SYS_COLUMNS
 	*ix_Flag =(char) 1;
-	if(	UpdateRec(dbInfo.sysFileHandle_Vec[1],&rmRecord))
+	if(	UpdateRec(dbInfo.sysColumns,&rmRecord))
 		return SQL_SYNTAX;
 	
 	return SUCCESS;
@@ -587,7 +562,7 @@ RC DropIndex(char* indexName) {
 	conditions[0].Rvalue = indexName;
 
 	rmRecord.bValid = false;
-	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[1], 1, conditions))
+	if (OpenScan(&rmFileScan, dbInfo.sysColumns, 1, conditions))
 		return SQL_SYNTAX;
 
 	GetNextRec(&rmFileScan, &rmRecord);//没有办法对错误进行处理
@@ -603,7 +578,7 @@ RC DropIndex(char* indexName) {
 	//	 2.2.否则修改SYSCOLUMNS中对应记录项ix_flag为0.
 	char* ix_Flag = rmRecord.pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET;
 	*ix_Flag =(char)0;
-	if (UpdateRec(dbInfo.sysFileHandle_Vec[1], &rmRecord))
+	if (UpdateRec(dbInfo.sysColumns, &rmRecord))
 		return SQL_SYNTAX;
 	
 	//3. 删除ix文件
@@ -649,7 +624,7 @@ RC Insert(char* relName, int nValues, Value* values) {
 	conditions[0].Rvalue = relName;
 
 	rmRecord.bValid = false;
-	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[0], 1, conditions))
+	if (OpenScan(&rmFileScan, dbInfo.sysTables, 1, conditions))
 		return SQL_SYNTAX;
 
 	rc = GetNextRec(&rmFileScan, &rmRecord);
@@ -667,7 +642,7 @@ RC Insert(char* relName, int nValues, Value* values) {
 
 	//	 2.2. 扫描SYSCOLUMNS文件。
 	rmRecord.bValid = false;
-	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[1], 1, conditions))
+	if (OpenScan(&rmFileScan, dbInfo.sysColumns, 1, conditions))
 		return SQL_SYNTAX;
 
 	int site_Value = 0;
@@ -776,7 +751,7 @@ RC Delete(char* relName, int nConditions, Condition* conditions) {
 	cons[0].Rvalue = relName;
 
 	rmRecord.bValid = false;
-	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[0], 1, cons))
+	if (OpenScan(&rmFileScan, dbInfo.sysTables, 1, cons))
 		return SQL_SYNTAX;
 
 	rc = GetNextRec(&rmFileScan, &rmRecord);
@@ -800,7 +775,7 @@ RC Delete(char* relName, int nConditions, Condition* conditions) {
 	cons[1].Rvalue = str_one;
 
 	rmRecord.bValid = false;
-	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[1], 2, cons))
+	if (OpenScan(&rmFileScan, dbInfo.sysColumns, 2, cons))
 		return SQL_SYNTAX;
 
 	rc = GetNextRec(&rmFileScan, &rmRecord);
@@ -839,8 +814,265 @@ RC Delete(char* relName, int nConditions, Condition* conditions) {
 	return SUCCESS;
 }
 
-RC TableMetaInsert(char* relName, int attrCount)
-{
 
-	return TABLE_NOT_EXIST;
+//目的：向SYSTABLES插入一条 relName/attrCount 记录
+//1. 检查relName是否已经存在，如果已经存在，则返回错误TABLE_EXIST
+//2. 向SYSTABLES插入记录
+RC TableMetaInsert(char* relName, int attrCount) {
+	RC rc;
+	RID rid;
+	RM_Record rmRecord;
+	if (TableMetaSearch(relName, &rmRecord) == SUCCESS)
+		return TABLE_EXIST;
+
+	char insertData[SIZE_TABLE_NAME + SIZE_ATTR_COUNT];
+	int* insertAttrCount;
+	
+	memset(insertData, 0, sizeof(insertData));
+	strcpy(insertData,relName);
+	insertAttrCount = (int *)(insertData + SIZE_TABLE_NAME);
+	*insertAttrCount = attrCount;
+
+	if (rc = InsertRec(dbInfo.sysTables, insertData, &rid))
+		return rc;
+
+	return SUCCESS;
+}
+
+//
+// 目的：在SYSTABLE表中删除relName匹配的那一项
+// relName: 表名称
+// 1. 判断 relName 是否存在, 不存在返回 TABLE_NOT_EXIST
+// 2. 如果存在则从SYSTABLE中删除relName匹配的记录，
+RC TableMetaDelete(char* relName){
+	RC rc;
+	RM_Record rmRecord;
+
+	// 1. 判断 relName 是否存在, 不存在返回 TABLE_NOT_EXIST
+	if ((rc = TableMetaSearch(relName, rmRecord)))
+		return rc;
+
+	// 2. 如果存在则从SYSTABLE中删除relName匹配的记录，
+	if ((rc = DeleteRec(dbInfo.sysTables, &rmRecord.rid)))
+		return rc;
+
+	return SUCCESS;
+}
+
+//
+// 目的：在SYSTABLES表中查找relName是否存在。
+// relName: 表名称
+// 返回值：
+// 1. 不存在返回 TABLE_NOT_EXIST
+// 2. 存在 返回 SUCCESS
+// 
+RC TableMetaSearch(char* relName,RM_Record* rmRecord) {
+	RM_FileScan rmFileScan;
+	RC rc;
+	Con cons[1];
+
+	cons[0].attrType = chars; cons[0].bLhsIsAttr = 1; cons[0].bRhsIsAttr = 0;
+	cons[0].compOp = EQual; cons[0].LattrLength = SIZE_TABLE_NAME; cons[0].LattrOffset = 0;
+	cons[0].Lvalue = NULL; cons[0].RattrLength = SIZE_TABLE_NAME; cons[0].RattrOffset = 0;
+	cons[0].Rvalue = relName;
+
+	if ((rc = OpenScan(&rmFileScan, dbInfo.sysTables, 1, cons)) ||
+		(rc = GetNextRec(&rmFileScan, rmRecord)) || (rc = CloseScan(&rmFileScan)))
+		return rc;
+
+	// 1. 不存在返回 TABLE_NOT_EXIST
+	if (rc != SUCCESS || !rmRecord->bValid)
+		return TABLE_NOT_EXIST;
+
+	// 2. 存在 返回 SUCCESS
+	return SUCCESS;
+}
+
+// 
+// 目的：打印出SYSTABLES数据表
+// RC 代表 RM Scan 过程中发生的错误 (除去 RM_EOF)
+// 完成 Scan 返回 Success
+// 输出格式尽量好看些，仿照 mysql 是最吼的
+// 
+RC TableMetaShow() {
+	return SUCCESS;
+}
+
+//
+// 目的： 扫描SYSCOLUMNS中relName和attrName是否存在。如果不存在则返回ATTR_NOT_EXIST
+RC ColumnSearchAttr(char* relName, char* attrName, RM_Record* rmRecord) {
+	RM_FileScan rmFileScan;
+	RC rc;
+	Con cons[2];
+	
+	RID rid;
+
+	cons[0].attrType = chars; cons[0].bLhsIsAttr = 1; cons[0].bRhsIsAttr = 0;
+	cons[0].compOp = EQual; cons[0].LattrLength = SIZE_TABLE_NAME; cons[0].LattrOffset = 0;
+	cons[0].Lvalue = NULL; cons[0].RattrLength = SIZE_TABLE_NAME; cons[0].RattrOffset = 0;
+	cons[0].Rvalue = relName;
+
+	cons[1].attrType = chars; cons[1].bLhsIsAttr = 1; cons[1].bRhsIsAttr = 0;
+	cons[1].compOp = EQual; cons[1].LattrLength = SIZE_ATTR_NAME; cons[1].LattrOffset = SIZE_TABLE_NAME;
+	cons[1].Lvalue = NULL; cons[1].RattrLength = SIZE_ATTR_NAME; cons[1].RattrOffset = 0;
+	cons[1].Rvalue = attrName;
+
+	rmRecord->bValid = false;
+
+	if ((rc = OpenScan(&rmFileScan, dbInfo.sysColumns, 2, cons)) ||
+		(rc = GetNextRec(&rmFileScan, rmRecord)) || (rc = CloseScan(&rmFileScan)))
+		return rc;
+
+	// 扫描SYSCOLUMNS中relName和attrName是否存在。如果不存在则返回ATTR_NOT_EXIST
+	if (rc != SUCCESS || !rmRecord->bValid)
+		return ATTR_NOT_EXIST;
+
+	return SUCCESS;
+}
+
+//
+// 目的：将各个数据项写入pData中，用来向SYSCOLUMNS进行插入
+RC ToData(char* relName, char* attrName, int attrType,
+	int attrLength, int attrOffset, bool ixFlag, char* indexName,char* pData) {
+	int* pDataAttrType, * pDataAttrLength, * pDataAttrOffset;
+	char* pDataIxFlag;
+	memset(pData, 0, SIZE_SYS_COLUMNS);
+	strcpy(pData, relName);
+	strcpy(pData + SIZE_TABLE_NAME, attrName);
+	pDataAttrType = (int*)(pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME);
+	*pDataAttrType = attrType;
+	pDataAttrLength = (int*)(pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE);
+	*pDataAttrLength = attrLength;
+	pDataAttrOffset = (int*)(pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH);
+	*pDataAttrOffset = attrOffset;
+	pDataIxFlag = pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET;
+	*pDataIxFlag = ixFlag;
+	strcpy(pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET + SIZE_IX_FLAG, indexName);
+	
+	return SUCCESS;
+}
+
+//
+// 目的：向SYSCOLUMNS中插入一条记录
+// 1.检查relName表是否存在，如果不存在则返回错误。
+// 2.检查输入relName的attrName项是否已经存在。如果存在返回ATTR_EXIST
+// 3.向SYSCOLUMNS中插入记录值
+//	 3.1. 检查relName、attrName和indexname是否超过指定范围
+//	 3.2. 将输入的各项值整合
+//	 3.3. 向SYSCOLUMNS表插入
+RC ColumnMetaInsert(char* relName, char* attrName, int attrType,
+	int attrLength, int attrOffset, bool ixFlag, char* indexName) {
+	RC rc;
+	RM_Record rmRecord;
+	// 1.检查relName表是否存在，如果不存在则返回错误。
+	if ((rc = TableMetaSearch(relName, &rmRecord)))
+		return rc;
+
+	// 2.检查输入relName的attrName项是否已经存在。如果存在返回ATTR_EXIST
+	if (  ColumnSearchAttr(relName, attrName,&rmRecord) == SUCCESS)
+		return ATTR_EXIST;
+
+	// 2.向SYSCOLUMNS中插入记录值
+
+	//	 2.1. 检查relName和attrName是否超过指定范围
+	if (strlen(relName) >= SIZE_TABLE_NAME || strlen(attrName) >= SIZE_ATTR_NAME 
+		||strlen(indexName)>= SIZE_INDEX_NAME)
+		return NAME_TOO_LONG;
+
+	//	 2.2. 将输入的各项值整合
+	RID rid;
+	char pData[SIZE_SYS_COLUMNS];
+	ToData(relName, attrName, attrType, attrLength, attrOffset, ixFlag, indexName, pData);
+
+	//	 3.3. 向SYSCOLUMNS表插入
+	if((rc=InsertRec(dbInfo.sysColumns,pData,&rid)))
+		return rc;
+
+	return SUCCESS;
+}
+
+//
+// 目的：删除同一个表中的所有属性列信息
+// 1. 检查relName表是否存在
+// 2. 遍历SYSCOLUMNS，删除relName相关的所有记录
+RC ColumnMetaDelete(char* relName) {
+	// 1. 检查relName表是否存在
+	RC rc;
+	RM_Record rmRecord;
+	if ((rc = TableMetaSearch(relName, &rmRecord)))
+		return rc;
+
+	// 2. 遍历SYSCOLUMNS，删除relName相关的所有记录
+	RM_FileScan rmFileScan;
+	Con cons[1];
+	RID rid;
+
+	cons[0].attrType = chars; cons[0].bLhsIsAttr = 1; cons[0].bRhsIsAttr = 0;
+	cons[0].compOp = EQual; cons[0].LattrLength = SIZE_TABLE_NAME; cons[0].LattrOffset = 0;
+	cons[0].Lvalue = NULL; cons[0].RattrLength = SIZE_TABLE_NAME; cons[0].RattrOffset = 0;
+	cons[0].Rvalue = relName;
+	rmRecord.bValid = false;
+
+	if ((rc = OpenScan(&rmFileScan, dbInfo.sysColumns, 1, cons)))
+		return rc;
+
+	rc = GetNextRec(&rmFileScan, &rmRecord);
+	while (rc == SUCCESS && rmRecord.bValid) {
+		if ((rc = DeleteRec(dbInfo.sysColumns, &rmRecord.rid)) ||
+			(rc = GetNextRec(&rmFileScan, &rmRecord)))
+			return rc;
+	}
+
+	if((rc=CloseScan(&rmFileScan)))
+		return rc;
+
+	return SUCCESS;
+}
+
+
+//
+// 目的：// 更新SYSCOLUMNS元数据表中的某一项记录 
+// 1. 检查relName和attrName是否存在。如果不存在则报错
+// 2. 更新SYSCOLUMNS
+RC ColumnMetaUpdate(char* relName, char* attrName, int attrType,
+	int attrLength, int attrOffset, bool ixFlag, char* indexName) {
+	// 1. 检查relName和attrName是否存在。如果不存在则报错
+	RC rc;
+	RM_Record rmRecord;
+	if ((rc = TableMetaSearch(relName, &rmRecord)) ||
+		(rc=ColumnSearchAttr(relName,attrName,&rmRecord)))
+		return rc;
+
+	// 2. 更新SYSCOLUMNS
+	RID rid;
+	char pData[SIZE_SYS_COLUMNS];
+	ToData(relName, attrName, attrType, attrLength, attrOffset, ixFlag, indexName, pData);
+	rmRecord.pData = pData;
+
+	if ((rc = UpdateRec(dbInfo.sysColumns,&rmRecord)))
+		return rc;
+
+	return SUCCESS;
+}
+
+
+//
+// 目的：扫描获取relName表的attrName属性的类型、长度
+// 1. 判断relName和attrName是否存在
+// 2. 将信息封装进attribute
+RC ColunmMetaGet(char* relName, char* attrName, AttrInfo* attribute) {
+	// 1. 检查relName和attrName是否存在。如果不存在则报错
+	RC rc;
+	RM_Record rmRecord;
+	if ((rc = TableMetaSearch(relName, &rmRecord)) ||
+		(rc = ColumnSearchAttr(relName, attrName, &rmRecord)))
+		return rc;
+
+	strcpy(attrName, attribute->attrName);
+	AttrType* attrType = (AttrType*)(rmRecord.pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME);
+	attribute->attrType = *attrType;
+	int* attrLength = (int*)(rmRecord.pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE);
+	attribute->attrLength = *attrLength;
+
+	return SUCCESS;
 }
