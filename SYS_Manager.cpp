@@ -7,17 +7,14 @@
 //放在SYS_Manager.h中会发生冲突
 typedef struct db_info {
 	std::vector< RM_FileHandle* > sysFileHandle_Vec; //保存系统文件的句柄
-	std::map<std::string,RM_FileHandle*> rmFileHandle_Map; //从文件名映射到对应的记录文件句柄
-	std::map<std::string,IX_IndexHandle*> ixIndexHandle_Map; //从文件名映射到对应的索引文件句柄
+	std::map<std::string, RM_FileHandle*> rmFileHandle_Map; //从文件名映射到对应的记录文件句柄
+	std::map<std::string, IX_IndexHandle*> ixIndexHandle_Map; //从文件名映射到对应的索引文件句柄
 
-	int MAXATTRS=20;		 //最大属性数量
-	char curDbName[300]=""; //存放当前DB名称
-	char path[300]= "C:\C++\HBASE\DB";		 //存放所有DB公共的上级目录
+	int MAXATTRS = 20;		 //最大属性数量
+	char curDbName[300] = ""; //存放当前DB名称
+	char path[300] = "C:\C++\HBASE\DB";		 //存放所有DB公共的上级目录
 }DB_INFO;
-
 DB_INFO dbInfo;
-
-
 
 void ExecuteAndMessage(char * sql,CEditArea* editArea){//根据执行的语句类型在界面上显示执行结果。此函数需修改
 	std::string s_sql = sql;
@@ -625,4 +622,10 @@ RC CreateIndex(char* indexName, char* relName, char* attrName) {
 RC DropIndex(char* indexName) {
 	//1. 检查当前是否打开了一个数据库。如果没有则报错。
 	return SUCCESS;
+}
+
+RC TableMetaInsert(char* relName, int attrCount)
+{
+
+	return TABLE_NOT_EXIST;
 }
