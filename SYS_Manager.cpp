@@ -22,15 +22,12 @@
 
 typedef struct db_info {
 	std::vector< RM_FileHandle* > sysFileHandle_Vec; //保存系统文件的句柄
-
 	int MAXATTRS=20;		 //最大属性数量
 	std::string curDbName; //存放当前DB名称
-	std::string path	 //调用CreateDB传入的路径
+	std::string path;	 //调用CreateDB传入的路径
+
 }DB_INFO;
-
 DB_INFO dbInfo;
-
-
 
 void ExecuteAndMessage(char * sql,CEditArea* editArea){//根据执行的语句类型在界面上显示执行结果。此函数需修改
 	std::string s_sql = sql;
@@ -186,6 +183,7 @@ RC CreateDB(char *dbpath,char *dbname){
 			std::string sysTablePath = dbPath + "\\SYSTABLES";
 			std::string sysColumnsPath = dbPath + "\\SYSCOLUMNS";
 			if ((rc= RM_CreateFile((char *)sysTablePath.c_str(), SIZE_SYS_TABLE)) ||  (rc= RM_CreateFile((char *)sysColumnsPath.c_str(), SIZE_SYS_COLUMNS)))
+
 				return rc;
 			//5. 设置dbPath和curDbName。
 			dbInfo.path = dbpath;
@@ -444,8 +442,10 @@ RC DropTable(char* relName) {
 	std::string rmFileName="";
 	rmFileName += relName;
 	rmFileName += ".rm";
+
 	if(!DeleteFile((LPCSTR)rmFileName.c_str()))
 		return SQL_SYNTAX;
+
 
 	//4. 删除ix文件
 
@@ -457,12 +457,14 @@ RC DropTable(char* relName) {
 
 	std::string ixFileName ;
 	while (!GetNextRec(&rmFileScan, &rmRecord)) { //无法区分RM_EOF和其他错误，所以无法做错误处理
+
 		//	 4.2.判断是否创建了索引。如果创建了索引：删除relName_atrrname对应的ix文件
 		if ((*(rmRecord.pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET)) == (char)1) {
 			ixFileName=dbInfo.curDbName+"\\";
-			ixFileName += rmRecord.pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET + SIZE_IX_FLAG;
+			ixFileName += (char *)(rmRecord.pData + SIZE_TABLE_NAME + SIZE_ATTR_NAME + SIZE_ATTR_TYPE + SIZE_ATTR_LENGTH + SIZE_ATTR_OFFSET + SIZE_IX_FLAG);
 			if(!DeleteFile(ixFileName.c_str()))
 				return SQL_SYNTAX;
+
 		}
 		//	 4.3.删除SYSCOLUMNS中atrrname对应的记录。
 		if(DeleteRec(dbInfo.sysFileHandle_Vec[1],&rmRecord.rid))
@@ -569,6 +571,7 @@ RC CreateIndex(char* indexName, char* relName, char* attrName) {
 //3. 删除ix文件
 RC DropIndex(char* indexName) {
 	//1. 检查当前是否打开了一个数据库。如果没有则报错。
+
 	if (dbInfo.curDbName[0] == 0)
 		return SQL_SYNTAX;
 
@@ -832,4 +835,12 @@ RC Delete(char* relName, int nConditions, Condition* conditions) {
 
 	//4. 将输入的nConditions和conditions转换成RM_FileScan的参数。
 	
+
+	return SUCCESS;
+}
+
+RC TableMetaInsert(char* relName, int attrCount)
+{
+
+	return TABLE_NOT_EXIST;
 }
