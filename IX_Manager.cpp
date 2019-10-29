@@ -243,6 +243,19 @@ RC IX_GetNextEntry(IX_IndexScan* indexScan, RID* rid)
 			if (indexScan->ridIx >= nodePageHdr->keynum) {
 				indexScan->pnNext = nodePageHdr->sibling;
 				indexScan->ridIx = 0;
+
+				// 重新获得新的 page
+				if (indexScan->pnNext == IX_NO_MORE_NEXT_LEAF)
+					return IX_EOF;
+
+				if ((rc = UnpinPage(&pageHandle)) ||
+					(rc = GetThisPage(&(indexScan->pIXIndexHandle->fileHandle), indexScan->pnNext, &pageHandle)) ||
+					(rc = GetData(&pageHandle, &data)))
+					return rc;
+
+				nodePageHdr = (IX_NodePageHeader*)data;
+				key = data + (indexScan->pIXIndexHandle->fileHeader.nodeKeyListOffset);
+				nodeEntry = (IX_NodeEntry*)(data + (indexScan->pIXIndexHandle->fileHeader.nodeEntryListOffset));
 			}
 		}
 		break;
@@ -1632,5 +1645,6 @@ RC printBPlusTreeSeq(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen)
 		node = nodePageHdr->sibling;
 	}
 
+	delete[] tmp;
 	return SUCCESS;
 }
