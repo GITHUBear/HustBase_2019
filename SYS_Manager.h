@@ -47,7 +47,7 @@ typedef struct {
 	RM_FileHandle sysColumn;
 
 	std::string curWorkPath;        // DB 文件夹上层目录路径
-	std::string curDBPath;
+	std::string curDBName;
 } WorkSpace;
 
 void ExecuteAndMessage(char * ,CEditArea*);

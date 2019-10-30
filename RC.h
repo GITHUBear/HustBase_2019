@@ -45,6 +45,8 @@ typedef enum {
 	IX_SCANOPENNED,
 	FAIL,
 
+	OSFAIL,
+
 	DB_EXIST,
 	DB_NOT_EXIST,
 	NO_DB_OPENED,
