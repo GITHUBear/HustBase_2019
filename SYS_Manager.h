@@ -50,6 +50,14 @@ typedef struct {
 	std::string curDBName;
 } WorkSpace;
 
+typedef struct {
+	AttrType attrType;
+	int attrLength;
+	int attrOffset;
+	bool ix_flag;
+	std::string idxName;
+} AttrEntry;
+
 void ExecuteAndMessage(char * ,CEditArea*);
 bool CanButtonClick();
 
@@ -113,7 +121,8 @@ RC ColumnMetaShow();                                                 // 打印出 c
 
 // 检查 relName 有效，同上
 // 获取的信息保存在 attribute 中
-RC MetaGet(char* relName, int attrCount, AttrInfo* attributes);      // 通过 table 元数据 和 column 元数据
+RC MetaGet(char* relName, int* attrCount,
+	       std::vector<AttrEntry>& attributes);                      // 通过 table 元数据 和 column 元数据
                                                                      // 获得一个表的全部属性信息, 便于进行类型检查
                                                                      // CreateTable 的 逆操作
 

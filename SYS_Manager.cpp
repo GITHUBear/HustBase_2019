@@ -7,20 +7,9 @@
 #include <cstdio>
 #include <string>
 #include <set>
+#include <algorithm>
 
 WorkSpace workSpace;
-
-//放在SYS_Manager.h中会发生冲突
-typedef struct db_info {
-	std::vector< RM_FileHandle* > sysFileHandle_Vec; //保存系统文件的句柄
-	std::map<std::string, RM_FileHandle*> rmFileHandle_Map; //从文件名映射到对应的记录文件句柄
-	std::map<std::string, IX_IndexHandle*> ixIndexHandle_Map; //从文件名映射到对应的索引文件句柄
-
-	int MAXATTRS = 20;		 //最大属性数量
-	char curDbName[300] = ""; //存放当前DB名称
-	char path[300] = "C:\C++\HBASE\DB";		 //存放所有DB公共的上级目录
-}DB_INFO;
-DB_INFO dbInfo;
 
 void ExecuteAndMessage(char * sql,CEditArea* editArea){//根据执行的语句类型在界面上显示执行结果。此函数需修改
 	std::string s_sql = sql;
@@ -405,12 +394,22 @@ RC CreateTable(char* relName, int attrCount, AttrInfo* attributes)
 //	 4.3.删除SYSCOLUMNS中atrrname对应的记录。
 RC DropTable(char* relName) 
 {
+	RC rc;
+
 	// 1. 检查当前是否打开了一个数据库。如果没有则报错。
 	if (!workSpace.curDBName.size()) {
 		return NO_DB_OPENED;
 	}
 
+	if (strlen(relName) >= TABLENAME ||
+		!strcmp(relName, TABLE_META_NAME) ||
+		!strcmp(relName, COLUMN_META_NAME)) {
+		return SQL_SYNTAX;
+	}
 
+	if ((rc = ColumnMetaDelete(relName)) ||
+		(rc = TableMetaDelete(relName)))
+		return rc;
 
 	return SUCCESS;
 }
@@ -422,94 +421,60 @@ RC DropTable(char* relName)
 //	 3.1. 读取relName,atrrName在SYSCOLUMNS中的记录项，得到attrType和attrLength
 //	 3.2. 创建IX文件
 //	 3.3. 更新SYS_COLUMNS
-RC CreateIndex(char* indexName, char* relName, char* attrName) {
-	//1. 检查当前是否打开了一个数据库。如果没有则报错。
-	if (strcmp(dbInfo.curDbName, "") == 0)
+RC CreateIndex(char* indexName, char* relName, char* attrName) 
+{
+	if (strlen(indexName) >= INDEXNAME)
 		return SQL_SYNTAX;
 
-	char ixFileName[45];//relname+"_"+attrName+".ix"-1
-	memset(ixFileName, 0, 42);
-	strcat(ixFileName,relName);
-	strcat(ixFileName, "_");
-	strcat(ixFileName, attrName);
-	strcat(ixFileName, ".ix");
-	
-	if (strcmp(indexName, ixFileName)) {//检查indexName和约定的是否一致。
-		return SQL_SYNTAX;
-	}
-
-	//2. 检查是否已经存在对应的索引。如果已经存在则报错。
-	RM_FileScan rmFileScan;
-	RM_Record rmRecord;
-	Con conditions[3];
 	RC rc;
+	RM_Record rmRecord;
+	rmRecord.pData = new char[COL_ENTRY_SIZE];
+	memset(rmRecord.pData, 0, COL_ENTRY_SIZE);
 
-	conditions[0].attrType = chars; conditions[0].bLhsIsAttr = 1; conditions[0].bRhsIsAttr = 0;
-	conditions[0].compOp = EQual; conditions[0].LattrLength = 21; conditions[0].LattrOffset = 0;
-	conditions[0].Lvalue = NULL; conditions[0].RattrLength = 21; conditions[0].RattrOffset = 0;
-	conditions[0].Rvalue = relName;
-
-	conditions[1].attrType = chars; conditions[1].bLhsIsAttr = 1; conditions[1].bRhsIsAttr = 0;
-	conditions[1].compOp = EQual; conditions[1].LattrLength = 21; conditions[1].LattrOffset = 21;
-	conditions[1].Lvalue = NULL; conditions[1].RattrLength = 21; conditions[1].RattrOffset = 0;
-	conditions[1].Rvalue = attrName;
-
-	char str_one[1];//因为ix_flag是一个字节的标识位，所以用chars的方式来比较。
-	str_one[0]=1;
-	conditions[2].attrType = chars; conditions[2].bLhsIsAttr = 1; conditions[2].bRhsIsAttr = 0;
-	conditions[2].compOp = EQual; conditions[2].LattrLength = 1; conditions[2].LattrOffset = + 21 + 21 + 4 + 4 + 4+1;
-	conditions[2].Lvalue = NULL; conditions[2].RattrLength = 1; conditions[2].RattrOffset = 0;
-	conditions[2].Rvalue = str_one;
-
-	rmRecord.bValid = false;
-	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[1], 3, conditions))
-		return SQL_SYNTAX;
-
-	rc = GetNextRec(&rmFileScan, &rmRecord);
-
-	if (rc == SUCCESS || rmRecord.bValid) {//已经创建了对应的索引
-		return SQL_SYNTAX;
+	// 1. 检查当前是否打开了一个数据库。如果没有则报错。
+	if (!workSpace.curDBName.size()) {
+		delete[] rmRecord.pData;
+		return NO_DB_OPENED;
 	}
 
-	if (CloseScan(&rmFileScan))
-		return SQL_SYNTAX;
+	// 判断表是否存在
+	RM_Record tableRec;
+	tableRec.pData = new char[TABLE_ENTRY_SIZE];
+	memset(tableRec.pData, 0, TABLE_ENTRY_SIZE);
+	if (rc = TableMetaSearch(relName, &tableRec)) {
+		delete[] tableRec.pData;
+		delete[] rmRecord.pData;
+		return rc;
+	}
+	delete[] tableRec.pData;
 
-	//3. 创建对应的索引。
-	//	 3.1. 读取relName,atrrName在SYSCOLUMNS中的记录项，得到atrrType
-	rmRecord.bValid = false;
-	if (OpenScan(&rmFileScan, dbInfo.sysFileHandle_Vec[1], 2, conditions))
-		return SQL_SYNTAX;
+	// 判断属性是否存在
+	if (rc = ColumnSearchAttr(relName, attrName, &rmRecord)) {
+		delete[] rmRecord.pData;
+		return rc;
+	}
 
-	rc = GetNextRec(&rmFileScan, &rmRecord);
+	if (*(rmRecord.pData + IXFLAG_OFF) == (char)1) {
+		delete[] rmRecord.pData;
+		return INDEX_EXIST;
+	}
 
-	if (rc != SUCCESS || !rmRecord.bValid)
-		return SQL_SYNTAX;
+	// 先创建 IX 文件，再更改
 
-	if (CloseScan(&rmFileScan))
-		return SQL_SYNTAX;
 
-	//	 3.2. 创建IX文件
-	int attrType = *((int*)rmRecord.pData + 21 + 21);
-	int attrLength = *((int*)rmRecord.pData + 21 + 21 + 4);
-	char* ix_Flag = (char*)rmRecord.pData + 21 + 21 + 4 + 4 + 4;
-	if (ix_Flag != 0)//检查ix_flag等于0
-		return SQL_SYNTAX;
-	//RC CreateIndex(const char * fileName,AttrType attrType,int attrLength);
-	if(CreateIndex(ixFileName,(AttrType)attrType,attrLength))
-		return SQL_SYNTAX;
+	char* pData;
+	char ix_c = 1;
+	pData = rmRecord.pData;
+	*(pData + IXFLAG_OFF) = ix_c;
+	memcpy(pData + INDEXNAME_OFF, indexName, strlen(indexName));
 
-	//	 3.3. 更新SYS_COLUMNS
-	*ix_Flag = 1;
-	RM_FileHandle* rmFileHandle;
-	char rmFileName[24];//relName+".rm"
-	memset(rmFileName, 0, 24);
-	strcat(rmFileName, relName);
-	strcat(rmFileName, ".rm");
-	if(	RM_OpenFile(rmFileName,rmFileHandle)||
-		UpdateRec(rmFileHandle,&rmRecord)||
-		RM_CloseFile(rmFileHandle))
-		return SQL_SYNTAX;
-	
+	if (rc = UpdateRec(&(workSpace.sysColumn), &rmRecord)) {
+		delete[] rmRecord.pData;
+		return rc;
+	}
+
+	delete[] rmRecord.pData;
+	return SUCCESS;
 }
 
 //
@@ -519,8 +484,18 @@ RC CreateIndex(char* indexName, char* relName, char* attrName) {
 //	 2.1 如果不存在则报错。
 //	 2.2.否则修改SYSCOLUMNS中对应记录项ix_flag为0.
 //3. 删除ix文件
-RC DropIndex(char* indexName) {
-	//1. 检查当前是否打开了一个数据库。如果没有则报错。
+RC DropIndex(char* indexName) 
+{
+	// 1. 检查当前是否打开了一个数据库。如果没有则报错。
+	if (!workSpace.curDBName.size()) {
+		return NO_DB_OPENED;
+	}
+
+	return SUCCESS;
+}
+
+RC Insert(char* relName, int nValues, Value* values)
+{
 	return SUCCESS;
 }
 
@@ -618,7 +593,19 @@ RC TableMetaDelete(char* relName)
 	}
 
 	// 删除表的 rm 文件
+	char tableName[21];
+	memcpy(tableName, rmRecord.pData + TABLENAME_OFF, TABLENAME);
+	std::string tablePath = workSpace.curDBName;
+	tablePath += "\\";
+	tablePath += tableName;
+	tablePath += REC_FILE_SUFFIX;
 
+	std::cout << "delete table record file: " << tablePath << std::endl;
+
+	if (!DeleteFile(tablePath.c_str())) {
+		delete[] rmRecord.pData;
+		return OSFAIL;
+	}
 
 	if (rc = DeleteRec(&(workSpace.sysTable), &(rmRecord.rid))) {
 		delete[] rmRecord.pData;
@@ -729,7 +716,7 @@ RC ColumnSearchAttr(char* relName, char* attrName, RM_Record* rmRecord)
 
 	if ((rc = GetNextRec(&rmFileScan, &rec)) == RM_EOF) {
 		delete[] rec.pData;
-		return TABLE_NOT_EXIST;
+		return FLIED_NOT_EXIST;
 	}
 	if (rc != SUCCESS) {
 		delete[] rec.pData;
@@ -798,8 +785,10 @@ RC ColumnMetaDelete(char* relName)
 
 			std::cout << "delete index file: " <<  indexFilePath << std::endl;
 
-			if (!DeleteFile(indexFilePath.c_str()))
-				return FAIL;
+			if (!DeleteFile(indexFilePath.c_str())) {
+				delete[] rmRecord.pData;
+				return OSFAIL;
+			}
 		}
 
 		if (rc = DeleteRec(&(workSpace.sysColumn), &(rmRecord.rid))) {
@@ -929,3 +918,72 @@ RC ColumnMetaShow()
 	return SUCCESS;
 }
 
+bool cmp(AttrEntry lattrEntry, AttrEntry rattrEntry)
+{
+	return lattrEntry.attrOffset < rattrEntry.attrOffset;
+}
+
+//
+// 
+//
+RC MetaGet(char* relName, int* attrCount, std::vector<AttrEntry>& attributes)
+{
+	RC rc;
+	RM_Record tableRec;
+	tableRec.pData = new char[TABLE_ENTRY_SIZE];
+	memset(tableRec.pData, 0, TABLE_ENTRY_SIZE);
+
+	if (rc = TableMetaSearch(relName, &tableRec)) {
+		delete[] tableRec.pData;
+		return rc;
+	}
+
+	*attrCount = *(int*)(tableRec.pData + ATTRCOUNT_OFF);
+	delete[] tableRec.pData;
+
+	RM_Record columnRec;
+	columnRec.pData = new char[COL_ENTRY_SIZE];
+	memset(columnRec.pData, 0, COL_ENTRY_SIZE);
+
+	RM_FileScan columnScan;
+	Con cond;
+
+	cond.attrType = chars; cond.bLhsIsAttr = 1; cond.bRhsIsAttr = 0;
+	cond.compOp = EQual; cond.LattrLength = TABLENAME; cond.LattrOffset = TABLENAME_OFF;
+	cond.Lvalue = NULL; cond.RattrLength = TABLENAME; cond.RattrOffset = 0;
+	cond.Rvalue = relName;
+
+	if (rc = OpenScan(&columnScan, &(workSpace.sysColumn), 1, &cond)) {
+		delete[] columnRec.pData;
+		return rc;
+	}
+	
+	AttrEntry attrEntry;
+
+	while ((rc = GetNextRec(&columnScan, &columnRec)) != RM_EOF) {
+		if (rc != SUCCESS) {
+			delete[] columnRec.pData;
+			return rc;
+		}
+
+		attrEntry.attrLength = *(int*)(columnRec.pData + ATTRLENGTH_OFF);
+		attrEntry.attrType = (AttrType)(*(int*)(columnRec.pData + ATTRTYPE_OFF));
+		attrEntry.attrOffset = *(int*)(columnRec.pData + ATTROFFSET_OFF);
+		attrEntry.ix_flag = (*(columnRec.pData + IXFLAG_OFF) == (char)1);
+		attrEntry.idxName = columnRec.pData + INDEXNAME_OFF;
+
+		attributes.push_back(attrEntry);
+	}
+
+	if (rc = CloseScan(&columnScan)) {
+		delete[] columnRec.pData;
+		return rc;
+	}
+
+	assert(attributes.size() == *attrCount);
+
+	sort(attributes.begin(), attributes.end(), cmp);
+
+	delete[] columnRec.pData;
+	return SUCCESS;
+}
