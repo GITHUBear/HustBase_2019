@@ -10,23 +10,27 @@
 #include <cassert>
 #include <vector>
 
-#define TABLE_META_NAME "SYSTABLES"
-#define COLUMN_META_NAME "SYSCOLUMNS"
+#define TABLE_META_NAME "SYSTABLES.rm"
+#define COLUMN_META_NAME "SYSCOLUMNS.rm"
+
+#define INDEX_FILE_SUFFIX ".ix"
+#define REC_FILE_SUFFIX ".rm"
 
 // table 元数据表字段长度
 const int TABLENAME = 21;
-const int ATTRCOUNT = 4;
+const int ATTRCOUNT = sizeof(int);
 // table 元数据各个字段偏移
 const int TABLENAME_OFF = 0;
 const int ATTRCOUNT_OFF = TABLENAME_OFF + TABLENAME;
+const int TABLE_ENTRY_SIZE = TABLENAME + ATTRCOUNT;
 
 // column 元数据表字段长度
 // const int TABLENAME = 21;
 const int ATTRNAME = 21;
-const int ATTRTYPE = 4;
-const int ATTRLENGTH = 4;
-const int ATTROFFSET = 4;
-const int IXFLAG = 1;
+const int ATTRTYPE = sizeof(int);
+const int ATTRLENGTH = sizeof(int);
+const int ATTROFFSET = sizeof(int);
+const int IXFLAG = sizeof(char);
 const int INDEXNAME = 21;
 // column 元数据表各个字段偏移
 // const int TABLENAME_OFF = 0;
@@ -36,6 +40,7 @@ const int ATTRLENGTH_OFF = ATTRTYPE_OFF + ATTRTYPE;
 const int ATTROFFSET_OFF = ATTRLENGTH_OFF + ATTRLENGTH;
 const int IXFLAG_OFF = ATTROFFSET_OFF + ATTROFFSET;
 const int INDEXNAME_OFF = IXFLAG_OFF + IXFLAG;
+const int COL_ENTRY_SIZE = TABLENAME + ATTRNAME + ATTRTYPE + ATTRLENGTH + ATTROFFSET + IXFLAG + INDEXNAME;
 
 typedef struct {
 	RM_FileHandle sysTable;
@@ -83,7 +88,7 @@ RC TableMetaDelete(char* relName);                                   // 删除一个
 // 判断 relName 是否存在, 不存在返回 TABLE_NOT_EXIST
 // 存在 返回 SUCCESS
 // 
-RC TableMetaSearch(char* relName);                                   // 判断一个 table name 是否存在
+RC TableMetaSearch(char* relName, RM_Record* rmRecord);                         // 判断一个 table name 是否存在
 // RC 代表 RM Scan 过程中发生的错误 (除去 RM_EOF)
 // 完成 Scan 返回 Success
 // 输出格式尽量好看些，仿照 mysql 是最吼的
@@ -96,9 +101,10 @@ RC ColumnMetaInsert(char* relName, char* attrName, int attrType,
 // 检查 relName 有效，同上
 RC ColumnMetaDelete(char* relName);                                  // 删除同一个表中的所有属性列信息
                                                                      // RM 的实现允许边查边删
+RC ColumnSearchAttr(char* relName, char* attrName, RM_Record* rmRecord);
 // 检查 relName 有效，同上
-RC ColumnMetaUpdate(char* relName, char* attrName, int metaOffset, 
-	                AttrType metaType, void *value);                 // 更新 column 元数据表中的某一项记录的相关属性 
+RC ColumnMetaUpdate(char* relName, char* attrName,
+	bool ixFlag, char* indexName);                                   // 更新 column 元数据表中的某一项记录的相关属性 
 // 检查 relName 有效，同上
 // 获取的信息保存在 attribute 中
 RC ColunmMetaGet(char* relName, char* attrName, AttrInfo* attribute);// 获取某个 表 中的 某一个属性的 类型、长度

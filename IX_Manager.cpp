@@ -1563,8 +1563,10 @@ RC printBPlusTree(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen, int
 		return FAIL;
 
 	if ((rc = GetThisPage(&(indexHandle->fileHandle), node, &nodePageHandle)) ||
-		(rc = GetData(&nodePageHandle, &data)))
+		(rc = GetData(&nodePageHandle, &data))) {
+		delete[] tmp;
 		return rc;
+	}
 
 	nodePageHdr = (IX_NodePageHeader*)data;
 	key = data + indexHandle->fileHeader.nodeKeyListOffset;
@@ -1579,8 +1581,10 @@ RC printBPlusTree(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen, int
 			std::cout << " " << tmp << " : ";
 			if (nodeEntry[i].tag == DUP) {
 				// ´æÔÚ Bucket Page
-				if (rc = printBucket(indexHandle, nodeEntry[i].rid.pageNum))
+				if (rc = printBucket(indexHandle, nodeEntry[i].rid.pageNum)) {
+					delete[] tmp;
 					return rc;
+				}
 
 			} else {
 				std::cout << "( [ pN: " << nodeEntry[i].rid.pageNum << " , sN: " <<
@@ -1588,20 +1592,26 @@ RC printBPlusTree(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen, int
 			}
 		}
 		std::cout << " }" << std::endl;
-		if (rc = UnpinPage(&nodePageHandle))
+		if (rc = UnpinPage(&nodePageHandle)) {
+			delete[] tmp;
 			return rc;
+		}
 		delete[] tmp;
 		return SUCCESS;
 	} else {
 		printLevelTab(level);
 		std::cout << "Node : { " << std::endl;
 		PageNum child = nodePageHdr->firstChild;
-		if (rc = UnpinPage(&nodePageHandle))
+		if (rc = UnpinPage(&nodePageHandle)) {
+			delete[] tmp;
 			return rc;
+		}
 		printBPlusTree(indexHandle, child, keyShowLen, level + 1);
 		if ((rc = GetThisPage(&(indexHandle->fileHandle), node, &nodePageHandle)) ||
-			(rc = GetData(&nodePageHandle, &data)))
+			(rc = GetData(&nodePageHandle, &data))) {
+			delete[] tmp;
 			return rc;
+		}
 
 		nodePageHdr = (IX_NodePageHeader*)data;
 		key = data + indexHandle->fileHeader.nodeKeyListOffset;
@@ -1611,12 +1621,16 @@ RC printBPlusTree(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen, int
 			printLevelTab(level);
 			std::cout << tmp << std::endl;
 			child = nodeEntry[i].rid.pageNum;
-			if (rc = UnpinPage(&nodePageHandle))
+			if (rc = UnpinPage(&nodePageHandle)) {
+				delete[] tmp;
 				return rc;
+			}
 			printBPlusTree(indexHandle, child, keyShowLen, level + 1);
 			if ((rc = GetThisPage(&(indexHandle->fileHandle), node, &nodePageHandle)) ||
-				(rc = GetData(&nodePageHandle, &data)))
+				(rc = GetData(&nodePageHandle, &data))) {
+				delete[] tmp;
 				return rc;
+			}
 
 			nodePageHdr = (IX_NodePageHeader*)data;
 			key = data + indexHandle->fileHeader.nodeKeyListOffset;
@@ -1624,8 +1638,10 @@ RC printBPlusTree(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen, int
 		}
 		printLevelTab(level);
 		std::cout << "} " << std::endl;
-		if (rc = UnpinPage(&nodePageHandle))
+		if (rc = UnpinPage(&nodePageHandle)) {
+			delete[] tmp;
 			return rc;
+		}
 		delete[] tmp;
 		return SUCCESS;
 	}
@@ -1650,8 +1666,10 @@ RC printBPlusTreeSeq(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen)
 
 	while (node != IX_NO_MORE_NEXT_LEAF) {
 		if ((rc = GetThisPage(&(indexHandle->fileHandle), node, &nodePageHandle)) ||
-			(rc = GetData(&nodePageHandle, &data)))
+			(rc = GetData(&nodePageHandle, &data))) {
+			delete[] tmp;
 			return rc;
+		}
 
 		nodePageHdr = (IX_NodePageHeader*)data;
 		key = data + indexHandle->fileHeader.nodeKeyListOffset;
@@ -1663,9 +1681,10 @@ RC printBPlusTreeSeq(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen)
 			std::cout << " " << tmp << " : ";
 			if (nodeEntry[i].tag == DUP) {
 				// ´æÔÚ Bucket Page
-				if (rc = printBucket(indexHandle, nodeEntry[i].rid.pageNum))
+				if (rc = printBucket(indexHandle, nodeEntry[i].rid.pageNum)) {
+					delete[] tmp;
 					return rc;
-
+				}
 			} else {
 				std::cout << "( [ pN: " << nodeEntry[i].rid.pageNum << " , sN: " <<
 					nodeEntry[i].rid.slotNum << " ] )";
@@ -1673,8 +1692,10 @@ RC printBPlusTreeSeq(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen)
 		}
 		std::cout << "} " << std::endl;
 
-		if (rc = UnpinPage(&nodePageHandle))
+		if (rc = UnpinPage(&nodePageHandle)) {
+			delete[] tmp;
 			return rc;
+		}
 
 		node = nodePageHdr->sibling;
 	}

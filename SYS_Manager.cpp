@@ -3,6 +3,11 @@
 #include "SYS_Manager.h"
 #include "QU_Manager.h"
 #include <iostream>
+#include <cstring>
+#include <cstdio>
+#include <string>
+
+WorkSpace workSpace;
 
 //放在SYS_Manager.h中会发生冲突
 typedef struct db_info {
@@ -143,8 +148,8 @@ RC execute(char * sql){
 //目的：在路径 dbPath 下创建一个名为 dbName 的空库，生成相应的系统文件。
 //1. 向OS申请在dbpath路径创建文件夹。
 //2. 创建SYSTABLES文件和SYSCOLUMNS文件
-RC CreateDB(char *dbpath,char *dbname){
-
+RC CreateDB(char *dbpath,char *dbname)
+{
 	if (dbpath == NULL || dbname == NULL)
 		return SQL_SYNTAX;
 
@@ -624,8 +629,390 @@ RC DropIndex(char* indexName) {
 	return SUCCESS;
 }
 
+// 
+// 向 table meta 插入记录
+// 
 RC TableMetaInsert(char* relName, int attrCount)
 {
+	RC rc;
+	RID rid;
 
-	return TABLE_NOT_EXIST;
+	char* factory = new char[TABLE_ENTRY_SIZE];
+	memset(factory, 0, sizeof(TABLE_ENTRY_SIZE));
+
+	// 装配 table meta 需要的数据
+	memcpy(factory, relName, strlen(relName));
+	memcpy(factory + ATTRCOUNT_OFF, &attrCount, sizeof(int));
+
+	if (rc = InsertRec(&(workSpace.sysTable), factory, &rid)) {
+		delete[] factory;
+		return rc;
+	}
+
+	delete[] factory;
+	return SUCCESS;
 }
+
+//
+// 查找 table meta 中是否存在指定 relName 的记录
+// 
+RC TableMetaSearch(char* relName, RM_Record* rmRecord)
+{
+	RC rc;
+	RM_FileScan rmFileScan;
+	RM_Record rec;
+	rec.pData = new char[TABLE_ENTRY_SIZE];
+	memset(rec.pData, 0, TABLE_ENTRY_SIZE);
+	Con cond;
+
+	if (strlen(relName) >= TABLENAME) {
+		delete[] rec.pData;
+		return TABLE_NAME_ILLEGAL;
+	}
+
+	cond.attrType = chars; cond.bLhsIsAttr = 1; cond.bRhsIsAttr = 0;
+	cond.compOp = EQual; cond.LattrLength = TABLENAME; cond.LattrOffset = TABLENAME_OFF;
+	cond.Lvalue = NULL; cond.RattrLength = TABLENAME; cond.RattrOffset = 0;
+	cond.Rvalue = relName;
+
+	if (rc = OpenScan(&rmFileScan, &(workSpace.sysTable), 1, &cond)) {
+		delete[] rec.pData;
+		return rc;
+	}
+
+	if ((rc = GetNextRec(&rmFileScan, &rec)) == RM_EOF) {
+		delete[] rec.pData;
+		return TABLE_NOT_EXIST;
+	}
+	if (rc != SUCCESS) {
+		delete[] rec.pData;
+		return rc;
+	}
+
+	memcpy(rmRecord->pData, rec.pData, TABLE_ENTRY_SIZE);
+	rmRecord->rid = rec.rid;
+	rmRecord->bValid = rec.bValid;
+
+	if ((rc = GetNextRec(&rmFileScan, &rec)) != RM_EOF) {
+		delete[] rec.pData;
+		return FAIL;             // 来到这个分支可能存在严重逻辑错误
+	}
+
+	if (rc = CloseScan(&rmFileScan)) {
+		delete[] rec.pData;
+		return rc;
+	}
+
+	delete[] rec.pData;
+	return SUCCESS;
+}
+
+// 
+// 在 table meta 里面删除指定 relName 的 记录
+// 
+RC TableMetaDelete(char* relName)
+{
+	RC rc;
+	RM_Record rmRecord;
+	rmRecord.pData = new char[TABLE_ENTRY_SIZE];
+	memset(rmRecord.pData, 0, TABLE_ENTRY_SIZE);
+
+	if (rc = TableMetaSearch(relName, &rmRecord)) {
+		delete[] rmRecord.pData;
+		return rc;
+	}
+
+	if (rc = DeleteRec(&(workSpace.sysTable), &(rmRecord.rid))) {
+		delete[] rmRecord.pData;
+		return rc;
+	}
+
+	delete[] rmRecord.pData;
+	return SUCCESS;
+}
+
+RC TableMetaShow()
+{
+	RC rc;
+	RM_FileScan rmFileScan;
+	RM_Record rec;
+	rec.pData = new char[TABLE_ENTRY_SIZE];
+	memset(rec.pData, 0, TABLE_ENTRY_SIZE);
+	int recnt = 0;
+
+	if (rc = OpenScan(&rmFileScan, &(workSpace.sysTable), 0, NULL)) {
+		delete[] rec.pData;
+		return rc;
+	}
+
+	printf("Table Meta Table: \n");
+	printf("+--------------------+----------+\n");
+	printf("|     Table Name     |  AttrCnt |\n");
+	printf("+--------------------+----------+\n");
+	while ((rc == GetNextRec(&rmFileScan, &rec)) != RM_EOF) {
+		if (rc != SUCCESS) {
+			delete[] rec.pData;
+			return rc;
+		}
+		printf("|%-20s|%-10d|\n", rec.pData, *(int*)(rec.pData + ATTRCOUNT_OFF));
+		recnt++;
+	}
+	printf("+--------------------+----------+\n");
+	printf("Table Count: %d\n", recnt);
+
+	if (rc = CloseScan(&rmFileScan)) {
+		delete[] rec.pData;
+		return rc;
+	}
+
+	delete[] rec.pData;
+	return SUCCESS;
+}
+
+// 插入一条 column 记录
+RC ColumnMetaInsert(char* relName, char* attrName, int attrType,
+	int attrLength, int attrOffset, bool idx, char* indexName)
+{
+	RC rc;
+	RID rid;
+	char idx_c = (idx) ? 1 : 0;
+	
+	char* factory = new char[COL_ENTRY_SIZE];
+	memset(factory, 0, sizeof(COL_ENTRY_SIZE));
+
+	// 装配 column meta 需要的数据
+	memcpy(factory, relName, strlen(relName));
+	memcpy(factory + ATTRNAME_OFF, attrName, strlen(attrName));
+	memcpy(factory + ATTRTYPE_OFF, &attrType, sizeof(int));
+	memcpy(factory + ATTRLENGTH_OFF, &attrLength, sizeof(int));
+	memcpy(factory + ATTROFFSET_OFF, &attrOffset, sizeof(int));
+	memcpy(factory + IXFLAG_OFF, &idx_c, sizeof(char));
+	memcpy(factory + INDEXNAME_OFF, indexName, strlen(indexName));
+
+	if (rc = InsertRec(&(workSpace.sysColumn), factory, &rid)) {
+		delete[] factory;
+		return rc;
+	}
+
+	delete[] factory;
+	return SUCCESS;
+}
+
+RC ColumnSearchAttr(char* relName, char* attrName, RM_Record* rmRecord)
+{
+	RC rc;
+	RM_FileScan rmFileScan;
+	RM_Record rec;
+	rec.pData = new char[COL_ENTRY_SIZE];
+	memset(rec.pData, 0, COL_ENTRY_SIZE);
+	Con cond[2];
+
+	if (strlen(relName) >= TABLENAME ||
+		strlen(attrName) >= ATTRNAME) {
+		delete[] rec.pData;
+		return TABLE_NAME_ILLEGAL;
+	}
+
+	cond[0].attrType = chars; cond[0].bLhsIsAttr = 1; cond[0].bRhsIsAttr = 0;
+	cond[0].compOp = EQual; cond[0].LattrLength = TABLENAME; cond[0].LattrOffset = TABLENAME_OFF;
+	cond[0].Lvalue = NULL; cond[0].RattrLength = TABLENAME; cond[0].RattrOffset = 0;
+	cond[0].Rvalue = relName;
+
+	cond[1].attrType = chars; cond[1].bLhsIsAttr = 1; cond[1].bRhsIsAttr = 0;
+	cond[1].compOp = EQual; cond[1].LattrLength = ATTRNAME; cond[1].LattrOffset = ATTRNAME_OFF;
+	cond[1].Lvalue = NULL; cond[1].RattrLength = ATTRNAME; cond[1].RattrOffset = 0;
+	cond[1].Rvalue = attrName;
+
+	if (rc = OpenScan(&rmFileScan, &(workSpace.sysColumn), 2, cond)) {
+		delete[] rec.pData;
+		return rc;
+	}
+
+	if ((rc = GetNextRec(&rmFileScan, &rec)) == RM_EOF) {
+		delete[] rec.pData;
+		return TABLE_NOT_EXIST;
+	}
+	if (rc != SUCCESS) {
+		delete[] rec.pData;
+		return rc;
+	}
+
+	memcpy(rmRecord->pData, rec.pData, COL_ENTRY_SIZE);
+	rmRecord->bValid = rec.bValid;
+	rmRecord->rid = rec.rid;
+
+	if ((rc = GetNextRec(&rmFileScan, &rec)) != RM_EOF) {
+		delete[] rec.pData;
+		return FAIL;             // 来到这个分支可能存在严重逻辑错误
+	}
+
+	if (rc = CloseScan(&rmFileScan)) {
+		delete[] rec.pData;
+		return rc;
+	}
+
+	delete[] rec.pData;
+	return SUCCESS;
+}
+
+RC ColumnMetaDelete(char* relName)
+{
+	// 检查 relName 表是否存在
+	RC rc;
+	RM_Record rmRecord;
+	rmRecord.pData = new char[COL_ENTRY_SIZE];
+	memset(rmRecord.pData, 0, COL_ENTRY_SIZE);
+	RM_FileScan rmFileScan;
+	Con cond;
+	char idxName[21];
+
+	if (rc = TableMetaSearch(relName, &rmRecord)) {
+		delete[] rmRecord.pData;
+		return rc;
+	}
+
+	cond.attrType = chars; cond.bLhsIsAttr = 1; cond.bRhsIsAttr = 0;
+	cond.compOp = EQual; cond.LattrLength = TABLENAME; cond.LattrOffset = TABLENAME_OFF;
+	cond.Lvalue = NULL; cond.RattrLength = TABLENAME; cond.RattrOffset = 0;
+	cond.Rvalue = relName;
+
+	if (rc = OpenScan(&rmFileScan, &(workSpace.sysColumn), 1, &cond)) {
+		delete[] rmRecord.pData;
+		return rc;
+	}
+
+	while ((rc = GetNextRec(&rmFileScan, &rmRecord)) != RM_EOF) {
+		if (rc != SUCCESS) { // 发生错误
+			delete[] rmRecord.pData;
+			return rc;
+		}
+
+		// TODO: 删除 ix 文件
+
+		if (rc = DeleteRec(&(workSpace.sysColumn), &(rmRecord.rid))) {
+			delete[] rmRecord.pData;
+			return rc;
+		}
+	}
+
+	if (rc = CloseScan(&rmFileScan)) {
+		delete[] rmRecord.pData;
+		return rc;
+	}
+
+	delete[] rmRecord.pData;
+	return SUCCESS;
+}
+
+RC ColumnMetaUpdate(char* relName, char* attrName, bool ixFlag, char* indexName)
+{
+	RC rc;
+	RM_Record rmRecord;
+	rmRecord.pData = new char[COL_ENTRY_SIZE];
+	memset(rmRecord.pData, 0, COL_ENTRY_SIZE);
+	char* pData;
+	char ix_c = (ixFlag) ? 1 : 0;
+
+	if (rc = ColumnSearchAttr(relName, attrName, &rmRecord)) {
+		delete[] rmRecord.pData;
+		return rc;
+	}
+
+	pData = rmRecord.pData;
+	*(pData + IXFLAG_OFF) = ix_c;
+	if (indexName)
+		memcpy(pData + INDEXNAME_OFF, indexName, strlen(indexName));
+
+	if (rc = UpdateRec(&(workSpace.sysColumn), &rmRecord)) {
+		delete[] rmRecord.pData;
+		return rc;
+	}
+
+	delete[] rmRecord.pData;
+	return SUCCESS;
+}
+
+RC ColunmMetaGet(char* relName, char* attrName, AttrInfo* attribute)
+{
+	RC rc;
+	RM_Record rmRecord;
+	rmRecord.pData = new char[COL_ENTRY_SIZE];
+	memset(rmRecord.pData, 0, COL_ENTRY_SIZE);
+	char* pData;
+	
+	assert(attrName);
+
+	if (rc = ColumnSearchAttr(relName, attrName, &rmRecord)) {
+		delete[] rmRecord.pData;
+		return rc;
+	}
+
+	pData = rmRecord.pData;
+	attribute->attrName = attrName;
+	attribute->attrLength = *(int*)(pData + ATTRLENGTH_OFF);
+	attribute->attrType = (AttrType)(*(int*)(pData + ATTRTYPE));
+
+	delete[] rmRecord.pData;
+	return SUCCESS;
+}
+
+RC ColumnMetaShow()
+{
+	RC rc;
+	RM_FileScan rmFileScan;
+	RM_Record rec;
+	rec.pData = new char[COL_ENTRY_SIZE];
+	memset(rec.pData, 0, COL_ENTRY_SIZE);
+	int recnt = 0;
+
+	if (rc = OpenScan(&rmFileScan, &(workSpace.sysTable), 0, NULL)) {
+		delete[] rec.pData;
+		return rc;
+	}
+
+	printf("Column Meta Table: \n");
+	printf("+--------------------");
+	printf("+--------------------");
+	printf("+----------");
+	printf("+----------");
+	printf("+----------");
+	printf("+----------");
+	printf("+--------------------+\n");
+	printf("|     Table Name     ");
+	printf("|   Attribute Name   ");
+	printf("| Attr Type ");
+	printf("|  AttrLen  ");
+	printf("|Attr Offset");
+	printf("|  idxFlag  ");
+	printf("|     index Name     |\n");
+	printf("+--------------------");
+	printf("+--------------------");
+	printf("+----------");
+	printf("+----------");
+	printf("+----------");
+	printf("+----------");
+	printf("+--------------------+\n");
+	while ((rc == GetNextRec(&rmFileScan, &rec)) != RM_EOF) {
+		if (rc != SUCCESS) {
+			delete[] rec.pData;
+			return rc;
+		}
+		printf("|%-20s|%-20s|%-10d|%-10d|%-10d|%-10d|%-20s|\n", rec.pData, rec.pData + ATTRNAME_OFF,
+			                      *(int*)(rec.pData + ATTRTYPE_OFF), *(int*)(rec.pData + ATTRLENGTH_OFF), 
+								  *(int*)(rec.pData + ATTROFFSET_OFF), (int)(*(rec.pData + IXFLAG_OFF)),
+			                      rec.pData + INDEXNAME_OFF);
+		recnt++;
+	}
+	printf("+--------------------");
+	printf("+--------------------");
+	printf("+----------");
+	printf("+----------");
+	printf("+----------");
+	printf("+----------");
+	printf("+--------------------+\n");
+	printf("Column Count: %d\n", recnt);
+
+	delete[] rec.pData;
+	return SUCCESS;
+}
+
