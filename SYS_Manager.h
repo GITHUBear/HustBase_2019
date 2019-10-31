@@ -43,7 +43,7 @@
 typedef struct db_info {
 	RM_FileHandle* sysTables;
 	RM_FileHandle* sysColumns;
-	int MAXATTRS=20;		 //最大属性数量
+	int MAXATTRS = 20;		 //最大属性数量
 	std::string curDbName; //存放当前DB名称
 }DB_INFO;
 
@@ -56,27 +56,27 @@ typedef struct {
 	std::string indexName;
 } AttrEntry;
 
-void ExecuteAndMessage(char * ,CEditArea*);
+void ExecuteAndMessage(char*, CEditArea*);
 bool CanButtonClick();
 
-RC CreateDB(char *dbpath,char *dbname);
-RC DropDB(char *dbname);
-RC OpenDB(char *dbname);
+RC CreateDB(char* dbpath, char* dbname);
+RC DropDB(char* dbname);
+RC OpenDB(char* dbname);
 RC CloseDB();
 
-RC execute(char * sql);
+RC execute(char* sql);
 
-RC CreateTable(char *relName,int attrCount,AttrInfo *attributes);
-RC DropTable(char *relName);
-RC CreateIndex(char *indexName,char *relName,char *attrName);
-RC DropIndex(char *indexName);
-RC Insert(char *relName,int nValues,Value * values);
-RC Delete(char *relName,int nConditions,Condition *conditions);
-RC Update(char *relName,char *attrName,Value *value,int nConditions,Condition *conditions);
+RC CreateTable(char* relName, int attrCount, AttrInfo* attributes);
+RC DropTable(char* relName);
+RC CreateIndex(char* indexName, char* relName, char* attrName);
+RC DropIndex(char* indexName);
+RC Insert(char* relName, int nValues, Value* values);
+RC Delete(char* relName, int nConditions, Condition* conditions);
+RC Update(char* relName, char* attrName, Value* value, int nConditions, Condition* conditions);
 
 // 一些非接口方法
 // SYSTABLES 元数据表操作
-RC TableMetaInsert(char* relName, int attrCount); 
+RC TableMetaInsert(char* relName, int attrCount);
 RC TableMetaDelete(char* relName);
 RC TableMetaSearch(char* relName, RM_Record* rmRecord);
 RC TableMetaShow();
@@ -87,8 +87,8 @@ bool attrVaild(int attrCount, AttrInfo* attributes);
 RC ToData(char* relName, char* attrName, int attrType,
 	int attrLength, int attrOffset, bool ixFlag, char* indexName, char* pData);
 RC ColumnMetaInsert(char* relName, char* attrName, int attrType,
-	int attrLength, int attrOffset, bool ixFlag, char* indexName);     
-RC ColumnMetaDelete(char* relName);                                  
+	int attrLength, int attrOffset, bool ixFlag, char* indexName);
+RC ColumnMetaDelete(char* relName);
 RC ColumnMetaUpdate(char* relName, char* attrName, bool ixFlag, char* indexName);
 RC ColumnMetaGet(char* relName, char* attrName, AttrEntry* attribute);
 RC ColumnMetaShow();                                                 // 打印出 column 元数据表
@@ -100,8 +100,8 @@ RC ColumnEntryGet(char* relName, int* attrCount,
 															  // CreateTable 的 逆操作
 
 //封装的RM方法
-RC CreateIxFromTable(char* relName, char* indexName,int attrOffset);
-RC CreateConFromCondition(char* relName,int nConditons,Condition* conditions,Con* cons);
+RC CreateIxFromTable(char* relName, char* indexName, int attrOffset);
+RC CreateConFromCondition(char* relName, int nConditons, Condition* conditions, Con* cons);
 bool CheckCondition(char* relName, Condition& condition);
 bool checkAttr(char* relName, int hsIsAttr, RelAttr& hsAttr, AttrType* attrType);
 #endif

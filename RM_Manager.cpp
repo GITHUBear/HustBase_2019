@@ -11,6 +11,8 @@
 #include <string.h>
 #include <iostream>
 
+// #define DEBUG_RM
+
 bool getBit (char *bitMap, int bitIdx)
 {
 	return ((bitMap[bitIdx >> 3] >> (bitIdx & 0x7)) & 1) == 1;
@@ -80,6 +82,9 @@ bool innerCmp(Con condition, char *pData)
 
 	lval = (condition.bLhsIsAttr == 1) ? (pData + condition.LattrOffset) : condition.Lvalue;
 	rval = (condition.bRhsIsAttr == 1) ? (pData + condition.RattrOffset) : condition.Rvalue;
+
+	if (condition.compOp == NO_OP)
+		return true;
 
 	return matchComp(cmp(condition.attrType, lval, rval, 
 			condition.LattrLength, condition.RattrLength), condition.compOp);
@@ -185,11 +190,15 @@ RC GetNextRec(RM_FileScan *rmFileScan,RM_Record *rec)
 			rec->rid.slotNum = nextSlotNum;
 			memcpy(rec->pData, WHICH_REC(recordSize, records, nextSlotNum), recordSize);
 
+#ifdef DEBUG_RM
 			std::cout << "PageNum: " << nextPageNum << " SlotNum: " << nextSlotNum << std::endl;
 			std::cout << "Content: " << rec->pData << std::endl;
+#endif
 
 			if (nextSlotNum == rmPageHdr->slotCount - 1) {
+#ifdef DEBUG_RM
 				std::cout << "============================== Page " << nextPageNum << " end ================================" << std::endl;
+#endif
 				rmFileScan->pn = nextPageNum + 1;
 				rmFileScan->sn = 0;
 			} else {
@@ -205,8 +214,9 @@ RC GetNextRec(RM_FileScan *rmFileScan,RM_Record *rec)
 
 		if ((rc = UnpinPage(&pfPageHandle)))
 			return rc;
-
+#ifdef DEBUG_RM
 		std::cout << "============================== Page " << nextPageNum << " end ================================" << std::endl;
+#endif
 		nextSlotNum = 0;
 	}
 

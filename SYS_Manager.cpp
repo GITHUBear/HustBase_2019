@@ -6,9 +6,9 @@
 
 DB_INFO dbInfo;
 
-void ExecuteAndMessage(char * sql,CEditArea* editArea){//¸ù¾İÖ´ĞĞµÄÓï¾äÀàĞÍÔÚ½çÃæÉÏÏÔÊ¾Ö´ĞĞ½á¹û¡£´Ëº¯ÊıĞèĞŞ¸Ä
+void ExecuteAndMessage(char* sql, CEditArea* editArea) {//¸ù¾İÖ´ĞĞµÄÓï¾äÀàĞÍÔÚ½çÃæÉÏÏÔÊ¾Ö´ĞĞ½á¹û¡£´Ëº¯ÊıĞèĞŞ¸Ä
 	std::string s_sql = sql;
-	if(s_sql.find("select") == 0){
+	if (s_sql.find("select") == 0) {
 		SelResult res;
 		Init_Result(&res);
 		//rc = Query(sql,&res);
@@ -16,59 +16,59 @@ void ExecuteAndMessage(char * sql,CEditArea* editArea){//¸ù¾İÖ´ĞĞµÄÓï¾äÀàĞÍÔÚ½çÃ
 		//µ÷ÓÃeditArea->ShowSelResult(col_num,row_num,fields,rows);
 		int col_num = 5;
 		int row_num = 3;
-		char ** fields = new char *[5];
-		for(int i = 0;i<col_num;i++){
+		char** fields = new char* [5];
+		for (int i = 0; i < col_num; i++) {
 			fields[i] = new char[20];
-			memset(fields[i],0,20);
+			memset(fields[i], 0, 20);
 			fields[i][0] = 'f';
-			fields[i][1] = i+'0';
+			fields[i][1] = i + '0';
 		}
-		char *** rows = new char**[row_num];
-		for(int i = 0;i<row_num;i++){
-			rows[i] = new char*[col_num];
-			for(int j = 0;j<col_num;j++){
+		char*** rows = new char** [row_num];
+		for (int i = 0; i < row_num; i++) {
+			rows[i] = new char* [col_num];
+			for (int j = 0; j < col_num; j++) {
 				rows[i][j] = new char[20];
-				memset(rows[i][j],0,20);
+				memset(rows[i][j], 0, 20);
 				rows[i][j][0] = 'r';
 				rows[i][j][1] = i + '0';
 				rows[i][j][2] = '+';
 				rows[i][j][3] = j + '0';
 			}
 		}
-		editArea->ShowSelResult(col_num,row_num,fields,rows);
-		for(int i = 0;i<5;i++){
+		editArea->ShowSelResult(col_num, row_num, fields, rows);
+		for (int i = 0; i < 5; i++) {
 			delete[] fields[i];
 		}
 		delete[] fields;
 		Destory_Result(&res);
 		return;
 	}
-RC rc = execute(sql);
-int row_num = 0;
-char** messages;
-switch (rc) {
-case SUCCESS:
-	row_num = 1;
-	messages = new char* [row_num];
-	messages[0] = "²Ù×÷³É¹¦";
-	editArea->ShowMessage(row_num, messages);
-	delete[] messages;
-	break;
-case SQL_SYNTAX:
-	row_num = 1;
-	messages = new char* [row_num];
-	messages[0] = "ÓĞÓï·¨´íÎó";
-	editArea->ShowMessage(row_num, messages);
-	delete[] messages;
-	break;
-default:
-	row_num = 1;
-	messages = new char* [row_num];
-	messages[0] = "¹¦ÄÜÎ´ÊµÏÖ";
-	editArea->ShowMessage(row_num, messages);
-	delete[] messages;
-	break;
-}
+	RC rc = execute(sql);
+	int row_num = 0;
+	char** messages;
+	switch (rc) {
+	case SUCCESS:
+		row_num = 1;
+		messages = new char* [row_num];
+		messages[0] = "²Ù×÷³É¹¦";
+		editArea->ShowMessage(row_num, messages);
+		delete[] messages;
+		break;
+	case SQL_SYNTAX:
+		row_num = 1;
+		messages = new char* [row_num];
+		messages[0] = "ÓĞÓï·¨´íÎó";
+		editArea->ShowMessage(row_num, messages);
+		delete[] messages;
+		break;
+	default:
+		row_num = 1;
+		messages = new char* [row_num];
+		messages[0] = "¹¦ÄÜÎ´ÊµÏÖ";
+		editArea->ShowMessage(row_num, messages);
+		delete[] messages;
+		break;
+	}
 }
 
 RC execute(char* sql) {
@@ -138,30 +138,30 @@ RC execute(char* sql) {
 //4. ´´½¨SYSTABLESÎÄ¼şºÍSYSCOLUMNSÎÄ¼ş¡£
 //5. ÉèÖÃcurDbName¡£
 RC CreateDB(char* dbpath, char* dbname) {
-	
+
 	RC rc;
 	//1. ¼ì²édbpathºÍdbnameµÄºÏ·¨ĞÔ¡£
 	if (dbpath == NULL || dbname == NULL)
 		return DB_NAME_ILLEGAL;
 
 	//2. ÅĞ¶ÏdbpathÒÔ¼°dbnameÊÇ·ñºÍdbInfoÖĞ±£´æÏàÍ¬¡£Èç¹û²»Í¬Ôòµ÷ÓÃCloseDb¡£
-	if (dbInfo.curDbName.size() && dbInfo.curDbName.compare(dbname) != 0){
+	if (dbInfo.curDbName.size() && dbInfo.curDbName.compare(dbname) != 0) {
 		if ((rc = CloseDB()))
 			return rc;
 	}
-	
+
 	//3. ÏòOSÉêÇëÔÚdbpathÂ·¾¶´´½¨ÎÄ¼ş¼Ğ¡£
 	std::string dbPath = dbpath;
-	dbPath = dbPath+"\\"+ dbname;
+	dbPath = dbPath + "\\" + dbname;
 	if (CreateDirectory(dbPath.c_str(), NULL)) {
-		if (SetCurrentDirectory(dbpath)){
+		if (SetCurrentDirectory(dbpath)) {
 			//4. ´´½¨SYSTABLESÎÄ¼şºÍSYSCOLUMNSÎÄ¼ş
 			std::string sysTablePath = dbname;
-			sysTablePath= sysTablePath+ "\\" + TABLE_META_NAME;
+			sysTablePath = sysTablePath + "\\" + TABLE_META_NAME;
 			std::string sysColumnsPath = dbname;
-			sysColumnsPath = sysColumnsPath  + "\\" + COLUMN_META_NAME;
-			if ((rc= RM_CreateFile((char *)sysTablePath.c_str(), SIZE_SYS_TABLE)) ||  
-				(rc= RM_CreateFile((char *)sysColumnsPath.c_str(), SIZE_SYS_COLUMNS)))
+			sysColumnsPath = sysColumnsPath + "\\" + COLUMN_META_NAME;
+			if ((rc = RM_CreateFile((char*)sysTablePath.c_str(), SIZE_SYS_TABLE)) ||
+				(rc = RM_CreateFile((char*)sysColumnsPath.c_str(), SIZE_SYS_COLUMNS)))
 				return rc;
 
 			//5. ÉèÖÃcurDbName¡£
@@ -182,17 +182,17 @@ RC CreateDB(char* dbpath, char* dbname) {
 //2. ÅĞ¶ÏÉ¾³ıµÄÊÇ·ñÊÇµ±Ç°DB¡£Èç¹ûÔòÒª¹Ø±Õµ±Ç°Ä¿Â¼.
 //3. ËÑË÷µÃµ½dbnameÄ¿Â¼ÏÂµÄËùÓĞÎÄ¼şÃû²¢É¾³ı,×¢ÒâÒªÌø¹ı.ºÍ..Ä¿Â¼
 //4. É¾³ıdbnameÄ¿Â¼
-RC DropDB(char *dbname){
+RC DropDB(char* dbname) {
 
 	//1. ÅĞ¶ÏdbnameÊÇ·ñÎª¿Õ£¬»òÕßdbInfo.pathÏÂÊÇ·ñ´æÔÚdbname¡£Èç¹û²»´æÔÚÔò±¨´í¡£
 	std::string dbPath = "";
 	dbPath = dbPath + dbname;
-	if (dbname==NULL || access(dbPath.c_str(),0)==-1)
+	if (dbname == NULL || access(dbPath.c_str(), 0) == -1)
 		return DB_NOT_EXIST;
 
 	//2. ÅĞ¶ÏÉ¾³ıµÄÊÇ·ñÊÇµ±Ç°DB
 	RC rc;
-	if (dbInfo.curDbName.compare(dbname)==0) {
+	if (dbInfo.curDbName.compare(dbname) == 0) {
 		//¹Ø±Õµ±Ç°Ä¿Â¼
 		if ((rc = CloseDB()))
 			return rc;
@@ -210,7 +210,7 @@ RC DropDB(char *dbname){
 	while (FindNextFile(hFile, &pNextInfo)) {
 		if (pNextInfo.cFileName[0] == '.')//Ìø¹ı.ºÍ..Ä¿Â¼
 			continue;
-		if(!DeleteFile(pNextInfo.cFileName))
+		if (!DeleteFile(pNextInfo.cFileName))
 			return OS_FAIL;
 	}
 
@@ -229,7 +229,7 @@ RC DropDB(char *dbname){
 //	 2.2 ·ñÔò¹Ø±Õµ±Ç°´ò¿ªµÄÄ¿Â¼¡£
 //3. ´ò¿ªSYSTABLESºÍSYSCOLUMNS,ÉèÖÃdbInfo
 //4. ÉèÖÃcurDbName
-RC OpenDB(char *dbname){
+RC OpenDB(char* dbname) {
 
 	RC rc;
 	//1. ¼ì²édbnameÊÇ·ñÎª¿Õ¡£
@@ -252,20 +252,20 @@ RC OpenDB(char *dbname){
 	sysColumns = (RM_FileHandle*)malloc(sizeof(RM_FileHandle));
 
 	std::string sysTablePath = dbname;
-	sysTablePath= sysTablePath+ "\\" + TABLE_META_NAME;
+	sysTablePath = sysTablePath + "\\" + TABLE_META_NAME;
 	std::string sysColumnsPath = dbname;
-	sysColumnsPath= sysColumnsPath+"\\"+COLUMN_META_NAME;
+	sysColumnsPath = sysColumnsPath + "\\" + COLUMN_META_NAME;
 
-	if ((rc = RM_OpenFile((char *)sysTablePath.c_str(), sysTables)) || 
+	if ((rc = RM_OpenFile((char*)sysTablePath.c_str(), sysTables)) ||
 		(rc = RM_OpenFile((char*)sysColumnsPath.c_str(), sysColumns)))
 		return rc;
-	
-	dbInfo.sysTables=sysTables;
-	dbInfo.sysColumns=sysColumns;
+
+	dbInfo.sysTables = sysTables;
+	dbInfo.sysColumns = sysColumns;
 
 	//3. ÉèÖÃcurDbName
 	dbInfo.curDbName = dbname;
-	
+
 	return SUCCESS;
 }
 
@@ -275,7 +275,7 @@ RC OpenDB(char *dbname){
 //Ä¿µÄ:¹Ø±Õµ±Ç°Êı¾İ¿â¡£¹Ø±Õµ±Ç°Êı¾İ¿âÖĞ´ò¿ªµÄËùÓĞÎÄ¼ş
 //1. ¼ì²éµ±Ç°ÊÇ·ñ´ò¿ªÁËDB¡£Èç¹ûcurDbNameÎª¿ÕÔò±¨´í£¬·ñÔòÉèÖÃcurDbNameÎª¿Õ¡£
 //2. µ÷ÓÃ±£´æµÄSYSÎÄ¼ş¾ä±úcloseº¯Êı£¬¹Ø±ÕSYSÎÄ¼ş¡£
-RC CloseDB(){
+RC CloseDB() {
 	//1. ¼ì²éµ±Ç°ÊÇ·ñ´ò¿ªÁËDB¡£Èç¹ûcurDbNameÎª¿ÕÔò±¨´í£¬·ñÔòÉèÖÃcurDbNameÎª¿Õ¡£
 	if (!dbInfo.curDbName.size())
 		return SQL_SYNTAX;
@@ -286,11 +286,11 @@ RC CloseDB(){
 	RM_CloseFile(dbInfo.sysColumns);
 	free(dbInfo.sysTables);
 	free(dbInfo.sysColumns);
-	
+
 	return SUCCESS;
 }
 
-bool CanButtonClick(){//ĞèÒªÖØĞÂÊµÏÖ
+bool CanButtonClick() {//ĞèÒªÖØĞÂÊµÏÖ
 	//Èç¹ûµ±Ç°ÓĞÊı¾İ¿âÒÑ¾­´ò¿ª
 	return true;
 	//Èç¹ûµ±Ç°Ã»ÓĞÊı¾İ¿â´ò¿ª
@@ -358,11 +358,11 @@ RC CreateTable(char* relName, int attrCount, AttrInfo* attributes) {
 
 	//3. ¼ì²éÊÇ·ñÒÑ¾­´æÔÚrelName±í¡£Èç¹ûÒÑ¾­´æÔÚ£¬Ôò·µ»Ø´íÎó¡£
 	RM_Record rmRecord;
-	RC rc;	
+	RC rc;
 	rmRecord.pData = new char[SIZE_SYS_TABLE];
 	memset(rmRecord.pData, 0, SIZE_SYS_TABLE);
 
-	if ((rc= TableMetaSearch(relName, &rmRecord)) ){
+	if ((rc = TableMetaSearch(relName, &rmRecord))) {
 		if (rc == SUCCESS) {
 			delete[] rmRecord.pData;
 			return TABLE_EXIST;
@@ -372,9 +372,9 @@ RC CreateTable(char* relName, int attrCount, AttrInfo* attributes) {
 	}
 
 	//4. ÏòSYSTABLESºÍSYSCOLUMNS±íÖĞ´«ÈëÔªĞÅÏ¢,²¢¼ÆËãrelName±í¼ÇÂ¼µÄ´óĞ¡¡£
-	
+
 	//ÏòSYSTABLES²åÈëĞÅÏ¢
-	if ((rc = TableMetaInsert(relName, attrCount))){
+	if ((rc = TableMetaInsert(relName, attrCount))) {
 		//²åÈëÊ§°Ü
 		delete[] rmRecord.pData;
 		return rc;
@@ -382,7 +382,7 @@ RC CreateTable(char* relName, int attrCount, AttrInfo* attributes) {
 
 	//ÏòSYSCOLUMNS²åÈëĞÅÏ¢
 	char indexName[1];//indexNameÎª¿Õ
-	int rmRecordSize=0;
+	int rmRecordSize = 0;
 	indexName[0] = 0;
 	for (int i = 0; i < attrCount; i++) {
 		if ((rc = ColumnMetaInsert(relName, attributes[i].attrName, attributes[i].attrType,
@@ -397,11 +397,11 @@ RC CreateTable(char* relName, int attrCount, AttrInfo* attributes) {
 	//5. ´´½¨¶ÔÓ¦µÄRMÎÄ¼ş
 	//¸ù¾İÔ¼¶¨£¬ÎÄ¼şÃûÎªÁËrelName.rm¡£
 	std::string filePath = dbInfo.curDbName + "\\" + relName + RM_FILE_SUFFIX;
-	if ((rc= RM_CreateFile((char*)filePath.c_str(), rmRecordSize))) {
+	if ((rc = RM_CreateFile((char*)filePath.c_str(), rmRecordSize))) {
 		delete[] rmRecord.pData;
 		return rc;
 	}
-		
+
 	delete[] rmRecord.pData;
 	return SUCCESS;
 }
@@ -424,12 +424,12 @@ RC DropTable(char* relName) {
 		strcmp(relName, COLUMN_META_NAME) == 0) {
 		return TABLE_NAME_ILLEGAL;
 	}
-		
+
 	//3. ´ÓSYSTABLESÖĞÉ¾³ırelName¶ÔÓ¦µÄ¼ÇÂ¼ÒÔ¼°relName¶ÔÓ¦µÄrmÎÄ¼ş
 	if ((rc = TableMetaDelete(relName))) {
 		return rc;
 	}
-		
+
 	//4. É¾³ıSYSCOLUMNSÖĞµÄ¼ÇÂ¼ÏîÒÔ¼°¿ÉÄÜ´æÔÚµÄixÎÄ¼ş
 	if ((rc = ColumnMetaDelete(relName))) {
 		return rc;
@@ -469,8 +469,8 @@ RC CreateIndex(char* indexName, char* relName, char* attrName) {
 		return ATTR_NOT_EXIST;
 	}
 
-	char* ix_flag = rmRecord.pData+ATTR_IXFLAG_OFF;//ÎŞ·¨ÔÚScanµÄConditionsÖĞ¼ÓÈëix_flagµÄÅĞ¶Ï¡£¼´Ê¹ÓÃcharsÒ²ÎŞ·¨±È½Ï¡£
-	if ((*ix_flag)==(char)1) {//ÒÑ¾­´´½¨ÁË¶ÔÓ¦µÄË÷Òı
+	char* ix_flag = rmRecord.pData + ATTR_IXFLAG_OFF;//ÎŞ·¨ÔÚScanµÄConditionsÖĞ¼ÓÈëix_flagµÄÅĞ¶Ï¡£¼´Ê¹ÓÃcharsÒ²ÎŞ·¨±È½Ï¡£
+	if ((*ix_flag) == (char)1) {//ÒÑ¾­´´½¨ÁË¶ÔÓ¦µÄË÷Òı
 		delete[] rmRecord.pData;
 		return INDEX_EXIST;
 	}
@@ -480,19 +480,19 @@ RC CreateIndex(char* indexName, char* relName, char* attrName) {
 	int attrType = *((int*)(rmRecord.pData + ATTR_TYPE_OFF));
 	int attrLength = *((int*)(rmRecord.pData + ATTR_LENGTH_OFF));
 	int attrOffset = *((int*)(rmRecord.pData + ATTR_OFFSET_OFF));
-	if ((rc = CreateIndex((char *)ixFileName.c_str(), (AttrType)attrType, attrLength))) {
+	if ((rc = CreateIndex((char*)ixFileName.c_str(), (AttrType)attrType, attrLength))) {
 		delete[] rmRecord.pData;
 		return rc;
 	}
 
 	//	 4.2. ¸üĞÂSYS_COLUMNS
-	if ((rc = ColumnMetaUpdate(relName,attrName,1, (char *)ixFileName.c_str()))) {
+	if ((rc = ColumnMetaUpdate(relName, attrName, 1, (char*)ixFileName.c_str()))) {
 		delete[] rmRecord.pData;
 		return rc;
 	}
 
 	//   4.3. É¨ÃèRMÎÄ¼ş£¬½«ÒÑÓĞ¼ÇÂ¼ĞÅÏ¢²åÈëµ½´´½¨µÄIXÎÄ¼ş
-	if ((rc = CreateIxFromTable(relName, (char *)ixFileName.c_str(), attrOffset))) {
+	if ((rc = CreateIxFromTable(relName, (char*)ixFileName.c_str(), attrOffset))) {
 		delete[] rmRecord.pData;
 		return rc;
 	}
@@ -519,13 +519,13 @@ RC DropIndex(char* indexName) {
 	RM_Record rmRecord;
 	Con conditions[1];
 	RC rc;
-	std::string ixFileName=indexName;
+	std::string ixFileName = indexName;
 	ixFileName += IX_FILE_SUFFIX;
 	rmRecord.pData = new char[SIZE_SYS_COLUMNS];
 	memset(rmRecord.pData, 0, SIZE_SYS_COLUMNS);
 
 	conditions[0].attrType = chars; conditions[0].bLhsIsAttr = 1; conditions[0].bRhsIsAttr = 0;
-	conditions[0].compOp = EQual; conditions[0].LattrLength = SIZE_INDEX_NAME; 
+	conditions[0].compOp = EQual; conditions[0].LattrLength = SIZE_INDEX_NAME;
 	conditions[0].LattrOffset = ATTR_INDEX_NAME_OFF;
 	conditions[0].Lvalue = NULL; conditions[0].RattrLength = SIZE_INDEX_NAME; conditions[0].RattrOffset = 0;
 	conditions[0].Rvalue = (char*)ixFileName.c_str();
@@ -534,7 +534,7 @@ RC DropIndex(char* indexName) {
 		delete[] rmRecord.pData;
 		return rc;
 	}
-		
+
 	//	 2.1 Èç¹û²»´æÔÚÔò±¨´í¡£
 	rc = GetNextRec(&rmFileScan, &rmRecord);
 	if (rc == RM_EOF) {
@@ -550,7 +550,7 @@ RC DropIndex(char* indexName) {
 		delete[] rmRecord.pData;
 		return INDEX_NOT_EXIST;
 	}
-	if ((rc= CloseScan(&rmFileScan))) {
+	if ((rc = CloseScan(&rmFileScan))) {
 		delete[] rmRecord.pData;
 		return rc;
 	}
@@ -564,12 +564,12 @@ RC DropIndex(char* indexName) {
 
 	//	 2.3.·ñÔòĞŞ¸ÄSYSCOLUMNSÖĞ¶ÔÓ¦¼ÇÂ¼Ïîix_flagÎª0.
 	ix_flag = rmRecord.pData + ATTR_IXFLAG_OFF;
-	*ix_flag =(char)0;
-	if ((rc= UpdateRec(dbInfo.sysColumns, &rmRecord))) {
+	*ix_flag = (char)0;
+	if ((rc = UpdateRec(dbInfo.sysColumns, &rmRecord))) {
 		delete[] rmRecord.pData;
 		return rc;
 	}
-	
+
 	delete[] rmRecord.pData;
 	return SUCCESS;
 }
@@ -601,19 +601,19 @@ RC Insert(char* relName, int nValues, Value* values) {
 	RM_FileScan rmFileScan;
 	RM_Record rmRecord;
 	RC rc;
-	int attrCount=0;
+	int attrCount = 0;
 
 	rmRecord.pData = new char[SIZE_SYS_COLUMNS];
 	memset(rmRecord.pData, 0, SIZE_SYS_COLUMNS);
 
 	//		 2.1.1 Èç¹û´«ÈëµÄrelName±í²»´æÔÚ¾Í±¨´í¡£
-	if ((rc = TableMetaSearch(relName,&rmRecord))) {
+	if ((rc = TableMetaSearch(relName, &rmRecord))) {
 		delete[] rmRecord.pData;
 		return rc;
- 	}
+	}
 
 	//		 2.1.2 Èç¹û´æÔÚÔò±£´æattrcount¡£Èç¹ûattrcountºÍ´«ÈëµÄnValues²»Ò»ÖÂÔò±¨´í¡£
-	attrCount = *((int *)(rmRecord.pData + ATTR_COUNT_OFF));
+	attrCount = *((int*)(rmRecord.pData + ATTR_COUNT_OFF));
 	if (attrCount != nValues) {
 		delete[] rmRecord.pData;
 		return INVALID_VALUES;
@@ -628,18 +628,18 @@ RC Insert(char* relName, int nValues, Value* values) {
 	std::vector<IX_IndexHandle> ixIndexHandles;
 	IX_IndexHandle curIndexHanle;
 
-	int recordSize=0;
+	int recordSize = 0;
 	if ((rc = ColumnEntryGet(relName, &attrCount, attributes))) {
 		return rc;
 	}
 
 	for (int i = 0; i < attrCount; i++) {
 		//		 2.2.1 ¼ì²é´«ÈëvaluesÖĞÊôĞÔÖµµÄÀàĞÍÊÇ·ñºÍSYSCOLUMNS¼ÇÂ¼µÄÏàÍ¬¡£
-		if (values[i].type != attributes[i].attrType ) {
+		if (values[i].type != attributes[i].attrType) {
 			return INVALID_VALUES;
 		}
 		//		 2.2.2 Èç¹û´«ÈëµÄvalueÀàĞÍÊÇchars£¬ÅĞ¶Ïvalues.data³¤¶ÈÊÇ·ñºÍSYSCOLUMNS¼ÇÂ¼ÏàÍ¬
-		if ((values[i].type == chars) && strlen((char *)values[i].data) != attributes[i].attrLength) {
+		if ((values[i].type == chars) && strlen((char*)values[i].data) != attributes[i].attrLength) {
 			return INVALID_VALUES;
 		}
 		//		 2.2.3 ¶ÔÃ¿Ò»¸ö±£´æ½¨Á¢ÁËË÷ÒıµÄÊôĞÔ´ò¿ª¶ÔÓ¦µÄixÎÄ¼ş²¢±£´æË÷Òı¡£
@@ -663,9 +663,9 @@ RC Insert(char* relName, int nValues, Value* values) {
 	}
 
 	//4. ÀûÓÃrelName´ò¿ªRMÎÄ¼ş.µ÷ÓÃInsertRec·½·¨£¬Ïòrm²åÈë¼ÇÂ¼
-	std::string rmFileName="";
+	std::string rmFileName = "";
 	RM_FileHandle rmFileHandle;
-	
+
 	rmFileName = dbInfo.curDbName + "\\" + relName + RM_FILE_SUFFIX;
 	if ((rc = RM_OpenFile((char*)rmFileName.c_str(), &rmFileHandle)) ||
 		(rc = InsertRec(&rmFileHandle, insertData, &rid))) {
@@ -678,7 +678,7 @@ RC Insert(char* relName, int nValues, Value* values) {
 	//5. ÓÃ±£´æixÎÄ¼ş¾ä±ú£¬½«½¨Á¢ÁËË÷ÒıµÄvalues²åÈëµ½¶ÔÓ¦ixÎÄ¼ş.
 	for (int i = 0; i < attrCount; i++) {
 		curIndexHanle = ixIndexHandles[i];
-		if (attributes[i].ix_flag && (rc = InsertEntry(&curIndexHanle, values[i].data, &rid))){ 
+		if (attributes[i].ix_flag && (rc = InsertEntry(&curIndexHanle, values[i].data, &rid))) {
 			return rc;
 		}
 	}
@@ -703,7 +703,7 @@ RC Insert(char* relName, int nValues, Value* values) {
 //	  1.1.¼ì²élhsAttrµÄrelNameÊÇ·ñºÍ´«ÈëµÄrelNameÏàÍ¬¡£²»Í¬·µ»Øfalse¡£
 //	  1.2.¼ì²élhsAttrµÄattrNameÔÚrelNameÖĞÊÇ·ñ´æÔÚ¡£²»Í¬·µ»Øfalse¡£
 // 2.·ñÔò·µ»Øtrue¡£
-bool checkAttr(char *relName, int hsIsAttr ,RelAttr& hsAttr,AttrType* attrType) {
+bool checkAttr(char* relName, int hsIsAttr, RelAttr& hsAttr, AttrType* attrType) {
 	RM_Record rmRecord;
 	rmRecord.pData = new char[SIZE_SYS_COLUMNS];
 	memset(rmRecord.pData, 0, SIZE_SYS_COLUMNS);
@@ -716,14 +716,14 @@ bool checkAttr(char *relName, int hsIsAttr ,RelAttr& hsAttr,AttrType* attrType) 
 			return false;
 		}
 		//	  1.2.¼ì²élhsAttrµÄattrNameÔÚrelNameÖĞÊÇ·ñ´æÔÚ¡£²»Í¬·µ»Øfalse¡£
-		if (ColumnSearchAttr(relName, hsAttr.attrName, &rmRecord)==ATTR_NOT_EXIST) {
+		if (ColumnSearchAttr(relName, hsAttr.attrName, &rmRecord) == ATTR_NOT_EXIST) {
 			delete[] rmRecord.pData;
 			return false;
 		}
 	}
 
 	// 2.·ñÔò·µ»Øtrue
-	*attrType = (AttrType)(*(int*)(rmRecord.pData+ATTR_TYPE_OFF));
+	*attrType = (AttrType)(*(int*)(rmRecord.pData + ATTR_TYPE_OFF));
 	delete[] rmRecord.pData;
 	return true;
 }
@@ -740,8 +740,8 @@ bool CheckCondition(char* relName, Condition& condition) {
 	}
 	// 2. ¼ì²é×óÓÒÊôĞÔÊÇ·ñºÏ·¨¡£
 	AttrType lType, rType;
-	if (!checkAttr(relName, condition.bLhsIsAttr, condition.lhsAttr,&lType) ||
-		!checkAttr(relName, condition.bRhsIsAttr, condition.rhsAttr,&rType) ){
+	if (!checkAttr(relName, condition.bLhsIsAttr, condition.lhsAttr, &lType) ||
+		!checkAttr(relName, condition.bRhsIsAttr, condition.rhsAttr, &rType)) {
 		return false;
 	}
 	// 3. ¼ì²é±È½ÏÔËËã×óÓÒÀàĞÍÊÇ·ñÒ»ÖÂ¡£
@@ -789,7 +789,7 @@ RC Delete(char* relName, int nConditions, Condition* conditions) {
 	memset(rmRecord.pData, 0, SIZE_SYS_COLUMNS);
 
 	//	 2.1. É¨ÃèSYSTABLE.Èç¹û´«ÈëµÄrelName±í²»´æÔÚ¾Í±¨´í¡£
-	if ((rc = TableMetaSearch(relName,&rmRecord))) {
+	if ((rc = TableMetaSearch(relName, &rmRecord))) {
 		delete[] rmRecord.pData;
 		return rc;
 	}
@@ -822,7 +822,7 @@ RC Delete(char* relName, int nConditions, Condition* conditions) {
 	}
 
 	//3. ÀûÓÃrelName´ò¿ªRMÎÄ¼ş¡£
-	std::string rmFileName=dbInfo.curDbName+"\\"+relName+".rm";//relName+".rm";
+	std::string rmFileName = dbInfo.curDbName + "\\" + relName + ".rm";//relName+".rm";
 	RM_FileHandle rmFileHandle;
 	if ((rc = RM_OpenFile((char*)rmFileName.c_str(), &rmFileHandle))) {
 		return rc;
@@ -831,7 +831,7 @@ RC Delete(char* relName, int nConditions, Condition* conditions) {
 	//4. ½«ÊäÈëµÄnConditionsºÍconditions×ª»»³ÉConÀàĞÍ¡£
 	Con* cons = new Con[nConditions];
 	memset(cons, 0, sizeof(Con) * nConditions);
-	if ((rc = CreateConFromCondition(relName,nConditions,conditions, cons))) {
+	if ((rc = CreateConFromCondition(relName, nConditions, conditions, cons))) {
 		return rc;
 	}
 
@@ -851,10 +851,10 @@ RC TableMetaInsert(char* relName, int attrCount) {
 
 	char insertData[SIZE_SYS_TABLE];
 	int* insertAttrCount;
-	
+
 	memset(insertData, 0, sizeof(insertData));
-	strcpy(insertData,relName);
-	insertAttrCount = (int *)(insertData + ATTR_COUNT_OFF);
+	strcpy(insertData, relName);
+	insertAttrCount = (int*)(insertData + ATTR_COUNT_OFF);
 	*insertAttrCount = attrCount;
 
 	if (rc = InsertRec(dbInfo.sysTables, insertData, &rid))
@@ -869,7 +869,7 @@ RC TableMetaInsert(char* relName, int attrCount) {
 // 1. ÅĞ¶Ï relName ÊÇ·ñ´æÔÚ, ²»´æÔÚ·µ»Ø TABLE_NOT_EXIST
 // 2. Èç¹û´æÔÚÔò´ÓSYSTABLEÖĞÉ¾³ırelNameÆ¥ÅäµÄ¼ÇÂ¼£¬
 // 3. Èç¹û´æÔÚÔòÉ¾³ırelName¶ÔÓ¦µÄrmÎÄ¼ş
-RC TableMetaDelete(char* relName){
+RC TableMetaDelete(char* relName) {
 	RC rc;
 	RM_Record rmRecord;
 	rmRecord.pData = new char[SIZE_SYS_TABLE];
@@ -880,7 +880,7 @@ RC TableMetaDelete(char* relName){
 		delete[] rmRecord.pData;
 		return rc;
 	}
-		
+
 
 	// 2. Èç¹û´æÔÚÔò´ÓSYSTABLEÖĞÉ¾³ırelNameÆ¥ÅäµÄ¼ÇÂ¼£¬
 	if ((rc = DeleteRec(dbInfo.sysTables, &rmRecord.rid))) {
@@ -906,7 +906,7 @@ RC TableMetaDelete(char* relName){
 // 1. ²»´æÔÚ·µ»Ø TABLE_NOT_EXIST
 // 2. ´æÔÚ ·µ»Ø SUCCESS
 // 
-RC TableMetaSearch(char* relName,RM_Record* rmRecord) {
+RC TableMetaSearch(char* relName, RM_Record* rmRecord) {
 	RM_FileScan rmFileScan;
 	RC rc;
 	Con cons[1];
@@ -916,18 +916,18 @@ RC TableMetaSearch(char* relName,RM_Record* rmRecord) {
 	cons[0].Lvalue = NULL; cons[0].RattrLength = SIZE_TABLE_NAME; cons[0].RattrOffset = 0;
 	cons[0].Rvalue = relName;
 
-	if ((rc = OpenScan(&rmFileScan, dbInfo.sysTables, 1, cons)) )
+	if ((rc = OpenScan(&rmFileScan, dbInfo.sysTables, 1, cons)))
 		return rc;
-	
+
 	// 1. ²»´æÔÚ·µ»Ø TABLE_NOT_EXIST
 	rc = GetNextRec(&rmFileScan, rmRecord);
 	if (rc == RM_EOF)
 		return TABLE_NOT_EXIST;
 
-	if (rc != SUCCESS )
+	if (rc != SUCCESS)
 		return rc;
 
-	if((rc = CloseScan(&rmFileScan)))
+	if ((rc = CloseScan(&rmFileScan)))
 		return rc;
 
 	// 2. ´æÔÚ ·µ»Ø SUCCESS
@@ -946,11 +946,11 @@ RC TableMetaShow() {
 
 //
 // Ä¿µÄ£º É¨ÃèSYSCOLUMNSÖĞrelNameºÍattrNameÊÇ·ñ´æÔÚ¡£Èç¹û²»´æÔÚÔò·µ»ØATTR_NOT_EXIST
-RC ColumnSearchAttr(char* relName, char* attrName,RM_Record* rmRecord) {
+RC ColumnSearchAttr(char* relName, char* attrName, RM_Record* rmRecord) {
 	RM_FileScan rmFileScan;
 	RC rc;
 	Con cons[2];
-	
+
 	RID rid;
 
 	cons[0].attrType = chars; cons[0].bLhsIsAttr = 1; cons[0].bRhsIsAttr = 0;
@@ -985,16 +985,16 @@ RC ColumnSearchAttr(char* relName, char* attrName,RM_Record* rmRecord) {
 //
 // Ä¿µÄ£º½«¸÷¸öÊı¾İÏîĞ´ÈëpDataÖĞ£¬ÓÃÀ´ÏòSYSCOLUMNS½øĞĞ²åÈë
 RC ToData(char* relName, char* attrName, int attrType,
-	int attrLength, int attrOffset, bool ixFlag, char* indexName,char* pData) {
+	int attrLength, int attrOffset, bool ixFlag, char* indexName, char* pData) {
 	memset(pData, 0, SIZE_SYS_COLUMNS);
-	memcpy(pData, relName,SIZE_TABLE_NAME);
-	memcpy(pData + ATTR_NAME_OFF, attrName,SIZE_ATTR_NAME);
+	memcpy(pData, relName, SIZE_TABLE_NAME);
+	memcpy(pData + ATTR_NAME_OFF, attrName, SIZE_ATTR_NAME);
 	memcpy(pData + ATTR_TYPE_OFF, &attrType, SIZE_ATTR_TYPE);
 	memcpy(pData + ATTR_LENGTH_OFF, &attrLength, SIZE_ATTR_LENGTH);
 	memcpy(pData + ATTR_OFFSET_OFF, &attrOffset, SIZE_ATTR_OFFSET);
-	memcpy(pData + ATTR_IXFLAG_OFF, &ixFlag,SIZE_IX_FLAG);
-	memcpy(pData + ATTR_INDEX_NAME_OFF, indexName,SIZE_INDEX_NAME);
-	
+	memcpy(pData + ATTR_IXFLAG_OFF, &ixFlag, SIZE_IX_FLAG);
+	memcpy(pData + ATTR_INDEX_NAME_OFF, indexName, SIZE_INDEX_NAME);
+
 	return SUCCESS;
 }
 
@@ -1029,7 +1029,7 @@ RC ColumnMetaInsert(char* relName, char* attrName, int attrType,
 		delete[] rmRecord.pData;
 		return rc;
 	}
-		
+
 	delete[] rmRecord.pData;
 	return SUCCESS;
 }
@@ -1060,9 +1060,9 @@ RC ColumnMetaDelete(char* relName) {
 		delete[] rmRecord.pData;
 		return rc;
 	}
-		
 
-	while ((rc = GetNextRec(&rmFileScan, &rmRecord))==SUCCESS) {
+
+	while ((rc = GetNextRec(&rmFileScan, &rmRecord)) == SUCCESS) {
 		//	  1.1. É¾³ırelNameÏà¹ØµÄattr¼ÇÂ¼
 		if ((rc = DeleteRec(dbInfo.sysColumns, &rmRecord.rid))) {
 			delete[] rmRecord.pData;
@@ -1076,7 +1076,7 @@ RC ColumnMetaDelete(char* relName) {
 			if (!DeleteFile(ixFileName.c_str())) {
 				delete[] rmRecord.pData;
 				return SQL_SYNTAX;
-			}	
+			}
 		}
 	}
 
@@ -1114,7 +1114,7 @@ RC ColumnMetaUpdate(char* relName, char* attrName, bool ixFlag, char* indexName)
 	}
 
 	pData = rmRecord.pData;
-	*(pData ) = ix_c;
+	*(pData) = ix_c;
 	if (indexName)
 		memcpy(pData + ATTR_INDEX_NAME_OFF, indexName, strlen(indexName));
 
@@ -1236,7 +1236,7 @@ RC CreateIxFromTable(char* relName, char* indexName, int attrOffset) {
 	RM_FileScan rmFileScan;
 	Con cons[1];
 	RID rid;
-	std::string rmFileName,ixFileName;
+	std::string rmFileName, ixFileName;
 	rmRecord.pData = new char[SIZE_SYS_COLUMNS];
 	memset(rmRecord.pData, 0, SIZE_SYS_COLUMNS);
 
@@ -1245,7 +1245,7 @@ RC CreateIxFromTable(char* relName, char* indexName, int attrOffset) {
 	ixFileName = ixFileName + dbInfo.curDbName + "\\" + indexName;
 	if ((rc = RM_OpenFile((char*)rmFileName.c_str(), &rmFileHandle)) ||
 		(rc = OpenIndex((char*)ixFileName.c_str(), &ixIndexHandle))) {
-		delete [] rmRecord.pData;
+		delete[] rmRecord.pData;
 		return rc;
 	}
 
@@ -1264,7 +1264,7 @@ RC CreateIxFromTable(char* relName, char* indexName, int attrOffset) {
 	void* pData;
 	while ((rc = GetNextRec(&rmFileScan, &rmRecord)) == SUCCESS) {
 		//3. ½«¼ÇÂ¼²åÈëixÎÄ¼ş
-		pData=(void*)(rmRecord.pData + attrOffset);
+		pData = (void*)(rmRecord.pData + attrOffset);
 		if ((rc = InsertEntry(&ixIndexHandle, pData, &rmRecord.rid))) {
 			delete[] rmRecord.pData;
 			return rc;
@@ -1277,7 +1277,7 @@ RC CreateIxFromTable(char* relName, char* indexName, int attrOffset) {
 	}
 
 	//4. ¹Ø±Õ¾ä±ú
-	if ((rc = CloseScan(&rmFileScan)) || (rc=RM_CloseFile(&rmFileHandle)) ||
+	if ((rc = CloseScan(&rmFileScan)) || (rc = RM_CloseFile(&rmFileHandle)) ||
 		(rc = CloseIndex(&ixIndexHandle))) {
 		delete[] rmRecord.pData;
 		return rc;
@@ -1290,7 +1290,7 @@ RC CreateIxFromTable(char* relName, char* indexName, int attrOffset) {
 
 //
 // Ä¿µÄ£º½«conditionsÊı×éÖĞµÄĞÅÏ¢×ª»»³ÉCon¸ñÊ½µÄconsÊı×é
-RC  CreateConFromCondition(char * relName,int nConditions,Condition* conditions, Con* cons) {
+RC  CreateConFromCondition(char* relName, int nConditions, Condition* conditions, Con* cons) {
 	RC rc;
 	AttrEntry attrEntry;
 	std::string attrName;
@@ -1301,13 +1301,14 @@ RC  CreateConFromCondition(char * relName,int nConditions,Condition* conditions,
 		cons[i].Lvalue = conditions[i].lhsValue.data;
 		cons[i].Rvalue = conditions[i].rhsValue.data;
 		if (cons[i].bLhsIsAttr) {
-			if ((rc = ColumnMetaGet(relName,conditions[i].lhsAttr.attrName,&attrEntry))) {
+			if ((rc = ColumnMetaGet(relName, conditions[i].lhsAttr.attrName, &attrEntry))) {
 				return rc;
 			}
 			cons[i].attrType = attrEntry.attrType;
 			cons[i].LattrLength = attrEntry.attrLength;
 			cons[i].LattrOffset = attrEntry.attrOffset;
-		}else{
+		}
+		else {
 			if ((rc = ColumnMetaGet(relName, conditions[i].rhsAttr.attrName, &attrEntry))) {
 				return rc;
 			}
