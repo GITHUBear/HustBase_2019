@@ -90,7 +90,7 @@ RC ColumnMetaInsert(char* relName, char* attrName, int attrType,
 	int attrLength, int attrOffset, bool ixFlag, char* indexName);     
 RC ColumnMetaDelete(char* relName);                                  
 RC ColumnMetaUpdate(char* relName, char* attrName, bool ixFlag, char* indexName);
-RC ColumnMetaGet(char* relName, char* attrName, AttrInfo* attribute);
+RC ColumnMetaGet(char* relName, char* attrName, AttrEntry* attribute);
 RC ColumnMetaShow();                                                 // 打印出 column 元数据表
 // 检查 relName 有效，同上
 // 获取的信息保存在 attribute 中
@@ -101,4 +101,7 @@ RC ColumnEntryGet(char* relName, int* attrCount,
 
 //封装的RM方法
 RC CreateIxFromTable(char* relName, char* indexName,int attrOffset);
+RC CreateConFromCondition(char* relName,int nConditons,Condition* conditions,Con* cons);
+bool CheckCondition(char* relName, Condition& condition);
+bool checkAttr(char* relName, int hsIsAttr, RelAttr& hsAttr, AttrType* attrType);
 #endif
