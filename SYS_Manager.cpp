@@ -769,7 +769,7 @@ bool CheckCondition(char* relName, Condition& condition) {
 //	 2.3. 检查传入的conditions是否正确。
 //3. 利用relName打开RM文件。
 //4. 将输入的nConditions和conditions转换成RM_FileScan的参数。
-//5. 用rm句柄、nConditions和conditions创建rmFileScan。对筛选处的每一项记录
+//5. 用rm句柄、nConditions和conditions创建rmFileScan。对筛选出的每一项记录
 //	 3.1. 调用rm句柄的DeleteRec方法进行删除。
 //	 3.2. 用保存ix文件句柄，删除ix记录。
 //6. 关闭文件句柄
@@ -834,6 +834,12 @@ RC Delete(char* relName, int nConditions, Condition* conditions) {
 	if ((rc = CreateConFromCondition(relName,nConditions,conditions, cons))) {
 		return rc;
 	}
+
+	//5. 用rm句柄、nConditions和conditions创建rmFileScan。对筛选处的每一项记录
+	//	 3.1. 调用rm句柄的DeleteRec方法进行删除。
+	//	 3.2. 用保存ix文件句柄，删除ix记录。
+	//6. 关闭文件句柄
+
 	return SUCCESS;
 }
 
@@ -1284,7 +1290,6 @@ RC CreateIxFromTable(char* relName, char* indexName, int attrOffset) {
 
 //
 // 目的：将conditions数组中的信息转换成Con格式的cons数组
-// 1.
 RC  CreateConFromCondition(char * relName,int nConditions,Condition* conditions, Con* cons) {
 	RC rc;
 	AttrEntry attrEntry;
