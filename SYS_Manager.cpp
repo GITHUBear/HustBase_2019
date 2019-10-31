@@ -208,7 +208,7 @@ RC DropDB(char* dbname) {
 		if (pNextInfo.cFileName[0] == '.')//Ìø¹ý.ºÍ..Ä¿Â¼
 			continue;
 		fileName = dbname;
-		fileName += pNextInfo.cFileName;
+		fileName =fileName + "\\"+pNextInfo.cFileName;
 		if (!DeleteFile(pNextInfo.cFileName))
 			return OS_FAIL;
 	}
