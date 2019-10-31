@@ -5,6 +5,7 @@
 #include "PF_Manager.h"
 #include "RM_Manager.h"
 #include "str.h"
+#include "EditArea.h"
 #include <string>
 #include <map>
 #include <cassert>

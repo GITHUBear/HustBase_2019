@@ -182,8 +182,7 @@ RC CreateDB(char* dbpath, char* dbname) {
 RC DropDB(char* dbname) {
 
 	//1. 判断dbname是否为空，或者dbInfo.path下是否存在dbname。如果不存在则报错。
-	std::string dbPath = "";
-	dbPath = dbPath + dbname;
+	std::string dbPath = dbname;
 	if (dbname == NULL || access(dbPath.c_str(), 0) == -1)
 		return DB_NOT_EXIST;
 
@@ -198,15 +197,18 @@ RC DropDB(char* dbname) {
 	HANDLE hFile;
 	WIN32_FIND_DATA  pNextInfo;
 
-	dbPath += "\\*.*";
+	dbPath += "\\*";
 	hFile = FindFirstFile(dbPath.c_str(), &pNextInfo);
 	if (hFile == INVALID_HANDLE_VALUE)
 		return OS_FAIL;
 
 	//3. 遍历删除文件夹下的所有文件
+	std::string fileName;
 	while (FindNextFile(hFile, &pNextInfo)) {
 		if (pNextInfo.cFileName[0] == '.')//跳过.和..目录
 			continue;
+		fileName = dbname;
+		fileName += pNextInfo.cFileName;
 		if (!DeleteFile(pNextInfo.cFileName))
 			return OS_FAIL;
 	}
@@ -1094,7 +1096,7 @@ RC TableMetaShow() {
 	printf("+--------------------+----------+\n");
 	printf("|     Table Name     |  AttrCnt |\n");
 	printf("+--------------------+----------+\n");
-	while ((rc == GetNextRec(&rmFileScan, &rec)) != RM_EOF) {
+	while ((rc = GetNextRec(&rmFileScan, &rec)) != RM_EOF) {
 		if (rc != SUCCESS) {
 			delete[] rec.pData;
 			return rc;
@@ -1355,10 +1357,10 @@ RC ColumnMetaShow()
 	printf("+--------------------+\n");
 	printf("|     Table Name     ");
 	printf("|   Attribute Name   ");
-	printf("| Attr Type ");
-	printf("|  AttrLen  ");
-	printf("|Attr Offset");
-	printf("|  idxFlag  ");
+	printf("| AttrType ");
+	printf("|  AttrLen ");
+	printf("|AttrOffset");
+	printf("| idx Flag ");
 	printf("|     index Name     |\n");
 	printf("+--------------------");
 	printf("+--------------------");
@@ -1367,7 +1369,7 @@ RC ColumnMetaShow()
 	printf("+----------");
 	printf("+----------");
 	printf("+--------------------+\n");
-	while ((rc == GetNextRec(&rmFileScan, &rec)) != RM_EOF) {
+	while ((rc = GetNextRec(&rmFileScan, &rec)) != RM_EOF) {
 		if (rc != SUCCESS) {
 			delete[] rec.pData;
 			return rc;
