@@ -7,17 +7,17 @@
 #define MAX_DATA 50
 
 /*
-ÎÄ¼ş: str.h
-ÄÚÈİ: the definition of sqls' structs
+æ–‡ä»¶: str.h
+å†…å®¹: the definition of sqls' structs
 */
 #include<stdlib.h>
 #include<string.h>
 #include "RC.h"
 
-//ÊôĞÔ½á¹¹Ìå
-typedef struct  {
-  char *relName;     // relation name (may be NULL) ±íÃû
-  char *attrName;    // attribute name              ÊôĞÔÃû
+//å±æ€§ç»“æ„ä½“
+typedef struct {
+	char* relName;     // relation name (may be NULL) è¡¨å
+	char* attrName;    // attribute name              å±æ€§å
 }RelAttr;
 
 typedef enum {
@@ -30,121 +30,121 @@ typedef enum {
 	NO_OP
 }CompOp;
 
-//ÊôĞÔÖµÀàĞÍ
+//å±æ€§å€¼ç±»å‹
 typedef enum {
-		chars,
-		ints,
-		floats
+	chars,
+	ints,
+	floats
 }AttrType;
-//ÊôĞÔÖµ
+//å±æ€§å€¼
 typedef struct _Value Value;
-struct _Value{
+struct _Value {
 	AttrType type;     // type of value               
-	void     *data;    // value    
+	void* data;    // value    
 };
 
 typedef struct  _Condition Condition;
-struct  _Condition{
-  int     bLhsIsAttr;   // TRUE if left-hand side is an attribute 1Ê±£¬²Ù×÷·ûÓÒ±ßÊÇÊôĞÔ£¬0Ê±£¬ÊÇÊôĞÔÖµ
-  Value   lhsValue;		// left-hand side value if bLhsIsAttr = FALSE 
-  RelAttr lhsAttr;      // left-hand side attribute                     
-  CompOp  op;           // comparison operator                          
-  int     bRhsIsAttr;   // TRUE if right-hand side is an attribute 1Ê±£¬²Ù×÷·ûÓÒ±ßÊÇÊôĞÔ£¬0Ê±£¬ÊÇÊôĞÔÖµ
-                        //   and not a value
-  RelAttr rhsAttr;      // right-hand side attribute if bRhsIsAttr = TRUE ÓÒ±ßµÄÊôĞÔ
-  Value   rhsValue;     // right-hand side value if bRhsIsAttr = FALSE 
+struct  _Condition {
+	int     bLhsIsAttr;   // TRUE if left-hand side is an attribute 1æ—¶ï¼Œæ“ä½œç¬¦å³è¾¹æ˜¯å±æ€§ï¼Œ0æ—¶ï¼Œæ˜¯å±æ€§å€¼
+	Value   lhsValue;		// left-hand side value if bLhsIsAttr = FALSE 
+	RelAttr lhsAttr;      // left-hand side attribute                     
+	CompOp  op;           // comparison operator                          
+	int     bRhsIsAttr;   // TRUE if right-hand side is an attribute 1æ—¶ï¼Œæ“ä½œç¬¦å³è¾¹æ˜¯å±æ€§ï¼Œ0æ—¶ï¼Œæ˜¯å±æ€§å€¼
+						  //   and not a value
+	RelAttr rhsAttr;      // right-hand side attribute if bRhsIsAttr = TRUE å³è¾¹çš„å±æ€§
+	Value   rhsValue;     // right-hand side value if bRhsIsAttr = FALSE 
 
 };
 
 //struct of select
 typedef struct {
 	int nSelAttrs;              	//Length of attrs in Select clause
-	RelAttr *selAttrs[MAX_NUM];			//attrs in Select clause
+	RelAttr* selAttrs[MAX_NUM];			//attrs in Select clause
 	int nRelations;								//Length of relations in Fro clause
-	char *relations[MAX_NUM];			//relations in From clause
+	char* relations[MAX_NUM];			//relations in From clause
 	int nConditions;							//Length of conditions in Where clause 
 	Condition conditions[MAX_NUM];//conditions in Where clause
 }selects;
 
 //struct of insert 
 typedef struct {
-	char *relName;				//Relation to insert into 
+	char* relName;				//Relation to insert into 
 	int nValues;					//Length of values
 	Value values[MAX_NUM];//values to insert
 }inserts;
 
 //struct of delete 
 typedef struct {
-	char *relName;										//Relation to delete from
+	char* relName;										//Relation to delete from
 	int nConditions;									//Length of conditions in Where clause 
-	  Condition conditions[MAX_NUM];	//conditions in Where clause
+	Condition conditions[MAX_NUM];	//conditions in Where clause
 }deletes;
 
 //struct of update 
 typedef struct {
-	char *relName;					//Relation to update
-	char *attrName;					//Attribute to update
+	char* relName;					//Relation to update
+	char* attrName;					//Attribute to update
 	Value value;						//update value
 	int nConditions;				//Length of conditions in Where clause 
-	 Condition conditions[MAX_NUM];	// conditions in Where clause
+	Condition conditions[MAX_NUM];	// conditions in Where clause
 }updates;
 
 //struct of AttrInfo  
 typedef struct _AttrInfo AttrInfo;
-struct _AttrInfo{
-	char *attrName;		//Attribute name
+struct _AttrInfo {
+	char* attrName;		//Attribute name
 	AttrType attrType;		//Type of attribute
 	int attrLength;		//Length of attribute
 };
 //struct of craete_table
 typedef struct {
-	char *relName;		//Relation name
+	char* relName;		//Relation name
 	int attrCount;		//Length of attribute 
 	AttrInfo attributes[MAX_NUM];	//attributes 
 }createTable;
 
 //struct of drop_table  
 typedef struct {
-	char *relName;		//Relation name
+	char* relName;		//Relation name
 }dropTable;
 
 //struct of create_index  
 typedef struct {
-	char *indexName;	// Index name
-	char *relName;		// Relation name
-	char *attrName;		// Attribute name
+	char* indexName;	// Index name
+	char* relName;		// Relation name
+	char* attrName;		// Attribute name
 }createIndex;
 
 //struct of  drop_index  
 typedef struct {
-	char *indexName;		// Index name
+	char* indexName;		// Index name
 
 }dropIndex;
 
 //union of sql_structs
-union sqls{
-	 selects sel;
-	 inserts ins;
-	 deletes del;
-	 updates upd;
-	 createTable cret;
-	 dropTable drt;
-	 createIndex crei;
-	 dropIndex dri;
-	 char *errors;
+union sqls {
+	selects sel;
+	inserts ins;
+	deletes del;
+	updates upd;
+	createTable cret;
+	dropTable drt;
+	createIndex crei;
+	dropIndex dri;
+	char* errors;
 };
 
 
 // struct of flag and sql_struct
 typedef struct {
 	int flag;	/*match to the sqls 0--error;1--select;2--insert;3--update;4--delete;5--create table;6--drop table;7--create index;8--drop index;9--help;10--exit;*/
- 	union sqls sstr;
+	union sqls sstr;
 }sqlstr;
 
 #ifdef __cplusplus
-extern "C"{
-	sqlstr * get_sqlstr();
-	RC parse(char* st,sqlstr* sqln);
+extern "C" {
+	sqlstr* get_sqlstr();
+	RC parse(char* st, sqlstr* sqln);
 };
 #endif
 #endif

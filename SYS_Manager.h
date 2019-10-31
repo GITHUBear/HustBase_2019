@@ -9,121 +9,99 @@
 #include <map>
 #include <cassert>
 #include <vector>
+#include <set>
+#include <algorithm>
 
-#define TABLE_META_NAME "SYSTABLES.rm"
-#define COLUMN_META_NAME "SYSCOLUMNS.rm"
+#define TABLE_META_NAME "SYSTABLES"
+#define COLUMN_META_NAME "SYSCOLUMNS"
+#define RM_FILE_SUFFIX ".rm"
+#define IX_FILE_SUFFIX ".ix"
+//SYSTABLE中记录每一项的长度
+#define SIZE_TABLE_NAME 21
+#define TABLE_NAME_OFF 0
+#define SIZE_ATTR_COUNT 4
+#define ATTR_COUNT_OFF (TABLE_NAME_OFF+SIZE_TABLE_NAME)
+#define SIZE_SYS_TABLE 25
+//SYSCOLUMNS中记录每一项的长度
+#define SIZE_ATTR_NAME 21
+#define ATTR_NAME_OFF (TABLE_NAME_OFF+SIZE_TABLE_NAME)
+#define SIZE_ATTR_TYPE 4
+#define ATTR_TYPE_OFF (ATTR_NAME_OFF+SIZE_ATTR_NAME)
+#define SIZE_ATTR_LENGTH 4
+#define ATTR_LENGTH_OFF (ATTR_TYPE_OFF+SIZE_ATTR_TYPE)
+#define SIZE_ATTR_OFFSET 4
+#define ATTR_OFFSET_OFF (ATTR_LENGTH_OFF+SIZE_ATTR_LENGTH)
+#define SIZE_IX_FLAG 1
+#define ATTR_IXFLAG_OFF (ATTR_OFFSET_OFF+SIZE_ATTR_OFFSET)
+#define SIZE_INDEX_NAME 21
+#define ATTR_INDEX_NAME_OFF (ATTR_IXFLAG_OFF+SIZE_IX_FLAG)
+#define SIZE_SYS_COLUMNS 76
 
-#define INDEX_FILE_SUFFIX ".ix"
-#define REC_FILE_SUFFIX ".rm"
 
-// table 元数据表字段长度
-const int TABLENAME = 21;
-const int ATTRCOUNT = sizeof(int);
-// table 元数据各个字段偏移
-const int TABLENAME_OFF = 0;
-const int ATTRCOUNT_OFF = TABLENAME_OFF + TABLENAME;
-const int TABLE_ENTRY_SIZE = TABLENAME + ATTRCOUNT;
+#define MAX_CON_LEN 100 
 
-// column 元数据表字段长度
-// const int TABLENAME = 21;
-const int ATTRNAME = 21;
-const int ATTRTYPE = sizeof(int);
-const int ATTRLENGTH = sizeof(int);
-const int ATTROFFSET = sizeof(int);
-const int IXFLAG = sizeof(char);
-const int INDEXNAME = 21;
-// column 元数据表各个字段偏移
-// const int TABLENAME_OFF = 0;
-const int ATTRNAME_OFF = TABLENAME_OFF + TABLENAME;
-const int ATTRTYPE_OFF = ATTRNAME_OFF + ATTRNAME;
-const int ATTRLENGTH_OFF = ATTRTYPE_OFF + ATTRTYPE;
-const int ATTROFFSET_OFF = ATTRLENGTH_OFF + ATTRLENGTH;
-const int IXFLAG_OFF = ATTROFFSET_OFF + ATTROFFSET;
-const int INDEXNAME_OFF = IXFLAG_OFF + IXFLAG;
-const int COL_ENTRY_SIZE = TABLENAME + ATTRNAME + ATTRTYPE + ATTRLENGTH + ATTROFFSET + IXFLAG + INDEXNAME;
+typedef struct db_info {
+	RM_FileHandle* sysTables;
+	RM_FileHandle* sysColumns;
+	int MAXATTRS = 20;		 //最大属性数量
+	std::string curDbName; //存放当前DB名称
+}DB_INFO;
 
-typedef struct {
-	RM_FileHandle sysTable;
-	RM_FileHandle sysColumn;
-
-	std::string curWorkPath;        // DB 文件夹上层目录路径
-	std::string curDBName;
-} WorkSpace;
 
 typedef struct {
 	AttrType attrType;
 	int attrLength;
 	int attrOffset;
 	bool ix_flag;
-	std::string idxName;
+	std::string indexName;
 } AttrEntry;
 
-void ExecuteAndMessage(char * ,CEditArea*);
+void ExecuteAndMessage(char*, CEditArea*);
 bool CanButtonClick();
 
-RC CreateDB(char *dbpath,char *dbname);
-RC DropDB(char *dbname);
-RC OpenDB(char *dbname);
+RC CreateDB(char* dbpath, char* dbname);
+RC DropDB(char* dbname);
+RC OpenDB(char* dbname);
 RC CloseDB();
 
-RC execute(char * sql);
+RC execute(char* sql);
 
-RC CreateTable(char *relName,int attrCount,AttrInfo *attributes);
-RC DropTable(char *relName);
-RC CreateIndex(char *indexName,char *relName,char *attrName);
-RC DropIndex(char *indexName);
-RC Insert(char *relName,int nValues,Value * values);
-RC Delete(char *relName,int nConditions,Condition *conditions);
-RC Update(char *relName,char *attrName,Value *value,int nConditions,Condition *conditions);
+RC CreateTable(char* relName, int attrCount, AttrInfo* attributes);
+RC DropTable(char* relName);
+RC CreateIndex(char* indexName, char* relName, char* attrName);
+RC DropIndex(char* indexName);
+RC Insert(char* relName, int nValues, Value* values);
+RC Delete(char* relName, int nConditions, Condition* conditions);
+RC Update(char* relName, char* attrName, Value* value, int nConditions, Condition* conditions);
 
 // 一些非接口方法
-// table 元数据表操作
-//
-// relName: 表名称
-// attrCount: 属性数量
-// RC 由底层 RM insert 操作进行返回
-// 
-RC TableMetaInsert(char* relName, int attrCount);                    // 插入一条 table name 记录
-//
-// relName: 表名称
-// 判断 relName 是否存在, 不存在返回 TABLE_NOT_EXIST
-// 其次 RC 由底层 RM Scan/delete 操作进行返回
-// 底层实现保证 边查边删 应该是安全的
-// 
-RC TableMetaDelete(char* relName);                                   // 删除一个 table name 记录
-//
-// relName: 表名称
-// 判断 relName 是否存在, 不存在返回 TABLE_NOT_EXIST
-// 存在 返回 SUCCESS
-// 
-RC TableMetaSearch(char* relName, RM_Record* rmRecord);                         // 判断一个 table name 是否存在
-// RC 代表 RM Scan 过程中发生的错误 (除去 RM_EOF)
-// 完成 Scan 返回 Success
-// 输出格式尽量好看些，仿照 mysql 是最吼的
-// 
-RC TableMetaShow();                                                  // 打印出 table 元数据表
+// SYSTABLES 元数据表操作
+RC TableMetaInsert(char* relName, int attrCount);
+RC TableMetaDelete(char* relName);
+RC TableMetaSearch(char* relName, RM_Record* rmRecord);
+RC TableMetaShow();
 
-// column 元数据表操作
-RC ColumnMetaInsert(char* relName, char* attrName, int attrType,
-	int attrLength, int attrOffset, bool idx, char* indexName);      // 插入一条 column 记录
-// 检查 relName 有效，同上
-RC ColumnMetaDelete(char* relName);                                  // 删除同一个表中的所有属性列信息
-                                                                     // RM 的实现允许边查边删
+// SYSCOLUMNS 元数据表操作
 RC ColumnSearchAttr(char* relName, char* attrName, RM_Record* rmRecord);
-// 检查 relName 有效，同上
-RC ColumnMetaUpdate(char* relName, char* attrName,
-	bool ixFlag, char* indexName);                                   // 更新 column 元数据表中的某一项记录的相关属性 
-// 检查 relName 有效，同上
-// 获取的信息保存在 attribute 中
-RC ColunmMetaGet(char* relName, char* attrName, AttrInfo* attribute);// 获取某个 表 中的 某一个属性的 类型、长度
-// 同上
+bool attrVaild(int attrCount, AttrInfo* attributes);
+RC ToData(char* relName, char* attrName, int attrType,
+	int attrLength, int attrOffset, bool ixFlag, char* indexName, char* pData);
+RC ColumnMetaInsert(char* relName, char* attrName, int attrType,
+	int attrLength, int attrOffset, bool ixFlag, char* indexName);
+RC ColumnMetaDelete(char* relName);
+RC ColumnMetaUpdate(char* relName, char* attrName, bool ixFlag, char* indexName);
+RC ColumnMetaGet(char* relName, char* attrName, AttrEntry* attribute);
 RC ColumnMetaShow();                                                 // 打印出 column 元数据表
-
 // 检查 relName 有效，同上
 // 获取的信息保存在 attribute 中
-RC MetaGet(char* relName, int* attrCount,
-	       std::vector<AttrEntry>& attributes);                      // 通过 table 元数据 和 column 元数据
-                                                                     // 获得一个表的全部属性信息, 便于进行类型检查
-                                                                     // CreateTable 的 逆操作
+RC ColumnEntryGet(char* relName, int* attrCount,
+	std::vector<AttrEntry>& attributes);                      // 通过 table 元数据 和 column 元数据
+															  // 获得一个表的全部属性信息, 便于进行类型检查
+															  // CreateTable 的 逆操作
 
+//封装的RM方法
+RC CreateIxFromTable(char* relName, char* indexName, int attrOffset);
+RC CreateConFromCondition(char* relName, int nConditons, Condition* conditions, Con* cons);
+bool CheckCondition(char* relName, Condition& condition);
+bool checkAttr(char* relName, int hsIsAttr, RelAttr& hsAttr, AttrType* attrType);
 #endif
