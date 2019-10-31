@@ -83,6 +83,9 @@ bool innerCmp(Con condition, char *pData)
 	lval = (condition.bLhsIsAttr == 1) ? (pData + condition.LattrOffset) : condition.Lvalue;
 	rval = (condition.bRhsIsAttr == 1) ? (pData + condition.RattrOffset) : condition.Rvalue;
 
+	if (condition.compOp == NO_OP)
+		return true;
+
 	return matchComp(cmp(condition.attrType, lval, rval, 
 			condition.LattrLength, condition.RattrLength), condition.compOp);
 }

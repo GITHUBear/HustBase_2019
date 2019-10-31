@@ -496,6 +496,8 @@ RC DropIndex(char* indexName)
 
 RC Insert(char* relName, int nValues, Value* values)
 {
+	// 1. 尽量检查 relName 以及 values 的字符串是否长度符合标准
+	// 2. bug: attrCount = *((int *)rmRecord.pData+ATTR_COUNT_OFF);
 	return SUCCESS;
 }
 
@@ -923,9 +925,6 @@ bool cmp(AttrEntry lattrEntry, AttrEntry rattrEntry)
 	return lattrEntry.attrOffset < rattrEntry.attrOffset;
 }
 
-//
-// 
-//
 RC MetaGet(char* relName, int* attrCount, std::vector<AttrEntry>& attributes)
 {
 	RC rc;
