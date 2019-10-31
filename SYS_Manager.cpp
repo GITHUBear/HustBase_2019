@@ -292,9 +292,10 @@ RC CloseDB() {
 
 bool CanButtonClick() {//需要重新实现
 	//如果当前有数据库已经打开
-	return true;
+	if(dbInfo.curDbName.size())
+		return true;
 	//如果当前没有数据库打开
-	//return false;
+	return false;
 }
 
 //
@@ -591,7 +592,6 @@ RC DropIndex(char* indexName) {
 //7. 关闭文件句柄
 RC Insert(char* relName, int nValues, Value* values) {
 	//nValues 为属性值个数， values 为对应的属性值数组。 
-
 	//1. 检查当前是否打开了一个数据库。如果没有则报错。
 	if (dbInfo.curDbName.size() == 0)
 		return SQL_SYNTAX;
@@ -624,9 +624,6 @@ RC Insert(char* relName, int nValues, Value* values) {
 	//	 2.2. 扫描SYSCOLUMNS文件。
 	std::vector<AttrEntry> attributes;
 	std::string str_indexName;
-	std::vector<IxEntry> ixEntrys;
-	IxEntry curIxEntry;
-
 	int recordSize = 0;
 	if ((rc = ColumnEntryGet(relName, &attrCount, attributes))) {
 		return rc;
@@ -652,7 +649,7 @@ RC Insert(char* relName, int nValues, Value* values) {
 		recordSize += attributes[i].attrLength;
 	}
 
-	//4. 利用relName打开RM文件.调用InsertRec方法，向rm插入记录
+	//4. 利用relName打开RM文件.
 	std::string rmFileName = "";
 	RM_FileHandle rmFileHandle;
 
@@ -662,6 +659,8 @@ RC Insert(char* relName, int nValues, Value* values) {
 		return rc;
 	}
 	//5. 对每一个保存建立了索引的属性打开对应的ix文件并保存索引。
+	std::vector<IxEntry> ixEntrys;
+	IxEntry curIxEntry;
 	for (int i = 0; i < attrCount; i++) {
 		if (attributes[i].ix_flag) {
 			str_indexName = dbInfo.curDbName + "\\" + attributes[i].indexName;
@@ -679,14 +678,13 @@ RC Insert(char* relName, int nValues, Value* values) {
 		delete[] insertData;
 		return rc;
 	}
-
 	delete[] insertData;
 
 	//7. 关闭文件句柄
 	if ((rc = RM_CloseFile(&rmFileHandle))) {
 		return rc;
 	}
-
+	int numIndexs = ixEntrys.size();
 	for (int i = 0; i < numIndexs; i++) {
 		curIxEntry = ixEntrys[i];
 		if (attributes[i].ix_flag && (rc = CloseIndex(&curIxEntry.ixIndexHandle))) {
@@ -862,6 +860,120 @@ RC Delete(char* relName, int nConditions, Condition* conditions) {
 		if (attributes[i].ix_flag && (rc = CloseIndex(&curIxEntry.ixIndexHandle))) {
 			return rc;
 		}
+	}
+
+	return SUCCESS;
+}
+
+//目的：该函数用来在 relName 表中插入具有指定属性值的新元组，
+//1. 检查当前是否打开了一个数据库。如果没有则报错。
+//2. 检查传入参数的合法性
+//	 2.1. 查找relName。如果传入的relName表不存在就报错。
+//	 2.2. 扫描SYSCOLUMNS文件。
+//		 2.2.1 检查传入value中属性值的类型和长度是否和SYSCOLUMNS记录的相同。
+//		 2.2.2 如果传入的value类型是chars，判断values.data长度是否和SYSCOLUMNS记录相同
+//   2.3. 检查传入的conditions是否合法。如果合法则将conditions转换成Con结构。
+//3. 利用relName打开RM文件.
+//4. 如果attrName上建立了索引。则打开对应的ix文件并保存索引。
+//5. 扫描RM文件，对每一项符合要求的记录，删除记录后重新插入新的记录。对索引文件进行同步操作。
+//6. 关闭文件句柄
+RC Update(char* relName, char* attrName, Value* value, int nConditions, Condition* conditions) {
+	//1. 检查当前是否打开了一个数据库。如果没有则报错。
+	if (dbInfo.curDbName.size() == 0)
+		return SQL_SYNTAX;
+
+	//2. 检查传入参数的合法性
+	RM_Record rmRecord;
+	RC rc;
+	rmRecord.pData = new char[SIZE_SYS_COLUMNS];
+	memset(rmRecord.pData, 0, SIZE_SYS_COLUMNS);
+
+	//	 2.1. 查找relName。如果传入的relName表不存在就报错。
+	if ((rc = TableMetaSearch(relName, &rmRecord))) {
+		delete[] rmRecord.pData;
+		return rc;
+	}
+	delete[] rmRecord.pData;
+
+	//	 2.2. 扫描SYSCOLUMNS文件。
+	AttrEntry attrEntry;
+	if ((rc = ColumnMetaGet(relName, attrName, &attrEntry))) {
+		return rc;
+	}
+	//		 2.2.1 检查传入values中属性值的类型是否和SYSCOLUMNS记录的相同。
+	if (value->type != attrEntry.attrType) {
+		return INVALID_VALUES;
+	}
+	//		 2.2.2 如果传入的value类型是chars，判断values.data长度是否和SYSCOLUMNS记录相同
+	if ((value->type == chars) && strlen((char*)value->data) != attrEntry.attrLength) {
+		return INVALID_VALUES;
+	}
+
+	//   2.3. 检查传入的conditions是否合法。如果合法则将conditions转换成Con结构。
+	for (int i = 0; i < nConditions; i++) {
+		if (!CheckCondition(relName, conditions[i]))
+			return INVALID_CONDITIONS;
+	}
+	Con* cons = new Con[nConditions];
+	memset(cons, 0, sizeof(Con) * nConditions);
+	if ((rc = CreateConFromCondition(relName, nConditions, conditions, cons))) {
+		return rc;
+	}
+
+	//3. 利用relName打开RM文件.
+	std::string rmFileName = "";
+	RM_FileHandle rmFileHandle;
+	rmFileName = dbInfo.curDbName + "\\" + relName + RM_FILE_SUFFIX;
+	if ((rc = RM_OpenFile((char*)rmFileName.c_str(), &rmFileHandle))) {
+		return rc;
+	}
+	//4. 对建立了索引的属性打开对应的ix文件并保存索引。
+	std::vector<IxEntry> ixEntrys;
+	IxEntry curIxEntry;
+	std::string str_indexName;
+
+	if (attrEntry.ix_flag) {
+		str_indexName = dbInfo.curDbName + "\\" + attrEntry.indexName;
+		if ((rc = OpenIndex(str_indexName.c_str(), &curIxEntry.ixIndexHandle))) {
+			return rc;
+		}
+		curIxEntry.attrOffset = attrEntry.attrOffset;
+	}
+	ixEntrys.push_back(curIxEntry); //ix_flag为false对应的ixIndexHandle之后不会被调用
+
+	//5. 扫描RM文件，对每一项符合要求的记录，删除记录后重新插入新的记录。对索引文件进行同步操作。
+	RM_FileScan rmFileScan;
+	RM_Record updateRecord;
+	int recordSize ;
+	GetRecordSize(relName, &recordSize);
+	updateRecord.pData = new char[recordSize];
+	memset(updateRecord.pData, 0, recordSize);
+
+	if ((rc = OpenScan(&rmFileScan, &rmFileHandle, nConditions, cons))){
+		return rc;
+	}
+
+	while ((rc = GetNextRec(&rmFileScan, &updateRecord)) == SUCCESS) {
+		if ((rc = DeleteRmAndIx(&rmFileHandle, ixEntrys, &updateRecord))) {
+			delete[] updateRecord.pData;
+			return rc;
+		}
+		memcpy(updateRecord.pData + attrEntry.attrOffset, value->data, attrEntry.attrLength);
+		if ((rc = InsertRmAndIx(&rmFileHandle, ixEntrys, updateRecord.pData))) {
+			delete[] updateRecord.pData;
+			return rc;
+		}
+	}
+
+	if (rc != RM_EOF || (rc = CloseScan(&rmFileScan))) {
+		delete[] updateRecord.pData;
+		return rc;
+	}
+
+	//7. 关闭文件句柄
+	if ((rc = RM_CloseFile(&rmFileHandle)) ||
+		(rc = CloseIndex(&curIxEntry.ixIndexHandle)) ){
+		return rc;
 	}
 
 	return SUCCESS;
@@ -1465,8 +1577,8 @@ RC DeleteRmAndIx(RM_FileHandle* rmFileHandle, std::vector<IxEntry>& ixEntrys , R
 	if ((rc = DeleteRec(rmFileHandle, &delRecord->rid))) {
 		return rc;
 	}
-	int numIndexs;
 	IxEntry curIxEntry;
+	int numIndexs = ixEntrys.size();
 	for (int i = 0; i < numIndexs; i++) {
 		curIxEntry = ixEntrys[i];
 		if ((rc = DeleteEntry(&curIxEntry.ixIndexHandle,delRecord->pData+curIxEntry.attrOffset,&delRecord->rid,true))) {
@@ -1474,4 +1586,20 @@ RC DeleteRmAndIx(RM_FileHandle* rmFileHandle, std::vector<IxEntry>& ixEntrys , R
 		}
 	}
 	return SUCCESS;
+}
+
+//
+// 目的：获取指定表的记录大小
+RC GetRecordSize(char* relName, int* recordSize){
+	int attrCount;
+	std::vector<AttrEntry> attrEntrys;
+	RC rc;
+	if ((rc = ColumnEntryGet(relName, &attrCount, attrEntrys))) {
+		return rc;
+	}
+	int getSize = 0;
+	for (int i = 0; i < attrCount; i++) {
+		getSize += attrEntrys[i].attrLength;
+	}
+	*recordSize = getSize;
 }

@@ -111,5 +111,5 @@ bool CheckCondition(char* relName, Condition& condition);
 bool checkAttr(char* relName, int hsIsAttr, RelAttr& hsAttr, AttrType* attrType);
 RC InsertRmAndIx(RM_FileHandle* rmFileHandle, std::vector<IxEntry>& ixEntrys, char* pData);
 RC DeleteRmAndIx(RM_FileHandle* rmFileHandle, std::vector<IxEntry>& ixEntrys, RM_Record* delRecord);
-
+RC GetRecordSize(char* relName,int* recordSize);
 #endif
