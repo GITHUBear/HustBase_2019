@@ -136,7 +136,6 @@ RC execute(char* sql) {
 //2. 判断dbpath以及dbname是否和dbInfo中保存相同。如果不同则调用CloseDb。
 //3. 向OS申请在dbpath路径创建文件夹。
 //4. 创建SYSTABLES文件和SYSCOLUMNS文件。
-//5. 设置curDbName。
 RC CreateDB(char* dbpath, char* dbname) {
 
 	RC rc;
@@ -164,8 +163,6 @@ RC CreateDB(char* dbpath, char* dbname) {
 				(rc = RM_CreateFile((char*)sysColumnsPath.c_str(), SIZE_SYS_COLUMNS)))
 				return rc;
 
-			//5. 设置curDbName。
-			dbInfo.curDbName = dbname;
 			return SUCCESS;
 		}
 		return OS_FAIL;
@@ -363,7 +360,7 @@ RC CreateTable(char* relName, int attrCount, AttrInfo* attributes) {
 	rmRecord.pData = new char[SIZE_SYS_TABLE];
 	memset(rmRecord.pData, 0, SIZE_SYS_TABLE);
 
-	if ((rc = TableMetaSearch(relName, &rmRecord))) {
+	if ((rc = TableMetaSearch(relName, &rmRecord))!=TABLE_NOT_EXIST) {
 		if (rc == SUCCESS) {
 			delete[] rmRecord.pData;
 			return TABLE_EXIST;
@@ -465,9 +462,13 @@ RC CreateIndex(char* indexName, char* relName, char* attrName) {
 	rmRecord.pData = new char[SIZE_SYS_COLUMNS];
 	memset(rmRecord.pData, 0, SIZE_SYS_COLUMNS);
 
-	if ((rc = ColumnSearchAttr(relName, attrName, &rmRecord))) {
+	if ((rc = ColumnSearchAttr(relName, attrName, &rmRecord))!= ATTR_NOT_EXIST) {
+		if (rc == SUCCESS) {
+			delete[] rmRecord.pData;
+			return ATTR_EXIST;
+		}
 		delete[] rmRecord.pData;
-		return ATTR_NOT_EXIST;
+		return rc;
 	}
 
 	char* ix_flag = rmRecord.pData + ATTR_IXFLAG_OFF;//无法在Scan的Conditions中加入ix_flag的判断。即使用chars也无法比较。
@@ -1181,9 +1182,13 @@ RC ColumnMetaInsert(char* relName, char* attrName, int attrType,
 	memset(rmRecord.pData, 0, SIZE_SYS_COLUMNS);
 
 	// 1.检查输入relName的attrName项是否已经存在。如果存在返回ATTR_EXIST
-	if (ColumnSearchAttr(relName, attrName, &rmRecord) == SUCCESS) {
+	if ((rc=ColumnSearchAttr(relName, attrName, &rmRecord))!=ATTR_NOT_EXIST) {
+		if (rc == SUCCESS) {
+			delete[] rmRecord.pData;
+			return ATTR_EXIST;
+		}
 		delete[] rmRecord.pData;
-		return ATTR_EXIST;
+		return rc;
 	}
 
 	// 2.向SYSCOLUMNS中插入记录值
@@ -1305,8 +1310,13 @@ RC ColumnMetaGet(char* relName, char* attrName, AttrEntry* attribute) {
 	// 1. 检查relName和attrName是否存在。如果不存在则报错
 	RC rc;
 	RM_Record rmRecord;
-	if ((rc = ColumnSearchAttr(relName, attrName, &rmRecord)))
+	rmRecord.pData = new char[SIZE_SYS_COLUMNS];
+	memset(rmRecord.pData, 0, SIZE_SYS_COLUMNS);
+	if ((rc = ColumnSearchAttr(relName, attrName, &rmRecord))) {
+		delete[] rmRecord.pData;
 		return rc;
+	}
+		
 
 	// 2. 将信息封装进attribute
 	AttrType* attrType = (AttrType*)(rmRecord.pData + ATTR_TYPE_OFF);
@@ -1317,6 +1327,7 @@ RC ColumnMetaGet(char* relName, char* attrName, AttrEntry* attribute) {
 	attribute->ix_flag = (*(rmRecord.pData + ATTR_IXFLAG_OFF) == (char)1);
 	attribute->indexName = rmRecord.pData + ATTR_INDEX_NAME_OFF;
 
+	delete[] rmRecord.pData;
 	return SUCCESS;
 }
 
