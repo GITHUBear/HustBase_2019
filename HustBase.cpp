@@ -163,15 +163,15 @@ void CHustBaseApp::OnAppAbout()
 
 void CHustBaseApp::OnCreateDB()
 {
-	//�����������ݿⰴť���˴�Ӧ��ʾ�û��������ݿ�Ĵ洢·�������ƣ�������CreateDB�����������ݿ⡣
+	//关联创建数据库按钮，此处应提示用户输入数据库的存储路径和名称，并调用CreateDB函数创建数据库。
 }
 
 void CHustBaseApp::OnOpenDB() 
 {
-	//���������ݿⰴť���˴�Ӧ��ʾ�û��������ݿ�����λ�ã�������OpenDB�����ı䵱ǰ���ݿ�·�������ڽ������Ŀؼ�����ʾ���ݿ��еı�������Ϣ��
+	//关联打开数据库按钮，此处应提示用户输入数据库所在位置，并调用OpenDB函数改变当前数据库路径，并在界面左侧的控件中显示数据库中的表、列信息。
 }
 
 void CHustBaseApp::OnDropDb() 
 {
-	//����ɾ�����ݿⰴť���˴�Ӧ��ʾ�û��������ݿ�����λ�ã�������DropDB����ɾ�����ݿ�����ݡ�
+	//关联删除数据库按钮，此处应提示用户输入数据库所在位置，并调用DropDB函数删除数据库的内容。
 }

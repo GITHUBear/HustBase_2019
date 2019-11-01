@@ -3,7 +3,7 @@
 #include "str.h"
 
 
-RC OpenScan(RM_FileScan *rmFileScan,RM_FileHandle *fileHandle,int conNum,Con *conditions)//³õÊ¼»¯É¨Ãè
+RC OpenScan(RM_FileScan *rmFileScan,RM_FileHandle *fileHandle,int conNum,Con *conditions)//åˆå§‹åŒ–æ‰«æ
 {
 	return SUCCESS;
 }

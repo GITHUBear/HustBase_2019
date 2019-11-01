@@ -82,11 +82,11 @@ extern
 
 RC parse(char* st,sqlstr* sqln){
 	
-	yy_switch_to_buffer(yy_scan_string(st)); //sqlÓï¾ä½øÈë»º´æ
+	yy_switch_to_buffer(yy_scan_string(st)); //sqlè¯­å¥è¿›å…¥ç¼“å­˜
 
 	
-	hust_parse(sqln);				//½âÎöµÃµ½SQLÓï¾ä£¬´æÔÚÓï¾äÏàÓ¦µÄ½á¹¹ÌåÖÐ ²¢·µ»Ø
-	/*ÅÐ¶ÏflagµÄÖµ£¬·ÇÁãÖµ·µ»ØCORRECT£¬Îª0Ê±ËµÃ÷½âÎö¹ý³ÌÖÐ³öÏÖÓï·¨´íÎó£¬·µ»ØSQL_SYNTAX*/
+	hust_parse(sqln);				//è§£æžå¾—åˆ°SQLè¯­å¥ï¼Œå­˜åœ¨è¯­å¥ç›¸åº”çš„ç»“æž„ä½“ä¸­ å¹¶è¿”å›ž
+	/*åˆ¤æ–­flagçš„å€¼ï¼Œéžé›¶å€¼è¿”å›žCORRECTï¼Œä¸º0æ—¶è¯´æ˜Žè§£æžè¿‡ç¨‹ä¸­å‡ºçŽ°è¯­æ³•é”™è¯¯ï¼Œè¿”å›žSQL_SYNTAX*/
 	if(sqln->flag==0)
 	return SQL_SYNTAX;
 	else

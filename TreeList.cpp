@@ -124,33 +124,33 @@ void CTreeList::InsertDBNodes()
 	int coloffset[20][20];
 	int iscolix[20][20];
 
-//**************************Ğ¡Í¼±ê
+//**************************å°å›¾æ ‡
 	CImageList *m_pImageList = new CImageList();
 
 	m_pImageList->Create(IDB_BITMAP1,15,3,RGB(0,0,0));
-	bm.LoadBitmap(IDB_BITMAP2);			//±í
+	bm.LoadBitmap(IDB_BITMAP2);			//è¡¨
 	m_pImageList->Add(&bm, RGB(0, 0, 0));
 	bm.DeleteObject();
-	bm.LoadBitmap(IDB_BITMAP3);				//ÁĞ
+	bm.LoadBitmap(IDB_BITMAP3);				//åˆ—
 	m_pImageList->Add(&bm, RGB(0, 0, 0));
 	bm.DeleteObject();
-	bm.LoadBitmap(IDB_BITMAP4);				//ÎÄ¼ş
+	bm.LoadBitmap(IDB_BITMAP4);				//æ–‡ä»¶
 	m_pImageList->Add(&bm, RGB(0, 0, 0));
 	bm.DeleteObject();
 	GetTreeCtrl().SetImageList(m_pImageList,TVSIL_NORMAL);
-//**************************Ğ¡Í¼±ê
+//**************************å°å›¾æ ‡
 
 	GetDocument()->m_pEditView->iReadDictstruct(tabname,&tabnum,colname,colnum,coltype,collength,coloffset,iscolix);
 	for (int i=0; i<tabnum; i++)
 	{
 		hItem = GetTreeCtrl().InsertItem(tabname[i],1,1, TVI_ROOT);
-		hCItem = GetTreeCtrl().InsertItem("ÁĞ", 3, 3, hItem, hCItem);
+		hCItem = GetTreeCtrl().InsertItem("åˆ—", 3, 3, hItem, hCItem);
 		for (int j=0; j < colnum[i]; j++)
 		{
 			if(iscolix[i][j]==0)
-				hsubItem = GetTreeCtrl().InsertItem(colname[i][j],2,2,hCItem,hsubItem);//ÎŞË÷ÒıÊ±µÄÍ¼±ê
+				hsubItem = GetTreeCtrl().InsertItem(colname[i][j],2,2,hCItem,hsubItem);//æ— ç´¢å¼•æ—¶çš„å›¾æ ‡
 			else
-				hsubItem = GetTreeCtrl().InsertItem(colname[i][j],0,0,hCItem,hsubItem);//ÓĞË÷ÒıÊ±µÄÍ¼±ê
+				hsubItem = GetTreeCtrl().InsertItem(colname[i][j],0,0,hCItem,hsubItem);//æœ‰ç´¢å¼•æ—¶çš„å›¾æ ‡
 		}
 		hsubItem = NULL;
 	}
@@ -171,7 +171,7 @@ HTREEITEM CTreeList::InsertNode(const HTREEITEM ParentNode, const CString &str, 
 void CTreeList::PopulateTree()
 {	
 	GetTreeCtrl().DeleteAllItems();
-	GetDocument()->m_pListView->ClearList();	//µÈ´ıĞŞ¸Ä
+	GetDocument()->m_pListView->ClearList();	//ç­‰å¾…ä¿®æ”¹
 	openorNot=true;
 	InsertDBNodes();
 }
@@ -186,7 +186,7 @@ void CTreeList::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 // 	}
 }
 
-void CTreeList::OnSelchanged(NMHDR* pNMHDR, LRESULT* pResult) //Ñ¡ÖĞÄ³¸öÑ¡Ïî£¬ÏÔÊ¾ÆäĞÅÏ¢£¬TreeºÍListµÄÒ»¸öÇÅÁºº¯Êı
+void CTreeList::OnSelchanged(NMHDR* pNMHDR, LRESULT* pResult) //é€‰ä¸­æŸä¸ªé€‰é¡¹ï¼Œæ˜¾ç¤ºå…¶ä¿¡æ¯ï¼ŒTreeå’ŒListçš„ä¸€ä¸ªæ¡¥æ¢å‡½æ•°
 {
 	NM_TREEVIEW* pNMTreeView = (NM_TREEVIEW*)pNMHDR;
 	
@@ -205,7 +205,7 @@ void CTreeList::OnSelchanged(NMHDR* pNMHDR, LRESULT* pResult) //Ñ¡ÖĞÄ³¸öÑ¡Ïî£¬ÏÔ
 	// In the second step, you call a specific function
 	// (GetItemText, GetItemData, GetItemState or GetItemImage)
 	// to obtain a specific piece of information from the selected item,
-	if(ctlTree.ItemHasChildren(selectedNode)==1)//µã»÷µÄ½Úµã´æÔÚ×ÓÏîÔò×ö½øÒ»²½´¦Àí£¬²»´æÔÚ×ÓÏî¼´µã»÷µÄÏîÄ¿ÎªÁĞÃû£¬²»×ö´¦Àí
+	if(ctlTree.ItemHasChildren(selectedNode)==1)//ç‚¹å‡»çš„èŠ‚ç‚¹å­˜åœ¨å­é¡¹åˆ™åšè¿›ä¸€æ­¥å¤„ç†ï¼Œä¸å­˜åœ¨å­é¡¹å³ç‚¹å‡»çš„é¡¹ç›®ä¸ºåˆ—åï¼Œä¸åšå¤„ç†
 	{
 		ItemText = ctlTree.GetItemText(selectedNode);
 		

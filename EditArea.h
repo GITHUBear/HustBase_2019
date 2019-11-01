@@ -23,7 +23,7 @@ public:
 public:
 	virtual ~CEditArea();
 	
-	//select.c ÀïµÄº¯Êý
+	//select.c é‡Œçš„å‡½æ•°
 
 	//void	readdic(struct tab_dic_type *tab,int *tab_num,struct col_dic_type *col,int *col_num)
 
@@ -71,7 +71,7 @@ inline CHustBaseDoc* CEditArea::GetDocument()
 #endif
 
 /////////////////////////////////////////////////////////////////////////////
-//ÒÔÉÏ¶¼ÊÇCEditAreaµÄÄÚÈÝ¡£
+//ä»¥ä¸Šéƒ½æ˜¯CEditAreaçš„å†…å®¹ã€‚
 /////////////////////////////////////////////////////////////////////////////
 
 

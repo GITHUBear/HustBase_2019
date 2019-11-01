@@ -117,7 +117,7 @@ void CEditArea::OnRunBtn()
 	CHustBaseDoc* pDoc = (CHustBaseDoc*)GetDocument();
 	CString analyzeResult;
 
-	sqlstr *sql_str = NULL;	//¶¨ÒåÁªºÏ±äÁ¿ºÍFLAGµÄ½á¹¹Ìå¶ÔÏó
+	sqlstr *sql_str = NULL;	//å®šä¹‰è”åˆå˜é‡å’ŒFLAGçš„ç»“æ„ä½“å¯¹è±¡
 	
 	RC rc;
 
@@ -129,7 +129,7 @@ void CEditArea::OnRunBtn()
 
 	
 	pDoc->isEdit = false;
-	ExecuteAndMessage(str,this);//¿ÉÒÔ¶Ô´Ëº¯Êı½øĞĞĞŞ¸ÄÀ´ÉèÖÃÒ³ÃæÕ¹Ê¾µÄĞÅÏ¢
+	ExecuteAndMessage(str,this);//å¯ä»¥å¯¹æ­¤å‡½æ•°è¿›è¡Œä¿®æ”¹æ¥è®¾ç½®é¡µé¢å±•ç¤ºçš„ä¿¡æ¯
 	
 }
 
@@ -162,7 +162,7 @@ void CEditArea::OnUpdateRun(CCmdUI* pCmdUI)
 void CEditArea::displayInfo()
 {
 	CHustBaseDoc* pDoc = (CHustBaseDoc*)GetDocument();
-	CMainFrame* main = (CMainFrame*)AfxGetApp()->m_pMainWnd;	//»ñÈ¡´°¿ÚÖ¸Õë
+	CMainFrame* main = (CMainFrame*)AfxGetApp()->m_pMainWnd;	//è·å–çª—å£æŒ‡é’ˆ
 	CWnd* pPane = (CWnd*)main->m_wmSplitter1.GetPane(2, 0);
 	CClientDC dc(pPane);
 	
@@ -170,10 +170,10 @@ void CEditArea::displayInfo()
 	pPane->GetClientRect(cr);
 	COLORREF clr=dc.GetBkColor();	
 	
-	dc.FillSolidRect(cr, clr);	//Çå¿ÕÖ®Ç°Êä³öµÄÎÄ×Ö£»
+	dc.FillSolidRect(cr, clr);	//æ¸…ç©ºä¹‹å‰è¾“å‡ºçš„æ–‡å­—ï¼›
 	
 	CFont font;
-	font.CreatePointFont(118, "Î¢ÈíÑÅºÚ", NULL);//ÉèÖÃ×ÖÌå
+	font.CreatePointFont(118, "å¾®è½¯é›…é»‘", NULL);//è®¾ç½®å­—ä½“
 	CFont *pOldFont = dc.SelectObject(&font);
 	TEXTMETRIC tm;
 	dc.GetTextMetrics(&tm);
@@ -184,7 +184,7 @@ void CEditArea::displayInfo()
 	}
 }
 
-int CEditArea::iReadDictstruct(char tabname[][20],int *tabnum,char colname[][20][20],int colnum[],AttrType coltype[][20],int collength[][20],int coloffset[][20],int iscolindex[][20])//±àĞ´ĞÂµÄ´«µİÏµÍ³±íºÍÏµÍ³ÁĞĞÅÏ¢µÄº¯Êı
+int CEditArea::iReadDictstruct(char tabname[][20],int *tabnum,char colname[][20][20],int colnum[],AttrType coltype[][20],int collength[][20],int coloffset[][20],int iscolindex[][20])//ç¼–å†™æ–°çš„ä¼ é€’ç³»ç»Ÿè¡¨å’Œç³»ç»Ÿåˆ—ä¿¡æ¯çš„å‡½æ•°
 {
 	CHustBaseDoc* pDoc = (CHustBaseDoc*)GetDocument();
 
@@ -211,15 +211,15 @@ int CEditArea::iReadDictstruct(char tabname[][20],int *tabnum,char colname[][20]
 	CString table=Path+"\\SYSTABLES.xx";
 	CString column=Path+"\\SYSCOLUMNS.xx";
 
-	rc=RM_OpenFile((LPSTR)(LPCTSTR)table,&fileHandle);//È¥SYSTABLES±íÖĞ»ñÈ¡±íÃû
+	rc=RM_OpenFile((LPSTR)(LPCTSTR)table,&fileHandle);//å»SYSTABLESè¡¨ä¸­è·å–è¡¨å
 	if(rc!=SUCCESS)
-		AfxMessageBox("´ò¿ªÏµÍ³±íÎÄ¼şÊ§°Ü");
-	rc=RM_OpenFile((LPSTR)(LPCTSTR)column,&colfilehandle);//È¥SYSCOLUMNS±íÖĞ»ñÈ¡ÁĞÃû
+		AfxMessageBox("æ‰“å¼€ç³»ç»Ÿè¡¨æ–‡ä»¶å¤±è´¥");
+	rc=RM_OpenFile((LPSTR)(LPCTSTR)column,&colfilehandle);//å»SYSCOLUMNSè¡¨ä¸­è·å–åˆ—å
 	if(rc!=SUCCESS)
-		AfxMessageBox("´ò¿ªÏµÍ³ÁĞÎÄ¼şÊ§°Ü");
+		AfxMessageBox("æ‰“å¼€ç³»ç»Ÿåˆ—æ–‡ä»¶å¤±è´¥");
 	rc=OpenScan(&FileScan1,&fileHandle,0,NULL);
 	if(rc!=SUCCESS)
-		AfxMessageBox("³õÊ¼»¯±íÎÄ¼şÉ¨ÃèÊ§°Ü");
+		AfxMessageBox("åˆå§‹åŒ–è¡¨æ–‡ä»¶æ‰«æå¤±è´¥");
 	while(GetNextRec(&FileScan1,&rec1)==SUCCESS)
 	{
 		strcpy(tabname[i],rec1.pData);
@@ -232,7 +232,7 @@ int CEditArea::iReadDictstruct(char tabname[][20],int *tabnum,char colname[][20]
 		condition.Rvalue=tabname[i];
 		rc=OpenScan(&FileScan2,&colfilehandle,1,&condition);
 		if(rc!=SUCCESS)
-			AfxMessageBox("³õÊ¼»¯ÁĞÎÄ¼şÉ¨ÃèÊ§°Ü");
+			AfxMessageBox("åˆå§‹åŒ–åˆ—æ–‡ä»¶æ‰«æå¤±è´¥");
 		while(GetNextRec(&FileScan2,&rec2)==SUCCESS)
 		{
 			strcpy(colname[i][j],rec2.pData+21);
@@ -253,10 +253,10 @@ int CEditArea::iReadDictstruct(char tabname[][20],int *tabnum,char colname[][20]
 	*tabnum=i;
 	rc=RM_CloseFile(&fileHandle);
 	if(rc!=SUCCESS)
-		AfxMessageBox("¹Ø±ÕÏµÍ³±íÎÄ¼şÊ§°Ü");
+		AfxMessageBox("å…³é—­ç³»ç»Ÿè¡¨æ–‡ä»¶å¤±è´¥");
 	rc=RM_CloseFile(&colfilehandle);
 	if(rc!=SUCCESS)
-		AfxMessageBox("¹Ø±ÕÏµÍ³ÁĞÎÄ¼şÊ§°Ü");
+		AfxMessageBox("å…³é—­ç³»ç»Ÿåˆ—æ–‡ä»¶å¤±è´¥");
 	return 1;
 }
 
@@ -276,9 +276,9 @@ void CEditArea::ShowSelResult(int col_num,int row_num,char ** fields,char *** re
 void CEditArea::showSelResult(int row_num, int col_num)
 {
 	int i, j;
-	CHustBaseDoc* pDoc = (CHustBaseDoc*)GetDocument();	//ÊµÏÖ¸÷ÇøÓòÍ¨ĞÅ£¬Í¨¹ıÎÄµµĞÅÏ¢
+	CHustBaseDoc* pDoc = (CHustBaseDoc*)GetDocument();	//å®ç°å„åŒºåŸŸé€šä¿¡ï¼Œé€šè¿‡æ–‡æ¡£ä¿¡æ¯
 
-	CMainFrame* main = (CMainFrame*)AfxGetApp()->m_pMainWnd;	//»ñÈ¡´°¿ÚÖ¸Õë
+	CMainFrame* main = (CMainFrame*)AfxGetApp()->m_pMainWnd;	//è·å–çª—å£æŒ‡é’ˆ
 	CWnd* pPane = (CWnd*)main->m_wmSplitter1.GetPane(2, 0);
 	CClientDC dc(pPane);
 	
@@ -286,10 +286,10 @@ void CEditArea::showSelResult(int row_num, int col_num)
 	pPane->GetClientRect(cr);
 	COLORREF clr=dc.GetBkColor();	
 	
-	dc.FillSolidRect(cr, clr);	//Çå¿ÕÖ®Ç°Êä³öµÄÎÄ×Ö£»
+	dc.FillSolidRect(cr, clr);	//æ¸…ç©ºä¹‹å‰è¾“å‡ºçš„æ–‡å­—ï¼›
 	
 	CFont font;
-	font.CreatePointFont(118, "Î¢ÈíÑÅºÚ", NULL);//ÉèÖÃ×ÖÌå
+	font.CreatePointFont(118, "å¾®è½¯é›…é»‘", NULL);//è®¾ç½®å­—ä½“
 	CFont *pOldFont = dc.SelectObject(&font);
 	TEXTMETRIC tm;
 	dc.GetTextMetrics(&tm);
@@ -344,7 +344,7 @@ void CEditArea::showSelResult(int row_num, int col_num)
 
 /*
 0<=count<=5
-ÏûÏ¢×î¶à²»ÄÜ³¬¹ıÎåĞĞ
+æ¶ˆæ¯æœ€å¤šä¸èƒ½è¶…è¿‡äº”è¡Œ
 */
 void CEditArea::ShowMessage(int count,char* strs[]){
 	CHustBaseDoc* pDoc = (CHustBaseDoc*)GetDocument();

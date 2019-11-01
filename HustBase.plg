@@ -9,7 +9,7 @@
 Creating temporary file "C:\Users\ADMINI~1\AppData\Local\Temp\RSP389F.tmp" with contents
 [
 /nologo /MDd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_AFXDLL" /D "_MBCS" /FR"Debug/" /Fp"Debug/HustBase.pch" /Yu"stdafx.h" /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
-"C:\Users\Administrator\Desktop\HustBase¿ÎÉè ÎŞ¼ÇÂ¼¹ÜÀí\HustBase ¿ÎÉè°æ ÎŞ¼ÇÂ¼¹ÜÀíÄ£¿é\TableList.cpp"
+"C:\Users\Administrator\Desktop\HustBaseè¯¾è®¾ æ— è®°å½•ç®¡ç†\HustBase è¯¾è®¾ç‰ˆ æ— è®°å½•ç®¡ç†æ¨¡å—\TableList.cpp"
 ]
 Creating command line "cl.exe @C:\Users\ADMINI~1\AppData\Local\Temp\RSP389F.tmp" 
 Creating temporary file "C:\Users\ADMINI~1\AppData\Local\Temp\RSP38A0.tmp" with contents
@@ -34,7 +34,7 @@ Creating command line "link.exe @C:\Users\ADMINI~1\AppData\Local\Temp\RSP38A0.tm
 <h3>Output Window</h3>
 Compiling...
 TableList.cpp
-C:\Users\Administrator\Desktop\HustBase¿ÎÉè ÎŞ¼ÇÂ¼¹ÜÀí\HustBase ¿ÎÉè°æ ÎŞ¼ÇÂ¼¹ÜÀíÄ£¿é\TableList.cpp(126) : warning C4700: local variable 'cchCurDir' used without having been initialized
+C:\Users\Administrator\Desktop\HustBaseè¯¾è®¾ æ— è®°å½•ç®¡ç†\HustBase è¯¾è®¾ç‰ˆ æ— è®°å½•ç®¡ç†æ¨¡å—\TableList.cpp(126) : warning C4700: local variable 'cchCurDir' used without having been initialized
 Linking...
 
 

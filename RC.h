@@ -43,16 +43,16 @@ typedef enum{
 	TABLE_EXIST,
 	TABLE_NAME_ILLEGAL,
 
-	FLIED_NOT_EXIST,//ÔÚ²»´æÔÚµÄ×Ö¶ÎÉÏÔö¼ÓË÷Òý
+	FLIED_NOT_EXIST,//åœ¨ä¸å­˜åœ¨çš„å­—æ®µä¸Šå¢žåŠ ç´¢å¼•
 	FIELD_NAME_ILLEGAL,
-	FIELD_MISSING,//²åÈëµÄÊ±ºò×Ö¶Î²»×ã
-	FIELD_REDUNDAN,//²åÈëµÄÊ±ºò×Ö¶ÎÌ«¶à
-	FIELD_TYPE_MISMATCH,//×Ö¶ÎÀàÐÍÓÐÎó
+	FIELD_MISSING,//æ’å…¥çš„æ—¶å€™å­—æ®µä¸è¶³
+	FIELD_REDUNDAN,//æ’å…¥çš„æ—¶å€™å­—æ®µå¤ªå¤š
+	FIELD_TYPE_MISMATCH,//å­—æ®µç±»åž‹æœ‰è¯¯
 
-	RECORD_NOT_EXIST,//¶ÔÒ»Ìõ²»´æÔÚµÄ¼ÇÂ¼½øÐÐÉ¾¸ÄÊ±
+	RECORD_NOT_EXIST,//å¯¹ä¸€æ¡ä¸å­˜åœ¨çš„è®°å½•è¿›è¡Œåˆ æ”¹æ—¶
 
 	INDEX_NAME_REPEAT,
-	INDEX_EXIST,//ÔÚÖ¸¶¨×Ö¶ÎÉÏ£¬ÒÑ¾­´æÔÚË÷ÒýÁË
+	INDEX_EXIST,//åœ¨æŒ‡å®šå­—æ®µä¸Šï¼Œå·²ç»å­˜åœ¨ç´¢å¼•äº†
 	INDEX_NOT_EXIST
 
 }RC;

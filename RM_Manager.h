@@ -7,21 +7,21 @@
 typedef int SlotNum;
 
 typedef struct {	
-	PageNum pageNum;	//¼ÇÂ¼ËùÔÚÒ³µÄÒ³ºÅ
-	SlotNum slotNum;		//¼ÇÂ¼µÄ²å²ÛºÅ
-	bool bValid; 			//true±íÊ¾ÎªÒ»¸öÓĞĞ§¼ÇÂ¼µÄ±êÊ¶·û
+	PageNum pageNum;	//è®°å½•æ‰€åœ¨é¡µçš„é¡µå·
+	SlotNum slotNum;		//è®°å½•çš„æ’æ§½å·
+	bool bValid; 			//trueè¡¨ç¤ºä¸ºä¸€ä¸ªæœ‰æ•ˆè®°å½•çš„æ ‡è¯†ç¬¦
 }RID;
 
 typedef struct{
-	bool bValid;		 // False±íÊ¾»¹Î´±»¶ÁÈë¼ÇÂ¼
-	RID  rid; 		 // ¼ÇÂ¼µÄ±êÊ¶·û 
-	char *pData; 		 //¼ÇÂ¼Ëù´æ´¢µÄÊı¾İ 
+	bool bValid;		 // Falseè¡¨ç¤ºè¿˜æœªè¢«è¯»å…¥è®°å½•
+	RID  rid; 		 // è®°å½•çš„æ ‡è¯†ç¬¦ 
+	char *pData; 		 //è®°å½•æ‰€å­˜å‚¨çš„æ•°æ® 
 }RM_Record;
 
 
 typedef struct
 {
-	int bLhsIsAttr,bRhsIsAttr;//×ó¡¢ÓÒÊÇÊôĞÔ£¨1£©»¹ÊÇÖµ£¨0£©
+	int bLhsIsAttr,bRhsIsAttr;//å·¦ã€å³æ˜¯å±æ€§ï¼ˆ1ï¼‰è¿˜æ˜¯å€¼ï¼ˆ0ï¼‰
 	AttrType attrType;
 	int LattrLength,RattrLength;
 	int LattrOffset,RattrOffset;
@@ -29,19 +29,19 @@ typedef struct
 	void *Lvalue,*Rvalue;
 }Con;
 
-typedef struct{//ÎÄ¼ş¾ä±ú
-	bool bOpen;//¾ä±úÊÇ·ñ´ò¿ª£¨ÊÇ·ñÕıÔÚ±»Ê¹ÓÃ£©
-	//ĞèÒª×Ô¶¨ÒåÆäÄÚ²¿½á¹¹
+typedef struct{//æ–‡ä»¶å¥æŸ„
+	bool bOpen;//å¥æŸ„æ˜¯å¦æ‰“å¼€ï¼ˆæ˜¯å¦æ­£åœ¨è¢«ä½¿ç”¨ï¼‰
+	//éœ€è¦è‡ªå®šä¹‰å…¶å†…éƒ¨ç»“æ„
 }RM_FileHandle;
 
 typedef struct{
-	bool  bOpen;		//É¨ÃèÊÇ·ñ´ò¿ª 
-	RM_FileHandle  *pRMFileHandle;		//É¨ÃèµÄ¼ÇÂ¼ÎÄ¼ş¾ä±ú
-	int  conNum;		//É¨ÃèÉæ¼°µÄÌõ¼şÊıÁ¿ 
-	Con  *conditions;	//É¨ÃèÉæ¼°µÄÌõ¼şÊı×éÖ¸Õë
-    PF_PageHandle  PageHandle; //´¦ÀíÖĞµÄÒ³Ãæ¾ä±ú
-	PageNum  pn; 	//É¨Ãè¼´½«´¦ÀíµÄÒ³ÃæºÅ
-	SlotNum  sn;		//É¨Ãè¼´½«´¦ÀíµÄ²å²ÛºÅ
+	bool  bOpen;		//æ‰«ææ˜¯å¦æ‰“å¼€ 
+	RM_FileHandle  *pRMFileHandle;		//æ‰«æçš„è®°å½•æ–‡ä»¶å¥æŸ„
+	int  conNum;		//æ‰«ææ¶‰åŠçš„æ¡ä»¶æ•°é‡ 
+	Con  *conditions;	//æ‰«ææ¶‰åŠçš„æ¡ä»¶æ•°ç»„æŒ‡é’ˆ
+    PF_PageHandle  PageHandle; //å¤„ç†ä¸­çš„é¡µé¢å¥æŸ„
+	PageNum  pn; 	//æ‰«æå³å°†å¤„ç†çš„é¡µé¢å·
+	SlotNum  sn;		//æ‰«æå³å°†å¤„ç†çš„æ’æ§½å·
 }RM_FileScan;
 
 

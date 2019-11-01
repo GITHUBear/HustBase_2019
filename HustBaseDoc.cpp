@@ -44,7 +44,7 @@ CHustBaseDoc::~CHustBaseDoc()
 bool CHustBaseDoc::isEdit=false;
 POSITION CHustBaseDoc::InsertData()
 {
- 	POSITION pos;//=NULL; //µÈ´ý
+ 	POSITION pos;//=NULL; //ç­‰å¾…
  
  	SetModifiedFlag();
  	return pos ;
