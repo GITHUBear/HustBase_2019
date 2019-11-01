@@ -113,4 +113,7 @@ bool checkAttr(char* relName, int hsIsAttr, RelAttr& hsAttr, AttrType* attrType)
 RC InsertRmAndIx(RM_FileHandle* rmFileHandle, std::vector<IxEntry>& ixEntrys, char* pData);
 RC DeleteRmAndIx(RM_FileHandle* rmFileHandle, std::vector<IxEntry>& ixEntrys, RM_Record* delRecord);
 RC GetRecordSize(char* relName, int* recordSize);
+RC ShowTable(char* relName);
+RC ShowIndex(char* relName, char* attrName);
+
 #endif
