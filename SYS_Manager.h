@@ -5,6 +5,7 @@
 #include "PF_Manager.h"
 #include "RM_Manager.h"
 #include "str.h"
+#include "EditArea.h"
 #include <string>
 #include <map>
 #include <cassert>
@@ -41,8 +42,8 @@
 #define MAX_CON_LEN 100 
 
 typedef struct db_info {
-	RM_FileHandle* sysTables;
-	RM_FileHandle* sysColumns;
+	RM_FileHandle sysTables;
+	RM_FileHandle sysColumns;
 	int MAXATTRS = 20;		 //最大属性数量
 	std::string curDbName; //存放当前DB名称
 }DB_INFO;
@@ -55,6 +56,11 @@ typedef struct {
 	bool ix_flag;
 	std::string indexName;
 } AttrEntry;
+
+typedef struct {
+	int attrOffset;
+	IX_IndexHandle ixIndexHandle;
+} IxEntry;
 
 void ExecuteAndMessage(char*, CEditArea*);
 bool CanButtonClick();
@@ -104,4 +110,7 @@ RC CreateIxFromTable(char* relName, char* indexName, int attrOffset);
 RC CreateConFromCondition(char* relName, int nConditons, Condition* conditions, Con* cons);
 bool CheckCondition(char* relName, Condition& condition);
 bool checkAttr(char* relName, int hsIsAttr, RelAttr& hsAttr, AttrType* attrType);
+RC InsertRmAndIx(RM_FileHandle* rmFileHandle, std::vector<IxEntry>& ixEntrys, char* pData);
+RC DeleteRmAndIx(RM_FileHandle* rmFileHandle, std::vector<IxEntry>& ixEntrys, RM_Record* delRecord);
+RC GetRecordSize(char* relName, int* recordSize);
 #endif

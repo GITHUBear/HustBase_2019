@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "PF_Manager.h"
+#include <iostream>
 
 BF_Manager bf_manager;                          // [dim dew] 建立在全局区的缓冲区
 
@@ -16,7 +17,7 @@ void inti()
 	}
 }
 
-const RC CreateFile(const char *fileName)
+const RC PF_CreateFile(const char *fileName)
 {
 	int fd;
 	char *bitmap;
@@ -170,7 +171,7 @@ const RC GetThisPage(PF_FileHandle *fileHandle,PageNum pageNum,PF_PageHandle *pa
 	if (!(fileHandle->bopen))
 		return PF_FHCLOSED;
 
-	if(pageNum>fileHandle->pFileSubHeader->pageCount)
+	if (pageNum > fileHandle->pFileSubHeader->pageCount)
 		return PF_INVALIDPAGENUM;
 	if((fileHandle->pBitmap[pageNum/8]&(1<<(pageNum%8)))==0)
 		return PF_INVALIDPAGENUM;
@@ -179,8 +180,10 @@ const RC GetThisPage(PF_FileHandle *fileHandle,PageNum pageNum,PF_PageHandle *pa
 	for(i=0;i<PF_BUFFER_SIZE;i++){
 		if(bf_manager.allocated[i]==false)
 			continue;
-		if(strcmp(bf_manager.frame[i].fileName,fileHandle->fileName)!=0)
+		if (bf_manager.frame[i].fileDesc != fileHandle->fileDesc)
 			continue;
+		/*if(strcmp(bf_manager.frame[i].fileName,fileHandle->fileName)!=0)
+			continue;*/
 		if(bf_manager.frame[i].page.pageNum==pageNum){
 			pPageHandle->pFrame=bf_manager.frame+i;
 			pPageHandle->pFrame->pinCount++;
@@ -295,8 +298,10 @@ const RC DisposePage(PF_FileHandle *fileHandle,PageNum pageNum)
 	for(i=0;i<PF_BUFFER_SIZE;i++){
 		if(bf_manager.allocated[i]==false)
 			continue;
-		if(strcmp(bf_manager.frame[i].fileName,fileHandle->fileName)!=0)
+		if (bf_manager.frame[i].fileDesc != fileHandle->fileDesc)
 			continue;
+		/*if(strcmp(bf_manager.frame[i].fileName,fileHandle->fileName)!=0)
+			continue;*/
 		if(bf_manager.frame[i].page.pageNum==pageNum){
 			if(bf_manager.frame[i].pinCount!=0)
 				return PF_PAGEPINNED;
@@ -323,8 +328,7 @@ const RC UnpinPage(PF_PageHandle *pageHandle)
 	if (!(pageHandle->bOpen))
 		return PF_PHCLOSED;
 
-	if (pageHandle->pFrame->pinCount > 0)
-		pageHandle->pFrame->pinCount--;
+	pageHandle->pFrame->pinCount--;
 	return SUCCESS;
 }
 
@@ -339,8 +343,10 @@ const RC ForcePage(PF_FileHandle *fileHandle,PageNum pageNum)
 	for(i=0;i<PF_BUFFER_SIZE;i++){
 		if(bf_manager.allocated[i]==false)
 			continue;
-		if(strcmp(bf_manager.frame[i].fileName,fileHandle->fileName)!=0)
+		if (bf_manager.frame[i].fileDesc != fileHandle->fileDesc)
 			continue;
+		/*if(strcmp(bf_manager.frame[i].fileName,fileHandle->fileName)!=0)
+			continue;*/
 		if(bf_manager.frame[i].page.pageNum==pageNum){
 			if(bf_manager.frame[i].pinCount!=0)
 				return PF_PAGEPINNED;
@@ -367,8 +373,10 @@ const RC ForceAllPages(PF_FileHandle *fileHandle)
 	for(i=0;i<PF_BUFFER_SIZE;i++){
 		if(bf_manager.allocated[i]==false)
 			continue;
-		if(strcmp(bf_manager.frame[i].fileName,fileHandle->fileName)!=0)
+		if (bf_manager.frame[i].fileDesc != fileHandle->fileDesc)
 			continue;
+		/*if(strcmp(bf_manager.frame[i].fileName,fileHandle->fileName)!=0)
+			continue;*/
 
 		if(bf_manager.frame[i].bDirty==true){
 			offset=(bf_manager.frame[i].page.pageNum)*sizeof(Page);

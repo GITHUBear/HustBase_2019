@@ -61,7 +61,7 @@ typedef struct{
 	Frame *pFrame;
 }PF_PageHandle;               // 文件的一个页面上的句柄
 
-const RC CreateFile(const char *fileName);
+const RC PF_CreateFile(const char *fileName);
 const RC openFile(char *fileName,PF_FileHandle *fileHandle);
 const RC CloseFile(PF_FileHandle *fileHandle);
 

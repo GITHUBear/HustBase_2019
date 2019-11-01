@@ -338,7 +338,7 @@ RC CreateIndex(const char* fileName, AttrType attrType, int attrLength)
 
 	// 2. 调用 PF_Manager::CreateFile() 将 Paged File 的相关控制信息进行初始化
 	// 3. 调用 PF_Manager::OpenFile() 打开该文件 获取 PF_FileHandle
-	if ((rc = CreateFile(fileName)) ||
+	if ((rc = PF_CreateFile(fileName)) ||
 		(rc = openFile((char*)fileName, &pfFileHandle)))
 		return rc;
 

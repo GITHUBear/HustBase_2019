@@ -11,7 +11,7 @@
 #include <string.h>
 #include <iostream>
 
-// #define DEBUG_RM
+//#define DEBUG_RM
 
 bool getBit (char *bitMap, int bitIdx)
 {
@@ -344,11 +344,15 @@ RC InsertRec (RM_FileHandle *fileHandle,char *pData, RID *rid)
 		}
 	} else {
 		// 如果 pageNum == RM_NO_MORE_FREE_PAGE
-		if ((rc = GetLastPageNum(&(fileHandle->pfFileHandle), &lastPageNum)) ||
-			(rc = GetThisPage(&(fileHandle->pfFileHandle), lastPageNum, &lastPageHandle)) ||
-			(rc = GetData(&lastPageHandle, &data))) {
+		if ((rc = GetLastPageNum(&(fileHandle->pfFileHandle), &lastPageNum))) {
 			return rc;
 		}
+
+		assert(lastPageNum >= 1);
+
+		if ((rc = GetThisPage(&(fileHandle->pfFileHandle), lastPageNum, &lastPageHandle)) ||
+			(rc = GetData(&lastPageHandle, &data)))
+			return rc;
 
 		// 2.2 获得该页 PageHdr 中的 slotNum, 如果 slotNum 尚未达到数量限制，就在文件后面写入新的记录
 		rmPageHdr = (RM_PageHdr*)data;
@@ -524,8 +528,9 @@ RC RM_CreateFile (char *fileName, int recordSize)
 	int maxRecordsNum;
 	RC rc;
 	PF_FileHandle pfFileHandle;
-	PF_PageHandle pfPageHandle;
+	PF_PageHandle pfPageHandle, recPageHandle;
 	RM_FileHdr* rmFileHdr;
+	RM_PageHdr* rmPageHdr;
 	char* data;
 	// 检查 recordSize 是否合法 
 	// (由于采用链表的方式所以需要在记录之前保存 nextFreeSlot 字段所以加上 sizeof(int))
@@ -545,15 +550,17 @@ RC RM_CreateFile (char *fileName, int recordSize)
 	// std::cout << "maxBitMapNum: " << ((maxRecordsNum + 7) >> 3) << std::endl;
 	// 2. 调用 PF_Manager::CreateFile() 将 Paged File 的相关控制信息进行初始化
 	// 3. 调用 PF_Manager::OpenFile() 打开该文件 获取 PF_FileHandle
-	if ((rc = CreateFile(fileName)) ||
+	if ((rc = PF_CreateFile(fileName)) ||
 		(rc = openFile(fileName, &pfFileHandle)))
 		return rc;
 
 	// 4. 通过该 PF_FileHandle 的 AllocatePage 方法申请内存缓冲区 拿到第 1 页的 pData 指针
-	if ((rc = AllocatePage(&pfFileHandle, &pfPageHandle)))
+	if ((rc = AllocatePage(&pfFileHandle, &pfPageHandle)) || 
+		(rc = AllocatePage(&pfFileHandle, &recPageHandle)))
 		return rc;
 
 	assert(pfPageHandle.pFrame->page.pageNum == 1);
+	assert(recPageHandle.pFrame->page.pageNum == 2);
 	if ((rc = GetData(&pfPageHandle, &data)))
 		return rc;
 	rmFileHdr = (RM_FileHdr*)data;
@@ -564,10 +571,22 @@ RC RM_CreateFile (char *fileName, int recordSize)
 	rmFileHdr->recordsPerPage = maxRecordsNum;
 	rmFileHdr->slotsOffset = sizeof(RM_PageHdr) + ((maxRecordsNum + 7) >> 3);
 
+	if ((rc = GetData(&recPageHandle, &data)))
+		return rc;
+
+	rmPageHdr = (RM_PageHdr*)data;
+
+	//  初始化 PageHdr
+	rmPageHdr->firstFreeSlot = RM_NO_MORE_FREE_SLOT;
+	rmPageHdr->nextFreePage = RM_NO_MORE_FREE_PAGE;
+	rmPageHdr->slotCount = 0;
+
 	// 6. 标记 第 1 页 为脏
 	// 7. PF_Manager::CloseFile() 将调用 ForceAllPage
 	if ((rc = MarkDirty(&pfPageHandle)) ||
+		(rc = MarkDirty(&recPageHandle)) ||
 		(rc = UnpinPage(&pfPageHandle)) || 
+		(rc = UnpinPage(&recPageHandle)) ||
 		(rc = CloseFile(&pfFileHandle)))
 		return rc;
 
