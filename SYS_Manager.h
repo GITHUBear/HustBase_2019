@@ -114,6 +114,6 @@ RC InsertRmAndIx(RM_FileHandle* rmFileHandle, std::vector<IxEntry>& ixEntrys, ch
 RC DeleteRmAndIx(RM_FileHandle* rmFileHandle, std::vector<IxEntry>& ixEntrys, RM_Record* delRecord);
 RC GetRecordSize(char* relName, int* recordSize);
 RC ShowTable(char* relName);
-RC ShowIndex(char* relName, char* attrName);
+RC ShowIndex(char* relName, char* attrName, bool def, int cutLen);
 
 #endif

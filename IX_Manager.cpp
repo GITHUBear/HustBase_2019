@@ -1644,19 +1644,19 @@ RC printBPlusTree(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen, int
 			case chars:
 			{
 				memcpy(tmp, key + attrLen * i, keyShowLen);
-				std::cout << " " << tmp << " : ";
+				std::cout << " " << tmp << " : " << std::endl;
 				break;
 			}
 			case ints:
 			{
 				int intKey = *((int*)(key + attrLen * i));
-				std::cout << " " << intKey << " : ";
+				std::cout << " " << intKey << " : " << std::endl;
 				break;
 			}
 			case floats:
 			{
 				float floatKey = *((float*)(key + attrLen * i));
-				std::cout << " " << floatKey << " : ";
+				std::cout << " " << floatKey << " : " << std::endl;
 				break;
 			}
 			}
