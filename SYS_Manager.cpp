@@ -1287,7 +1287,7 @@ RC ColumnMetaUpdate(char* relName, char* attrName, bool ixFlag, char* indexName)
 			return rc;
 		}
 	}
-
+	
 	delete[] rmRecord.pData;
 	return SUCCESS;
 }
@@ -1611,6 +1611,7 @@ RC GetRecordSize(char* relName, int* recordSize) {
 		getSize += attrEntrys[i].attrLength;
 	}
 	*recordSize = getSize;
+	return SUCCESS;
 }
 
 void showRelName(char* relName) {
@@ -1662,7 +1663,6 @@ RC ShowTable(char* relName) {
 	for (int i = 0; i < attrCount; i++) {
 		recordSize += attributes[i].attrLength;
 	}
-
 
 	std::string rmFileName = dbInfo.curDbName + "\\" + relName + RM_FILE_SUFFIX;
 	if ((rc = RM_OpenFile((char*)rmFileName.c_str(), &rmFileHandle))) {

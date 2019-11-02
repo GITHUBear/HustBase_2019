@@ -1605,7 +1605,8 @@ RC printBPlusTree(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen, int
 					return rc;
 				}
 
-			} else {
+			}
+			else {
 				std::cout << "( [ pN: " << nodeEntry[i].rid.pageNum << " , sN: " <<
 					nodeEntry[i].rid.slotNum << " ] )";
 			}
@@ -1617,7 +1618,8 @@ RC printBPlusTree(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen, int
 		}
 		delete[] tmp;
 		return SUCCESS;
-	} else {
+	}
+	else {
 		printLevelTab(level);
 		std::cout << "Node : { " << std::endl;
 		PageNum child = nodePageHdr->firstChild;
@@ -1684,6 +1686,7 @@ RC printBPlusTree(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen, int
 		return SUCCESS;
 	}
 }
+
 
 RC printBPlusTreeSeq(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen)
 {
