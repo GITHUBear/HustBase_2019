@@ -1577,8 +1577,27 @@ RC printBPlusTree(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen, int
 		printLevelTab(level);
 		std::cout << "Leaf Node: {";
 		for (int i = 0; i < nodePageHdr->keynum; i++) {
-			memcpy(tmp, key + attrLen * i, keyShowLen);
-			std::cout << " " << tmp << " : ";
+			switch (indexHandle->fileHeader.attrType)
+			{
+			case chars:
+			{
+				memcpy(tmp, key + attrLen * i, keyShowLen);
+				std::cout << " " << tmp << " : ";
+				break;
+			}
+			case ints:
+			{
+				int intKey = *((int*)(key + attrLen * i));
+				std::cout << " " << intKey << " : ";
+				break;
+			}
+			case floats:
+			{
+				float floatKey = *((float*)(key + attrLen * i));
+				std::cout << " " << floatKey << " : ";
+				break;
+			}
+			}
 			if (nodeEntry[i].tag == DUP) {
 				// ´æÔÚ Bucket Page
 				if (rc = printBucket(indexHandle, nodeEntry[i].rid.pageNum)) {
@@ -1617,9 +1636,28 @@ RC printBPlusTree(IX_IndexHandle* indexHandle, PageNum node, int keyShowLen, int
 		key = data + indexHandle->fileHeader.nodeKeyListOffset;
 		nodeEntry = (IX_NodeEntry*)(data + indexHandle->fileHeader.nodeEntryListOffset);
 		for (int i = 0; i < nodePageHdr->keynum; i++) {
-			memcpy(tmp, key + attrLen * i, keyShowLen);
 			printLevelTab(level);
-			std::cout << tmp << std::endl;
+			switch (indexHandle->fileHeader.attrType)
+			{
+			case chars:
+			{
+				memcpy(tmp, key + attrLen * i, keyShowLen);
+				std::cout << " " << tmp << " : " << std::endl;
+				break;
+			}
+			case ints:
+			{
+				int intKey = *((int*)(key + attrLen * i));
+				std::cout << " " << intKey << " : " << std::endl;
+				break;
+			}
+			case floats:
+			{
+				float floatKey = *((float*)(key + attrLen * i));
+				std::cout << " " << floatKey << " : " << std::endl;
+				break;
+			}
+			}
 			child = nodeEntry[i].rid.pageNum;
 			if (rc = UnpinPage(&nodePageHandle)) {
 				delete[] tmp;
