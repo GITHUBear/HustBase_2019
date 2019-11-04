@@ -328,7 +328,8 @@ const RC UnpinPage(PF_PageHandle *pageHandle)
 	if (!(pageHandle->bOpen))
 		return PF_PHCLOSED;
 
-	pageHandle->pFrame->pinCount--;
+	if (pageHandle->pFrame->pinCount > 0)
+		pageHandle->pFrame->pinCount--;
 	return SUCCESS;
 }
 

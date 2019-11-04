@@ -9,34 +9,43 @@ DB_INFO dbInfo;
 void ExecuteAndMessage(char* sql, CEditArea* editArea) {//根据执行的语句类型在界面上显示执行结果。此函数需修改
 	std::string s_sql = sql;
 	if (s_sql.find("select") == 0) {
+		RC rc;
 		SelResult res;
 		Init_Result(&res);
 		//rc = Query(sql,&res);
 		//将查询结果处理一下，整理成下面这种形式
 		//调用editArea->ShowSelResult(col_num,row_num,fields,rows);
-		int col_num = 5;
-		int row_num = 3;
-		char** fields = new char* [5];
+		if ((rc = Query(sql, &res))) {
+			return;
+		}
+		int col_num = res.col_num;//列
+		int row_num = 0;//行
+		SelResult* cur_res = &res;
+		while (cur_res) {//所有节点的记录数之和
+			row_num += cur_res->row_num;
+			cur_res = cur_res->next_res;
+		}
+		char** fields = new char* [20];//各字段名称
 		for (int i = 0; i < col_num; i++) {
 			fields[i] = new char[20];
 			memset(fields[i], 0, 20);
-			fields[i][0] = 'f';
-			fields[i][1] = i + '0';
+			memcpy(fields[i], res.fields[i], 20);
 		}
+		cur_res = &res;
 		char*** rows = new char** [row_num];
 		for (int i = 0; i < row_num; i++) {
-			rows[i] = new char* [col_num];
-			for (int j = 0; j < col_num; j++) {
-				rows[i][j] = new char[20];
+			rows[i] = new char* [col_num];//存放一条记录
+			for (int j = 0; j < col_num; j++)
+			{
+				rows[i][j] = new char[20];//一条记录的一个字段
 				memset(rows[i][j], 0, 20);
-				rows[i][j][0] = 'r';
-				rows[i][j][1] = i + '0';
-				rows[i][j][2] = '+';
-				rows[i][j][3] = j + '0';
+				memcpy(rows[i][j], cur_res->res[i][j], 20);
 			}
+			if (i == 99)
+				cur_res = cur_res->next_res;//每个链表节点最多记录100条记录
 		}
 		editArea->ShowSelResult(col_num, row_num, fields, rows);
-		for (int i = 0; i < 5; i++) {
+		for (int i = 0; i < 20; i++) {
 			delete[] fields[i];
 		}
 		delete[] fields;
@@ -85,33 +94,60 @@ RC execute(char* sql) {
 			//case 1:
 			////判断SQL语句为select语句
 
-			//break;
+			break;
 
 		case 2:
 			//判断SQL语句为insert语句
-
+			if((rc = Insert(sql_str->sstr.ins.relName, sql_str->sstr.ins.nValues, sql_str->sstr.ins.values)))
+				return SQL_SYNTAX;
+			return SUCCESS;
 		case 3:
 			//判断SQL语句为update语句
+			if ((rc = Update(sql_str->sstr.upd.relName, sql_str->sstr.upd.attrName, &sql_str->sstr.upd.value,
+				sql_str->sstr.upd.nConditions, sql_str->sstr.upd.conditions))) {
+				return SQL_SYNTAX;
+			}
+			return SUCCESS;
 			break;
 
 		case 4:
 			//判断SQL语句为delete语句
+			if ((rc = Delete(sql_str->sstr.del.relName, sql_str->sstr.del.nConditions, sql_str->sstr.del.conditions))) {
+				return SQL_SYNTAX;
+			}
+			return SUCCESS;
 			break;
 
 		case 5:
 			//判断SQL语句为createTable语句
+			if ((rc = CreateTable(sql_str->sstr.cret.relName, sql_str->sstr.cret.attrCount, sql_str->sstr.cret.attributes))) {
+				return SQL_SYNTAX;
+			}
+			return SUCCESS;
 			break;
 
 		case 6:
 			//判断SQL语句为dropTable语句
+			if ((rc = DropTable(sql_str->sstr.drt.relName))) {
+				return SQL_SYNTAX;
+			}
+			return SUCCESS;
 			break;
 
 		case 7:
 			//判断SQL语句为createIndex语句
+			if ((rc = CreateIndex(sql_str->sstr.crei.indexName, sql_str->sstr.crei.relName, sql_str->sstr.crei.attrName))) {
+				return SQL_SYNTAX;
+			}
+			return SUCCESS;
 			break;
 
 		case 8:
 			//判断SQL语句为dropIndex语句
+			if ((rc = DropIndex(sql_str->sstr.dri.indexName))) {
+				return SQL_SYNTAX;
+			}
+			return SUCCESS;
 			break;
 
 		case 9:
@@ -120,6 +156,7 @@ RC execute(char* sql) {
 
 		case 10:
 			//判断为exit语句，可以由此进行退出操作
+			AfxGetMainWnd()->SendMessage(WM_CLOSE);
 			break;
 		}
 	}
@@ -666,7 +703,7 @@ RC Insert(char* relName, int nValues, Value* values) {
 		delete[] insertData;
 		return rc;
 	}
-	delete[] insertData;
+ 	delete[] insertData;
 
 	//7. 关闭文件句柄
 	if ((rc = RM_CloseFile(&rmFileHandle))) {
@@ -674,8 +711,7 @@ RC Insert(char* relName, int nValues, Value* values) {
 	}
 	int numIndexs = ixEntrys.size();
 	for (int i = 0; i < numIndexs; i++) {
-		curIxEntry = ixEntrys[i];
-		if ((rc = CloseIndex(&curIxEntry.ixIndexHandle))) {
+		if ((rc = CloseIndex(&(ixEntrys[i].ixIndexHandle)))) {
 			return rc;
 		}
 	}
@@ -847,8 +883,7 @@ RC Delete(char* relName, int nConditions, Condition* conditions) {
 
 	int numIndexs = ixEntrys.size();
 	for (int i = 0; i < numIndexs; i++) {
-		curIxEntry = ixEntrys[i];
-		if ((rc = CloseIndex(&curIxEntry.ixIndexHandle))) {
+		if ((rc = CloseIndex(&(ixEntrys[i].ixIndexHandle)))) {
 			return rc;
 		}
 	}
@@ -965,7 +1000,8 @@ RC Update(char* relName, char* attrName, Value* value, int nConditions, Conditio
 	if ((rc = RM_CloseFile(&rmFileHandle))) {
 		return rc;
 	}
-	if (attrEntry.ix_flag && ((rc = CloseIndex(&curIxEntry.ixIndexHandle)))) {
+	assert(ixEntrys.size() == 1);
+	if (attrEntry.ix_flag && ((rc = CloseIndex(&(ixEntrys[0].ixIndexHandle))))) {
 		return rc;
 	}
 
@@ -1435,6 +1471,7 @@ RC ColumnEntryGet(char* relName, int* attrCount, std::vector<AttrEntry>& attribu
 		attrEntry.attrOffset = *(int*)(columnRec.pData + ATTR_OFFSET_OFF);
 		attrEntry.ix_flag = (*(columnRec.pData + ATTR_IXFLAG_OFF) == (char)1);
 		attrEntry.indexName = columnRec.pData + ATTR_INDEX_NAME_OFF;
+		attrEntry.attrName = columnRec.pData + ATTR_NAME_OFF;
 
 		attributes.push_back(attrEntry);
 	}
@@ -1568,10 +1605,8 @@ RC InsertRmAndIx(RM_FileHandle* rmFileHandle, std::vector<IxEntry>& ixEntrys, ch
 		return rc;
 	}
 	int numIndexs = ixEntrys.size();
-	IxEntry curIxEntry;
 	for (int i = 0; i < numIndexs; i++) {
-		curIxEntry = ixEntrys[i];
-		if ((rc = InsertEntry(&curIxEntry.ixIndexHandle, pData + curIxEntry.attrOffset, &rid))) {
+		if ((rc = InsertEntry(&(ixEntrys[i].ixIndexHandle), pData + ixEntrys[i].attrOffset, &rid))) {
 			return rc;
 		}
 	}
@@ -1586,11 +1621,9 @@ RC DeleteRmAndIx(RM_FileHandle* rmFileHandle, std::vector<IxEntry>& ixEntrys, RM
 	if ((rc = DeleteRec(rmFileHandle, &delRecord->rid))) {
 		return rc;
 	}
-	IxEntry curIxEntry;
 	int numIndexs = ixEntrys.size();
 	for (int i = 0; i < numIndexs; i++) {
-		curIxEntry = ixEntrys[i];
-		if ((rc = DeleteEntry(&curIxEntry.ixIndexHandle, delRecord->pData + curIxEntry.attrOffset, &delRecord->rid, true))) {
+		if ((rc = DeleteEntry(&(ixEntrys[i].ixIndexHandle), delRecord->pData + ixEntrys[i].attrOffset, &delRecord->rid, true))) {
 			return rc;
 		}
 	}

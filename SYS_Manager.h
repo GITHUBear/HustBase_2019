@@ -55,6 +55,7 @@ typedef struct {
 	int attrOffset;
 	bool ix_flag;
 	std::string indexName;
+	std::string attrName;
 } AttrEntry;
 
 typedef struct {
