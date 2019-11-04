@@ -703,7 +703,7 @@ RC Insert(char* relName, int nValues, Value* values) {
 		delete[] insertData;
 		return rc;
 	}
-	delete[] insertData;
+ 	delete[] insertData;
 
 	//7. ¹Ø±ÕÎÄ¼þ¾ä±ú
 	if ((rc = RM_CloseFile(&rmFileHandle))) {
@@ -711,8 +711,7 @@ RC Insert(char* relName, int nValues, Value* values) {
 	}
 	int numIndexs = ixEntrys.size();
 	for (int i = 0; i < numIndexs; i++) {
-		curIxEntry = ixEntrys[i];
-		if ((rc = CloseIndex(&curIxEntry.ixIndexHandle))) {
+		if ((rc = CloseIndex(&(ixEntrys[i].ixIndexHandle)))) {
 			return rc;
 		}
 	}
@@ -884,8 +883,7 @@ RC Delete(char* relName, int nConditions, Condition* conditions) {
 
 	int numIndexs = ixEntrys.size();
 	for (int i = 0; i < numIndexs; i++) {
-		curIxEntry = ixEntrys[i];
-		if ((rc = CloseIndex(&curIxEntry.ixIndexHandle))) {
+		if ((rc = CloseIndex(&(ixEntrys[i].ixIndexHandle)))) {
 			return rc;
 		}
 	}
@@ -1002,7 +1000,8 @@ RC Update(char* relName, char* attrName, Value* value, int nConditions, Conditio
 	if ((rc = RM_CloseFile(&rmFileHandle))) {
 		return rc;
 	}
-	if (attrEntry.ix_flag && ((rc = CloseIndex(&curIxEntry.ixIndexHandle)))) {
+	assert(ixEntrys.size() == 1);
+	if (attrEntry.ix_flag && ((rc = CloseIndex(&(ixEntrys[0].ixIndexHandle))))) {
 		return rc;
 	}
 
@@ -1606,10 +1605,8 @@ RC InsertRmAndIx(RM_FileHandle* rmFileHandle, std::vector<IxEntry>& ixEntrys, ch
 		return rc;
 	}
 	int numIndexs = ixEntrys.size();
-	IxEntry curIxEntry;
 	for (int i = 0; i < numIndexs; i++) {
-		curIxEntry = ixEntrys[i];
-		if ((rc = InsertEntry(&curIxEntry.ixIndexHandle, pData + curIxEntry.attrOffset, &rid))) {
+		if ((rc = InsertEntry(&(ixEntrys[i].ixIndexHandle), pData + ixEntrys[i].attrOffset, &rid))) {
 			return rc;
 		}
 	}
@@ -1624,11 +1621,9 @@ RC DeleteRmAndIx(RM_FileHandle* rmFileHandle, std::vector<IxEntry>& ixEntrys, RM
 	if ((rc = DeleteRec(rmFileHandle, &delRecord->rid))) {
 		return rc;
 	}
-	IxEntry curIxEntry;
 	int numIndexs = ixEntrys.size();
 	for (int i = 0; i < numIndexs; i++) {
-		curIxEntry = ixEntrys[i];
-		if ((rc = DeleteEntry(&curIxEntry.ixIndexHandle, delRecord->pData + curIxEntry.attrOffset, &delRecord->rid, true))) {
+		if ((rc = DeleteEntry(&(ixEntrys[i].ixIndexHandle), delRecord->pData + ixEntrys[i].attrOffset, &delRecord->rid, true))) {
 			return rc;
 		}
 	}

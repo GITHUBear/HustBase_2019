@@ -1406,6 +1406,8 @@ RC InsertEntry(IX_IndexHandle* indexHandle, void* pData, const RID* rid)
 		indexHandle->fileHeader.rootPage = newRootHandle.pFrame->page.pageNum;
 		indexHandle->isHdrDirty = true;
 
+		// printBPlusTree(indexHandle, indexHandle->fileHeader.rootPage, 6, 0);
+
 		if (rc = UnpinPage(&newRootHandle))
 			return rc;
 
@@ -1434,6 +1436,8 @@ RC DeleteEntry(IX_IndexHandle* indexHandle, void* pData, const RID* rid, bool ig
 		rootPageHdr = (IX_NodePageHeader*)data;
 
 		if (!(rootPageHdr->keynum)) {
+			if (rootPageHdr->firstChild == IX_NULL_CHILD)
+				return SUCCESS;
 			// 根节点被删空了
 			// 更新 index 文件的根节点
 			if ((rc = UnpinPage(&rootPage)) ||
