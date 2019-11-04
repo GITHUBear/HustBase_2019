@@ -45,13 +45,13 @@ struct _Value {
 
 typedef struct  _Condition Condition;
 struct  _Condition {
-	int     bLhsIsAttr;   // TRUE if left-hand side is an attribute 1时，操作符右边是属性，0时，是属性值
+	int     bLhsIsAttr;   // TRUE if left-hand side is an attribute
 	Value   lhsValue;		// left-hand side value if bLhsIsAttr = FALSE 
 	RelAttr lhsAttr;      // left-hand side attribute                     
 	CompOp  op;           // comparison operator                          
-	int     bRhsIsAttr;   // TRUE if right-hand side is an attribute 1时，操作符右边是属性，0时，是属性值
+	int     bRhsIsAttr;   // TRUE if right-hand side is an attribute
 						  //   and not a value
-	RelAttr rhsAttr;      // right-hand side attribute if bRhsIsAttr = TRUE 右边的属性
+	RelAttr rhsAttr;      // right-hand side attribute if bRhsIsAttr = TRUE
 	Value   rhsValue;     // right-hand side value if bRhsIsAttr = FALSE 
 
 };
