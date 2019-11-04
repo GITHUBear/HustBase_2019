@@ -1,5 +1,6 @@
 #include "StdAfx.h"
 #include "QU_Manager.h"
+#include <assert.h>
 
 void Init_Result(SelResult * res){
 	res->next_res = NULL;
