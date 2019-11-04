@@ -200,7 +200,7 @@ int CEditArea::iReadDictstruct(char tabname[][20],int *tabnum,char colname[][20]
 	CString t;//test
 
 	int i=0,j=0;
-	DWORD cchCurDir; 
+	DWORD cchCurDir = BUFFER;
 	LPTSTR lpszCurDir; 	
 	TCHAR tchBuffer[BUFFER]; 
 	lpszCurDir = tchBuffer; 
@@ -220,6 +220,11 @@ int CEditArea::iReadDictstruct(char tabname[][20],int *tabnum,char colname[][20]
 	rc=OpenScan(&FileScan1,&fileHandle,0,NULL);
 	if(rc!=SUCCESS)
 		AfxMessageBox("初始化表文件扫描失败");
+
+	rec1.pData = new char[SIZE_SYS_TABLE];
+	memset(rec1.pData, 0, SIZE_SYS_TABLE);
+	rec2.pData = new char[SIZE_SYS_COLUMNS];
+	memset(rec2.pData, 0, SIZE_SYS_COLUMNS);
 	while(GetNextRec(&FileScan1,&rec1)==SUCCESS)
 	{
 		strcpy(tabname[i],rec1.pData);
@@ -231,8 +236,10 @@ int CEditArea::iReadDictstruct(char tabname[][20],int *tabnum,char colname[][20]
 		condition.compOp=EQual;
 		condition.Rvalue=tabname[i];
 		rc=OpenScan(&FileScan2,&colfilehandle,1,&condition);
-		if(rc!=SUCCESS)
+		if (rc != SUCCESS) {
 			AfxMessageBox("初始化列文件扫描失败");
+		}
+			
 		while(GetNextRec(&FileScan2,&rec2)==SUCCESS)
 		{
 			strcpy(colname[i][j],rec2.pData+21);
@@ -252,11 +259,15 @@ int CEditArea::iReadDictstruct(char tabname[][20],int *tabnum,char colname[][20]
 	}
 	*tabnum=i;
 	rc=RM_CloseFile(&fileHandle);
-	if(rc!=SUCCESS)
+	if (rc != SUCCESS) {
 		AfxMessageBox("关闭系统表文件失败");
+	}
 	rc=RM_CloseFile(&colfilehandle);
-	if(rc!=SUCCESS)
+	if (rc != SUCCESS) {
 		AfxMessageBox("关闭系统列文件失败");
+	}
+	delete[] rec1.pData;
+	delete[] rec2.pData;
 	return 1;
 }
 
