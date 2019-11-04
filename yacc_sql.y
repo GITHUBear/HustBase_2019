@@ -1,6 +1,6 @@
 /*
 file: yacc_sql.y
-content:®¹Óï·¨·ÖÎö
+content:?¹Óï·¨·ÖÎ?
 author:Emily Zhang
 */
 %{
