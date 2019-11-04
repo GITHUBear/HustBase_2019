@@ -13,10 +13,10 @@
 #include <set>
 #include <algorithm>
 
-#define TABLE_META_NAME "SYSTABLES"
-#define COLUMN_META_NAME "SYSCOLUMNS"
-#define RM_FILE_SUFFIX ".rm"
-#define IX_FILE_SUFFIX ".ix"
+#define TABLE_META_NAME "SYSTABLES.xx"
+#define COLUMN_META_NAME "SYSCOLUMNS.xx"
+#define RM_FILE_SUFFIX ""
+#define IX_FILE_SUFFIX ""
 //SYSTABLE中记录每一项的长度
 #define SIZE_TABLE_NAME 21
 #define TABLE_NAME_OFF 0

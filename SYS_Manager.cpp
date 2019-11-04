@@ -170,7 +170,7 @@ RC execute(char* sql) {
 //
 //目的：在路径 dbPath 下创建一个名为 dbName 的空库，生成相应的系统文件。
 //1. 检查dbpath和dbname的合法性。
-//2. 判断dbpath以及dbname是否和dbInfo中保存相同。如果不同则调用CloseDb。
+//2. 判断dbpath以及dbname是否和dbInfo中保存相同。如果不同则调用CloseDb。如果相同则返回。
 //3. 向OS申请在dbpath路径创建文件夹。
 //4. 创建SYSTABLES文件和SYSCOLUMNS文件。
 RC CreateDB(char* dbpath, char* dbname) {
@@ -180,26 +180,28 @@ RC CreateDB(char* dbpath, char* dbname) {
 	if (dbpath == NULL || dbname == NULL)
 		return DB_NAME_ILLEGAL;
 
-	//2. 判断dbpath以及dbname是否和dbInfo中保存相同。如果不同则调用CloseDb。
-	if (dbInfo.curDbName.size() && dbInfo.curDbName.compare(dbname) != 0) {
+	//2. 判断dbpath以及dbname是否和dbInfo中保存相同。如果不同则调用CloseDb。如果相同则返回。
+	std::string dbPath = dbpath;
+	dbPath = dbPath + "\\" + dbname;
+	if ( dbInfo.curDbName.size() && dbInfo.curDbName.compare(dbPath) != 0 ) {
 		if ((rc = CloseDB()))
 			return rc;
 	}
+	if (dbInfo.curDbName.size() && dbInfo.curDbName.compare(dbPath) == 0) {
+		return SUCCESS;
+	}
 
 	//3. 向OS申请在dbpath路径创建文件夹。
-	std::string dbPath = dbpath;
-	dbPath = dbPath + "\\" + dbname;
 	if (CreateDirectory(dbPath.c_str(), NULL)) {
-		if (SetCurrentDirectory(dbpath)) {
+		if (SetCurrentDirectory((char*)dbPath.c_str())) {
 			//4. 创建SYSTABLES文件和SYSCOLUMNS文件
-			std::string sysTablePath = dbname;
-			sysTablePath = sysTablePath + "\\" + TABLE_META_NAME;
-			std::string sysColumnsPath = dbname;
-			sysColumnsPath = sysColumnsPath + "\\" + COLUMN_META_NAME;
+			std::string sysTablePath = TABLE_META_NAME;
+			std::string sysColumnsPath = COLUMN_META_NAME;
 			if ((rc = RM_CreateFile((char*)(sysTablePath.c_str()), SIZE_SYS_TABLE)) ||
 				(rc = RM_CreateFile((char*)(sysColumnsPath.c_str()), SIZE_SYS_COLUMNS)))
 				return rc;
 
+			dbInfo.curDbName = dbPath;
 			return SUCCESS;
 		}
 		return OS_FAIL;
@@ -218,7 +220,7 @@ RC CreateDB(char* dbpath, char* dbname) {
 //4. 删除dbname目录
 RC DropDB(char* dbname) {
 
-	//1. 判断dbname是否为空，或者dbInfo.path下是否存在dbname。如果不存在则报错。
+	//1. 判断dbname是否为空，或者是否存在dbname。如果不存在则报错。
 	std::string dbPath = dbname;
 	if (dbname == NULL || access(dbPath.c_str(), 0) == -1)
 		return DB_NOT_EXIST;
@@ -251,15 +253,19 @@ RC DropDB(char* dbname) {
 	}
 
 	//4. 删除dbname目录
-	if (!RemoveDirectory(dbname))
+	std::string dbName =dbname;
+	if (!RemoveDirectory(dbName.c_str())) {
+		int i = GetLastError();
 		return OS_FAIL;
+	}
+		
 
 	return SUCCESS;
 }
 
 //
 //目的：改变系统的当前数据库为 dbName 对应的文件夹中的数据库
-//1. 检查dbname是否为空。
+//1. 检查dbname是否为空。已经能否达到。
 //2. 如果当前打开了db.
 //	 2.1 如果打开的目录和dbname相同，则返回。
 //	 2.2 否则关闭当前打开的目录。
@@ -283,10 +289,10 @@ RC OpenDB(char* dbname) {
 	}
 
 	//2. 打开SYSTABLES和SYSCOLUMNS,设置dbInfo
-	std::string sysTablePath = dbname;
-	sysTablePath = sysTablePath + "\\" + TABLE_META_NAME;
-	std::string sysColumnsPath = dbname;
-	sysColumnsPath = sysColumnsPath + "\\" + COLUMN_META_NAME;
+	std::string sysTablePath = TABLE_META_NAME;
+	//sysTablePath = sysTablePath + "\\" + TABLE_META_NAME;
+	std::string sysColumnsPath = COLUMN_META_NAME;
+	//sysColumnsPath = sysColumnsPath + "\\" + COLUMN_META_NAME;
 
 	if ((rc = RM_OpenFile((char*)sysTablePath.c_str(), &(dbInfo.sysTables))) ||
 		(rc = RM_OpenFile((char*)sysColumnsPath.c_str(), &(dbInfo.sysColumns))))
@@ -294,7 +300,10 @@ RC OpenDB(char* dbname) {
 
 	//3. 设置curDbName
 	dbInfo.curDbName = dbname;
-
+	if (!SetCurrentDirectory(dbname)) {
+		return OS_FAIL;
+	}
+	
 	return SUCCESS;
 }
 
@@ -358,7 +367,7 @@ bool attrVaild(int attrCount, AttrInfo* attributes)
 //   2.4. 检查attributes是否合法。
 //3. 检查是否已经存在relName表。如果已经存在，则返回错误。
 //4. 向SYSTABLES和SYSCOLUMNS表中传入元信息,并计算relName表记录的大小。
-//5. 创建对应的RM文件
+//5. 创建对应的RM文件。并将SYSTABLE文件和SYSCOLUMNS文件刷写到disk。
 RC CreateTable(char* relName, int attrCount, AttrInfo* attributes) {
 	//参数 attrCount 表示关系中属性的数量（取值为1 到 MAXATTRS 之间） 。 
 	//参数 attributes 是一个长度为 attrCount 的数组。 对于新关系中第 i 个属性，
@@ -422,13 +431,17 @@ RC CreateTable(char* relName, int attrCount, AttrInfo* attributes) {
 		rmRecordSize += attributes[i].attrLength;
 	}
 
-	//5. 创建对应的RM文件
+	//5. 创建对应的RM文件。并将SYSTABLE文件和SYSCOLUMNS文件刷写到disk。
 	//根据约定，文件名为了relName.rm。
 	std::string filePath = dbInfo.curDbName + "\\" + relName + RM_FILE_SUFFIX;
-	if ((rc = RM_CreateFile((char*)filePath.c_str(), rmRecordSize))) {
+	if ((rc = RM_CreateFile((char*)filePath.c_str(), rmRecordSize))||
+		(rc = ForceAllPages(&dbInfo.sysTables.pfFileHandle)) || 
+		(rc = ForceAllPages(&dbInfo.sysColumns.pfFileHandle)) ) {
 		delete[] rmRecord.pData;
 		return rc;
 	}
+
+	//
 
 	delete[] rmRecord.pData;
 	return SUCCESS;

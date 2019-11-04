@@ -78,4 +78,5 @@ const RC UnpinPage(PF_PageHandle *pageHandle);
 
 const RC GetLastPageNum(PF_FileHandle* fileHandle, PageNum* pageNum);
 
+const RC ForceAllPages(PF_FileHandle* fileHandle);
 #endif
