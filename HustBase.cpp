@@ -54,7 +54,7 @@ CHustBaseApp theApp;
 
 /////////////////////////////////////////////////////////////////////////////
 // CHustBaseApp initialization
-bool CHustBaseApp::pathvalue=false;
+bool CHustBaseApp::pathvalue = false;
 
 BOOL CHustBaseApp::InitInstance()
 {
@@ -113,14 +113,14 @@ class CAboutDlg : public CDialog
 public:
 	CAboutDlg();
 
-// Dialog Data
-	//{{AFX_DATA(CAboutDlg)
+	// Dialog Data
+		//{{AFX_DATA(CAboutDlg)
 	enum { IDD = IDD_ABOUTBOX };
 	//}}AFX_DATA
 
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CAboutDlg)
-	protected:
+protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
@@ -181,21 +181,21 @@ void CHustBaseApp::OnCreateDB()
 	}
 }
 
-void CHustBaseApp::OnOpenDB() 
+void CHustBaseApp::OnOpenDB()
 {
 	//关联打开数据库按钮，此处应提示用户输入数据库所在位置，并调用OpenDB函数改变当前数据库路径，并在界面左侧的控件中显示数据库中的表、列信息。
-	
+
 	//使用文件夹浏览窗口获得文件夹目录
 	BROWSEINFO folder;
-	folder.lpszTitle="选择数据库目录";
-	ZeroMemory(&folder,sizeof(BROWSEINFO));
+	folder.lpszTitle = "选择数据库目录";
+	ZeroMemory(&folder, sizeof(BROWSEINFO));
 	LPMALLOC pMalloc;
-	LPITEMIDLIST getFolder=SHBrowseForFolder(&folder);
-	if(getFolder!=NULL)
+	LPITEMIDLIST getFolder = SHBrowseForFolder(&folder);
+	if (getFolder != NULL)
 	{
-		TCHAR *dbPath=new TCHAR[MAX_PATH];
-		SHGetPathFromIDList(getFolder,dbPath);
-		if(SUCCEEDED(SHGetMalloc(&pMalloc)))
+		TCHAR* dbPath = new TCHAR[MAX_PATH];
+		SHGetPathFromIDList(getFolder, dbPath);
+		if (SUCCEEDED(SHGetMalloc(&pMalloc)))
 		{
 			pMalloc->Free(getFolder);
 			pMalloc->Release();
@@ -204,23 +204,23 @@ void CHustBaseApp::OnOpenDB()
 
 		SetCurrentDirectory(dbpath.c_str());
 
-	    OpenDB((char*)dbpath.c_str());
-		std::string tableFileName =  TABLE_META_NAME;
+		OpenDB((char*)dbpath.c_str());
+		std::string tableFileName = TABLE_META_NAME;
 		std::string columnFileName = COLUMN_META_NAME;
-		if (access(tableFileName.c_str(),0)!=0||access(columnFileName.c_str(),0)!=0){
+		if (access(tableFileName.c_str(), 0) != 0 || access(columnFileName.c_str(), 0) != 0) {
 			AfxMessageBox("Oops！打开了非数据库文件");
 			return;
 		}
-		CHustBaseDoc *pDoc;
-		pDoc=CHustBaseDoc::GetDoc();
-		CHustBaseApp::pathvalue=true;
+		CHustBaseDoc* pDoc;
+		pDoc = CHustBaseDoc::GetDoc();
+		CHustBaseApp::pathvalue = true;
 
 		pDoc->m_pTreeView->PopulateTree();
 
 	}
 }
 
-void CHustBaseApp::OnDropDb() 
+void CHustBaseApp::OnDropDb()
 {
 	//关联删除数据库按钮，此处应提示用户输入数据库所在位置，并调用DropDB函数删除数据库的内容。
 	//使用文件浏览窗口获得需要删除的数据库

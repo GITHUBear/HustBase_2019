@@ -1,16 +1,8 @@
 #ifndef __QUERY_MANAGER_H_
 #define __QUERY_MANAGER_H_
-
 #include "str.h"
-#include "RM_Manager.h"
-#include "SYS_Manager.h"
 
-typedef struct Records{
-	int nRecords;
-	RM_Record* records[MAX_NUM];
-}QU_Records;
-
-typedef struct SelResult{
+typedef struct SelResult {
 	int col_num;
 	int row_num;
 	AttrType type[20];	//结果集各字段的数据类型
@@ -25,6 +17,5 @@ void Destory_Result(SelResult* res);
 
 RC Query(char* sql, SelResult* res);
 
-// 接受一个struct selects, 将查询结果存至res
-RC Select(int nSelAttrs, RelAttr * *selAttrs, int nRelations, char** relations, int nConditions, Condition * conditions, SelResult * res);
+RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, int nConditions, Condition* conditions, SelResult* res);
 #endif
