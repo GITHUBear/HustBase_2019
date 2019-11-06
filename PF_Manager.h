@@ -16,7 +16,7 @@
 
 #define PF_PAGE_SIZE ((1<<12)-4)
 #define PF_FILESUBHDR_SIZE (sizeof(PF_FileSubHeader))
-#define PF_BUFFER_SIZE 50//é¡µé¢ç¼“å†²åŒºçš„å¤§å°
+#define PF_BUFFER_SIZE 50//Ò³Ãæ»º³åÇøµÄ´óÐ¡
 #define PF_PAGESIZE (1<<12)
 typedef unsigned int PageNum;
 
