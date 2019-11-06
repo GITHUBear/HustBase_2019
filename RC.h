@@ -59,7 +59,7 @@ typedef enum {
 	ATTR_EXIST,
 	TOO_MANY_ATTR,
 	INVALID_ATTRS,
-
+	INVALID_TYPES,
 	INVALID_VALUES,
 
 	INVALID_CONDITIONS,
@@ -76,6 +76,8 @@ typedef enum {
 	INDEX_EXIST,//在指定字段上，已经存在索引了
 	INDEX_NOT_EXIST,
 	INDEX_NAME_ILLEGAL,
+
+	NOT_SELECT,
 }RC;
 
 #endif

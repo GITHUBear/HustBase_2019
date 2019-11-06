@@ -8,6 +8,7 @@ DB_INFO dbInfo;
 
 void ExecuteAndMessage(char* sql, CEditArea* editArea) {//根据执行的语句类型在界面上显示执行结果。此函数需修改
 	std::string s_sql = sql;
+	AfxMessageBox(sql);//弹出警告框，sql语句词法解析错误信息
 	if (s_sql.find("select") == 0) {
 		RC rc;
 		SelResult res;
@@ -45,7 +46,7 @@ void ExecuteAndMessage(char* sql, CEditArea* editArea) {//根据执行的语句类型在界
 				cur_res = cur_res->next_res;//每个链表节点最多记录100条记录
 		}
 		editArea->ShowSelResult(col_num, row_num, fields, rows);
-		for (int i = 0; i < 20; i++) {
+		for (int i = 0; i < col_num; i++) {
 			delete[] fields[i];
 		}
 		delete[] fields;
@@ -59,7 +60,8 @@ void ExecuteAndMessage(char* sql, CEditArea* editArea) {//根据执行的语句类型在界
 	case SUCCESS:
 		row_num = 1;
 		messages = new char* [row_num];
-		messages[0] = "操作成功";
+		messages[0] = new char[100];
+		strcpy(messages[0], std::string("操作成功:" + std::string(sql)).c_str());
 		editArea->ShowMessage(row_num, messages);
 		delete[] messages;
 		break;
@@ -100,6 +102,7 @@ RC execute(char* sql) {
 			//判断SQL语句为insert语句
 			if((rc = Insert(sql_str->sstr.ins.relName, sql_str->sstr.ins.nValues, sql_str->sstr.ins.values)))
 				return SQL_SYNTAX;
+			
 			return SUCCESS;
 		case 3:
 			//判断SQL语句为update语句
@@ -201,7 +204,6 @@ RC CreateDB(char* dbpath, char* dbname) {
 				(rc = RM_CreateFile((char*)(sysColumnsPath.c_str()), SIZE_SYS_COLUMNS)))
 				return rc;
 
-			dbInfo.curDbName = dbPath;
 			return SUCCESS;
 		}
 		return OS_FAIL;
@@ -476,6 +478,10 @@ RC DropTable(char* relName) {
 		return rc;
 	}
 
+	if((rc=ForceAllPages(&(dbInfo.sysTables.pfFileHandle))) ||
+		(rc=ForceAllPages(&(dbInfo.sysColumns.pfFileHandle))))
+		return rc;
+
 	return SUCCESS;
 }
 
@@ -536,7 +542,12 @@ RC CreateIndex(char* indexName, char* relName, char* attrName) {
 		delete[] rmRecord.pData;
 		return rc;
 	}
-
+	if((rc=ForceAllPages(&(dbInfo.sysTables.pfFileHandle))) ||
+		(rc=ForceAllPages(&(dbInfo.sysColumns.pfFileHandle)))){
+		delete[] rmRecord.pData;
+		return rc;
+	}
+		
 	delete[] rmRecord.pData;
 	return SUCCESS;
 }
@@ -605,6 +616,12 @@ RC DropIndex(char* indexName) {
 	ix_flag = rmRecord.pData + ATTR_IXFLAG_OFF;
 	*ix_flag = (char)0;
 	if ((rc = UpdateRec(&(dbInfo.sysColumns), &rmRecord))) {
+		delete[] rmRecord.pData;
+		return rc;
+	}
+
+	if((rc=ForceAllPages(&(dbInfo.sysTables.pfFileHandle))) ||
+		(rc=ForceAllPages(&(dbInfo.sysColumns.pfFileHandle)))){
 		delete[] rmRecord.pData;
 		return rc;
 	}

@@ -1662,17 +1662,18 @@ yyreduce:
 /* Line 1455 of yacc.c  */
 #line 197 "yacc_sql.y"
     {
- 																																valueT[valueleng++] = *(yyvsp[(6) - (9)].value1);
-																																
-																																ssql->flag=2;//"insert";
-																																ssql->sstr.ins.relName=(yyvsp[(3) - (9)].string);	
-																																ssql->sstr.ins.nValues=valueleng;
-																																for(i=0;i<valueleng;i++){
-																																ssql->sstr.ins.values[i] = valueT[i];
-																												}
-																																//临时变量清零	
-																																valueleng=0;
-																															//	free(valueT);
+      valueT[valueleng++] = *(yyvsp[(6) - (9)].value1);
+      
+      ssql->flag=2;//"insert";
+      ssql->sstr.ins.relName=(yyvsp[(3) - (9)].string);	
+      ssql->sstr.ins.nValues=valueleng;
+      for(i=0;i<valueleng;i++){
+	  		// FATAL(Jiahui Zhang)Manually reverse value order due to unknown parsing reason.
+  			ssql->sstr.ins.values[i] = valueT[valueleng-i-1];
+      }
+      //临时变量清零	
+      valueleng=0;
+      //	free(valueT);
 	
     ;}
     break;

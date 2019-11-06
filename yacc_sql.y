@@ -130,29 +130,27 @@ drop_table:		/*drop table 语句的语法解析树*/
     };
 create_index:		/*create idnex 语句的语法解析树*/
     CREATE INDEX ID ON ID LBRACE ID RBRACE SEMICOLON {
-																							        ssql->flag=7;//"create_index";
-																							        ssql->sstr.crei.indexName=$3;
-																							        ssql->sstr.crei.relName=$5;
-																							        ssql->sstr.crei.attrName=$7;
-																							    }
+		ssql->flag=7;//"create_index";
+		ssql->sstr.crei.indexName=$3;
+		ssql->sstr.crei.relName=$5;
+		ssql->sstr.crei.attrName=$7;
+	}
     ;
 
 drop_index:			/*drop index 语句的语法解析树*/
     DROP INDEX ID  SEMICOLON {
-											        ssql->flag=8;//"drop_index";
-											        ssql->sstr.dri.indexName=$3;
-											    }
+		ssql->flag=8;//"drop_index";
+		ssql->sstr.dri.indexName=$3;
+	}
     ;
 create_table:		/*create table 语句的语法解析树*/
-    CREATE TABLE ID LBRACE attr_def attr_def_list RBRACE SEMICOLON {
-	
-																																		ssql->flag=5;//"create_table";
-																																		ssql->sstr.cret.relName=$3;
-																																		ssql->sstr.cret.attrCount=valueleng;
-																																		//临时变量清零	
-																																		valueleng=0;
-																																		
-																																	    }
+    CREATE TABLE ID LBRACE attr_def attr_def_list RBRACE SEMICOLON {	
+			ssql->flag=5;//"create_table";
+			ssql->sstr.cret.relName=$3;
+			ssql->sstr.cret.attrCount=valueleng;
+			//临时变量清零	
+			valueleng=0;			
+			}
     ;
 attr_def_list:
     /* empty */
@@ -161,19 +159,19 @@ attr_def_list:
     
 attr_def:
     ID_get type LBRACE number RBRACE {
-																ssql->sstr.cret.attributes[valueleng].attrName=(char*)malloc(sizeof(char));
-																strcpy(ssql->sstr.cret.attributes[valueleng].attrName,get_id); 
-																ssql->sstr.cret.attributes[valueleng].attrType=$2;  
-																ssql->sstr.cret.attributes[valueleng].attrLength=$4;
-																valueleng++;
-															    }
+		ssql->sstr.cret.attributes[valueleng].attrName=(char*)malloc(sizeof(char));
+		strcpy(ssql->sstr.cret.attributes[valueleng].attrName,get_id); 
+		ssql->sstr.cret.attributes[valueleng].attrType=$2;  
+		ssql->sstr.cret.attributes[valueleng].attrLength=$4;
+		valueleng++;
+	}
     |ID_get type{
-															ssql->sstr.cret.attributes[valueleng].attrName=(char*)malloc(sizeof(char));
-															strcpy(ssql->sstr.cret.attributes[valueleng].attrName,get_id); 
-															ssql->sstr.cret.attributes[valueleng].attrType=$2;  
-															ssql->sstr.cret.attributes[valueleng].attrLength=4;
-															valueleng++;
-														    }
+		ssql->sstr.cret.attributes[valueleng].attrName=(char*)malloc(sizeof(char));
+		strcpy(ssql->sstr.cret.attributes[valueleng].attrName,get_id); 
+		ssql->sstr.cret.attributes[valueleng].attrType=$2;  
+		ssql->sstr.cret.attributes[valueleng].attrLength=4;
+		valueleng++;
+	}
     ;
 number:
 		NUMBER {$$ = $1;}
@@ -195,24 +193,24 @@ ID_get:
 	
 insert:				/*insert   语句的语法解析树*/
     INSERT INTO ID VALUES LBRACE value value_list RBRACE SEMICOLON {
- 																																valueT[valueleng++] = *$6;
-																																
-																																ssql->flag=2;//"insert";
-																																ssql->sstr.ins.relName=$3;	
-																																ssql->sstr.ins.nValues=valueleng;
-																																for(i=0;i<valueleng;i++){
-																																ssql->sstr.ins.values[i] = valueT[i];
-																												}
-																																//临时变量清零	
-																																valueleng=0;
-																															//	free(valueT);
-	
+		valueT[valueleng++] = *$6;
+		
+		ssql->flag=2;//"insert";
+		ssql->sstr.ins.relName=$3;	
+		ssql->sstr.ins.nValues=valueleng;
+		for(i=0;i<valueleng;i++){
+			// FATAL(Jiahui Zhang)Manually reverse value order due to unknown parsing reason.
+			ssql->sstr.ins.values[i] = valueT[valueleng-i-1];
+		}
+		//临时变量清零	
+		valueleng=0;
+		//	free(valueT);
     }
 
 value_list:
     /* empty */
     | COMMA value value_list  { 
-  													 valueT[valueleng++] = *$2;
+		valueT[valueleng++] = *$2;
 	}
     ;
 

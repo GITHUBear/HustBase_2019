@@ -130,7 +130,11 @@ void CEditArea::OnRunBtn()
 
 	pDoc->isEdit = false;
 	ExecuteAndMessage(str, this);//可以对此函数进行修改来设置页面展示的信息
+	
+	pDoc = CHustBaseDoc::GetDoc();
+	CHustBaseApp::pathvalue = true;
 
+	pDoc->m_pTreeView->PopulateTree();
 }
 
 void CEditArea::OnInitialUpdate()
