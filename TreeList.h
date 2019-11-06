@@ -29,7 +29,7 @@ public:
 	static bool openorNot;//=false;
 	void PopulateTree();
 //	BOOL LocateAndInsert(const CAnimalInfo &, const POSITION);
-//ç­‰å¾…
+//µÈ´ý
 	void DeleteSelection();
 	void EditSelection();
 	void ModifySelection();
