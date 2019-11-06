@@ -29,27 +29,27 @@ typedef struct{
 }IX_Node;
 
 typedef struct{
-	bool bOpen;		/*æ‰«ææ˜¯å¦æ‰“å¼€ */
-	IX_IndexHandle *pIXIndexHandle;	//æŒ‡å‘ç´¢å¼•æ–‡ä»¶æ“ä½œçš„æŒ‡é’ˆ
-	CompOp compOp;  /* ç”¨äºæ¯”è¾ƒçš„æ“ä½œç¬¦*/
-	char *value;		 /* ä¸å±æ€§è¡Œæ¯”è¾ƒçš„å€¼ */
-    PF_PageHandle pfPageHandles[PF_BUFFER_SIZE]; // å›ºå®šåœ¨ç¼“å†²åŒºé¡µé¢æ‰€å¯¹åº”çš„é¡µé¢æ“ä½œåˆ—è¡¨
-	PageNum pnNext; 	//ä¸‹ä¸€ä¸ªå°†è¦è¢«è¯»å…¥çš„é¡µé¢å·
+	bool bOpen;		/*É¨ÃèÊÇ·ñ´ò¿ª */
+	IX_IndexHandle *pIXIndexHandle;	//Ö¸ÏòË÷ÒıÎÄ¼ş²Ù×÷µÄÖ¸Õë
+	CompOp compOp;  /* ÓÃÓÚ±È½ÏµÄ²Ù×÷·û*/
+	char *value;		 /* ÓëÊôĞÔĞĞ±È½ÏµÄÖµ */
+    PF_PageHandle pfPageHandles[PF_BUFFER_SIZE]; // ¹Ì¶¨ÔÚ»º³åÇøÒ³ÃæËù¶ÔÓ¦µÄÒ³Ãæ²Ù×÷ÁĞ±í
+	PageNum pnNext; 	//ÏÂÒ»¸ö½«Òª±»¶ÁÈëµÄÒ³ÃæºÅ
 }IX_IndexScan;
 
 typedef struct Tree_Node{
-	int  keyNum;		//èŠ‚ç‚¹ä¸­åŒ…å«çš„å…³é”®å­—ï¼ˆå±æ€§å€¼ï¼‰ä¸ªæ•°
-	char  **keys;		//èŠ‚ç‚¹ä¸­åŒ…å«çš„å…³é”®å­—ï¼ˆå±æ€§å€¼ï¼‰æ•°ç»„
-	Tree_Node  *parent;	//çˆ¶èŠ‚ç‚¹
-	Tree_Node  *sibling;	//å³è¾¹çš„å…„å¼ŸèŠ‚ç‚¹
-	Tree_Node  *firstChild;	//æœ€å·¦è¾¹çš„å­©å­èŠ‚ç‚¹
-}Tree_Node; //èŠ‚ç‚¹æ•°æ®ç»“æ„
+	int  keyNum;		//½ÚµãÖĞ°üº¬µÄ¹Ø¼ü×Ö£¨ÊôĞÔÖµ£©¸öÊı
+	char  **keys;		//½ÚµãÖĞ°üº¬µÄ¹Ø¼ü×Ö£¨ÊôĞÔÖµ£©Êı×é
+	Tree_Node  *parent;	//¸¸½Úµã
+	Tree_Node  *sibling;	//ÓÒ±ßµÄĞÖµÜ½Úµã
+	Tree_Node  *firstChild;	//×î×ó±ßµÄº¢×Ó½Úµã
+}Tree_Node; //½ÚµãÊı¾İ½á¹¹
 
 typedef struct{
-	AttrType  attrType;	//B+æ ‘å¯¹åº”å±æ€§çš„æ•°æ®ç±»å‹
-	int  attrLength;	//B+æ ‘å¯¹åº”å±æ€§å€¼çš„é•¿åº¦
-	int  order;			//B+æ ‘çš„åºæ•°
-	Tree_Node  *root;	//B+æ ‘çš„æ ¹èŠ‚ç‚¹
+	AttrType  attrType;	//B+Ê÷¶ÔÓ¦ÊôĞÔµÄÊı¾İÀàĞÍ
+	int  attrLength;	//B+Ê÷¶ÔÓ¦ÊôĞÔÖµµÄ³¤¶È
+	int  order;			//B+Ê÷µÄĞòÊı
+	Tree_Node  *root;	//B+Ê÷µÄ¸ù½Úµã
 }Tree;
 
 RC CreateIndex(const char * fileName,AttrType attrType,int attrLength);

@@ -13,7 +13,7 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// Chinese (中国) resources
+// Chinese (�й�) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
 #ifdef _WIN32
@@ -116,33 +116,33 @@ END
 
 IDR_MAINFRAME MENU PRELOAD DISCARDABLE 
 BEGIN
-    POPUP "文件(&F)"
+    POPUP "�ļ�(&F)"
     BEGIN
-        MENUITEM "新建(&N)\tCtrl+N",            ID_FILE_NEW
-        MENUITEM "打开(&O)...\tCtrl+O",         ID_FILE_OPEN
-        MENUITEM "保存(&S)\tCtrl+S",            ID_FILE_SAVE
-        MENUITEM "另存为(&A)...",               ID_FILE_SAVE_AS
+        MENUITEM "�½�(&N)\tCtrl+N",            ID_FILE_NEW
+        MENUITEM "��(&O)...\tCtrl+O",         ID_FILE_OPEN
+        MENUITEM "����(&S)\tCtrl+S",            ID_FILE_SAVE
+        MENUITEM "����Ϊ(&A)...",               ID_FILE_SAVE_AS
         MENUITEM SEPARATOR
-        MENUITEM "最近文件",                    ID_FILE_MRU_FILE1, GRAYED
+        MENUITEM "����ļ�",                    ID_FILE_MRU_FILE1, GRAYED
         MENUITEM SEPARATOR
-        MENUITEM "退出(&X)",                    ID_APP_EXIT
+        MENUITEM "�˳�(&X)",                    ID_APP_EXIT
     END
-    POPUP "编辑(&E)"
+    POPUP "�༭(&E)"
     BEGIN
-        MENUITEM "撤消(&U)\tCtrl+Z",            ID_EDIT_UNDO
+        MENUITEM "����(&U)\tCtrl+Z",            ID_EDIT_UNDO
         MENUITEM SEPARATOR
-        MENUITEM "剪切(&T)\tCtrl+X",            ID_EDIT_CUT
-        MENUITEM "复制(&C)\tCtrl+C",            ID_EDIT_COPY
-        MENUITEM "粘贴(&P)\tCtrl+V",            ID_EDIT_PASTE
+        MENUITEM "����(&T)\tCtrl+X",            ID_EDIT_CUT
+        MENUITEM "����(&C)\tCtrl+C",            ID_EDIT_COPY
+        MENUITEM "ճ��(&P)\tCtrl+V",            ID_EDIT_PASTE
     END
-    POPUP "查看(&V)"
+    POPUP "�鿴(&V)"
     BEGIN
-        MENUITEM "工具栏(&T)",                  ID_VIEW_TOOLBAR
-        MENUITEM "状态栏(&S)",                  ID_VIEW_STATUS_BAR
+        MENUITEM "������(&T)",                  ID_VIEW_TOOLBAR
+        MENUITEM "״̬��(&S)",                  ID_VIEW_STATUS_BAR
     END
-    POPUP "帮助(&H)"
+    POPUP "����(&H)"
     BEGIN
-        MENUITEM "关于 HustBase(&A)...",        ID_APP_ABOUT
+        MENUITEM "���� HustBase(&A)...",        ID_APP_ABOUT
     END
 END
 
@@ -178,13 +178,13 @@ END
 
 IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 235, 55
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "关于 HustBase"
-FONT 9, "宋体"
+CAPTION "���� HustBase"
+FONT 9, "����"
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
-    LTEXT           "HustBase 1.0 版",IDC_STATIC,40,10,119,8,SS_NOPREFIX
-    LTEXT           "版权所有 (C) 2013",IDC_STATIC,40,25,119,8
-    DEFPUSHBUTTON   "确定",IDOK,178,7,50,14,WS_GROUP
+    LTEXT           "HustBase 1.0 ��",IDC_STATIC,40,10,119,8,SS_NOPREFIX
+    LTEXT           "��Ȩ���� (C) 2013",IDC_STATIC,40,25,119,8
+    DEFPUSHBUTTON   "ȷ��",IDOK,178,7,50,14,WS_GROUP
 END
 
 
@@ -213,14 +213,14 @@ BEGIN
         BEGIN
             VALUE "Comments", "\0"
             VALUE "CompanyName", "\0"
-            VALUE "FileDescription", "HustBase Microsoft 基础类应用程序\0"
+            VALUE "FileDescription", "HustBase Microsoft ������Ӧ�ó���\0"
             VALUE "FileVersion", "1, 0, 0, 1\0"
             VALUE "InternalName", "HustBase\0"
-            VALUE "LegalCopyright", "版权所有 (C) 2013\0"
+            VALUE "LegalCopyright", "��Ȩ���� (C) 2013\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "HustBase.EXE\0"
             VALUE "PrivateBuild", "\0"
-            VALUE "ProductName", "HustBase 应用程序\0"
+            VALUE "ProductName", "HustBase Ӧ�ó���\0"
             VALUE "ProductVersion", "1, 0, 0, 1\0"
             VALUE "SpecialBuild", "\0"
         END
@@ -266,123 +266,123 @@ END
 STRINGTABLE PRELOAD DISCARDABLE 
 BEGIN
     AFX_IDS_APP_TITLE       "HustBase"
-    AFX_IDS_IDLEMESSAGE     "就绪"
+    AFX_IDS_IDLEMESSAGE     "����"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    ID_INDICATOR_EXT        "扩展名"
-    ID_INDICATOR_CAPS       "大写"
-    ID_INDICATOR_NUM        "数字"
-    ID_INDICATOR_SCRL       "滚动"
-    ID_INDICATOR_OVR        "改写"
-    ID_INDICATOR_REC        "记录"
+    ID_INDICATOR_EXT        "��չ��"
+    ID_INDICATOR_CAPS       "��д"
+    ID_INDICATOR_NUM        "����"
+    ID_INDICATOR_SCRL       "����"
+    ID_INDICATOR_OVR        "��д"
+    ID_INDICATOR_REC        "��¼"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    ID_FILE_NEW             "建立新文档\n新建"
-    ID_FILE_OPEN            "打开一个现有数据库文件\n打开数据库"
-    ID_FILE_CLOSE           "关闭活动文档\n关闭"
-    ID_FILE_SAVE            "保存活动文档\n保存"
-    ID_FILE_SAVE_AS         "将活动文档以一个新文件名保存\n另存为"
-    ID_FILE_PAGE_SETUP      "改变打印选项\n页面设置"
-    ID_FILE_PRINT_SETUP     "改变打印机及打印选项\n打印设置"
-    ID_FILE_PRINT           "打印活动文档\n打印"
-    ID_FILE_PRINT_PREVIEW   "显示整页\n打印预览"
+    ID_FILE_NEW             "�������ĵ�\n�½�"
+    ID_FILE_OPEN            "��һ���������ݿ��ļ�\n�����ݿ�"
+    ID_FILE_CLOSE           "�رջ�ĵ�\n�ر�"
+    ID_FILE_SAVE            "�����ĵ�\n����"
+    ID_FILE_SAVE_AS         "����ĵ���һ�����ļ�������\n����Ϊ"
+    ID_FILE_PAGE_SETUP      "�ı��ӡѡ��\nҳ������"
+    ID_FILE_PRINT_SETUP     "�ı��ӡ������ӡѡ��\n��ӡ����"
+    ID_FILE_PRINT           "��ӡ��ĵ�\n��ӡ"
+    ID_FILE_PRINT_PREVIEW   "��ʾ��ҳ\n��ӡԤ��"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    ID_APP_ABOUT            "显示程序信息，版本号和版权\n关于"
-    ID_APP_EXIT             "退出应用程序；提示保存文档\n退出"
+    ID_APP_ABOUT            "��ʾ������Ϣ���汾�źͰ�Ȩ\n����"
+    ID_APP_EXIT             "�˳�Ӧ�ó�����ʾ�����ĵ�\n�˳�"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    ID_FILE_MRU_FILE1       "打开该文档"
-    ID_FILE_MRU_FILE2       "打开该文档"
-    ID_FILE_MRU_FILE3       "打开该文档"
-    ID_FILE_MRU_FILE4       "打开该文档"
-    ID_FILE_MRU_FILE5       "打开该文档"
-    ID_FILE_MRU_FILE6       "打开该文档"
-    ID_FILE_MRU_FILE7       "打开该文档"
-    ID_FILE_MRU_FILE8       "打开该文档"
-    ID_FILE_MRU_FILE9       "打开该文档"
-    ID_FILE_MRU_FILE10      "打开该文档"
-    ID_FILE_MRU_FILE11      "打开该文档"
-    ID_FILE_MRU_FILE12      "打开该文档"
-    ID_FILE_MRU_FILE13      "打开该文档"
-    ID_FILE_MRU_FILE14      "打开该文档"
-    ID_FILE_MRU_FILE15      "打开该文档"
-    ID_FILE_MRU_FILE16      "打开该文档"
+    ID_FILE_MRU_FILE1       "�򿪸��ĵ�"
+    ID_FILE_MRU_FILE2       "�򿪸��ĵ�"
+    ID_FILE_MRU_FILE3       "�򿪸��ĵ�"
+    ID_FILE_MRU_FILE4       "�򿪸��ĵ�"
+    ID_FILE_MRU_FILE5       "�򿪸��ĵ�"
+    ID_FILE_MRU_FILE6       "�򿪸��ĵ�"
+    ID_FILE_MRU_FILE7       "�򿪸��ĵ�"
+    ID_FILE_MRU_FILE8       "�򿪸��ĵ�"
+    ID_FILE_MRU_FILE9       "�򿪸��ĵ�"
+    ID_FILE_MRU_FILE10      "�򿪸��ĵ�"
+    ID_FILE_MRU_FILE11      "�򿪸��ĵ�"
+    ID_FILE_MRU_FILE12      "�򿪸��ĵ�"
+    ID_FILE_MRU_FILE13      "�򿪸��ĵ�"
+    ID_FILE_MRU_FILE14      "�򿪸��ĵ�"
+    ID_FILE_MRU_FILE15      "�򿪸��ĵ�"
+    ID_FILE_MRU_FILE16      "�򿪸��ĵ�"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    ID_NEXT_PANE            "切换到下一个窗格\n下一窗格"
-    ID_PREV_PANE            "切换回前一个窗格\n前一窗格"
+    ID_NEXT_PANE            "�л�����һ������\n��һ����"
+    ID_PREV_PANE            "�л���ǰһ������\nǰһ����"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    ID_WINDOW_SPLIT         "将活动的窗口分隔成窗格\n分隔"
+    ID_WINDOW_SPLIT         "����Ĵ��ڷָ��ɴ���\n�ָ�"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    ID_EDIT_CLEAR           "删除被选对象\n删除"
-    ID_EDIT_CLEAR_ALL       "全部删除\n全部删除"
-    ID_EDIT_COPY            "复制被选对象并将其置于剪贴板上\n复制"
-    ID_EDIT_CUT             "剪切被选对象并将其置于剪贴板上\n剪切"
-    ID_EDIT_FIND            "查找指定的正文\n查找"
-    ID_EDIT_PASTE           "插入剪贴板内容\n粘贴"
-    ID_EDIT_REPEAT          "重复上一步操作\n重复"
-    ID_EDIT_REPLACE         "用不同的正文替换指定的正文\n替换"
-    ID_EDIT_SELECT_ALL      "选择整个文档\n选择全部"
-    ID_EDIT_UNDO            "撤消最后一步操作\n撤消"
-    ID_EDIT_REDO            "重新执行先前已撤消的操作\n重新执行"
+    ID_EDIT_CLEAR           "ɾ����ѡ����\nɾ��"
+    ID_EDIT_CLEAR_ALL       "ȫ��ɾ��\nȫ��ɾ��"
+    ID_EDIT_COPY            "���Ʊ�ѡ���󲢽������ڼ�������\n����"
+    ID_EDIT_CUT             "���б�ѡ���󲢽������ڼ�������\n����"
+    ID_EDIT_FIND            "����ָ��������\n����"
+    ID_EDIT_PASTE           "�������������\nճ��"
+    ID_EDIT_REPEAT          "�ظ���һ������\n�ظ�"
+    ID_EDIT_REPLACE         "�ò�ͬ�������滻ָ��������\n�滻"
+    ID_EDIT_SELECT_ALL      "ѡ�������ĵ�\nѡ��ȫ��"
+    ID_EDIT_UNDO            "�������һ������\n����"
+    ID_EDIT_REDO            "����ִ����ǰ�ѳ����Ĳ���\n����ִ��"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    ID_VIEW_TOOLBAR         "显示或隐藏工具栏\n显隐工具栏"
-    ID_VIEW_STATUS_BAR      "显示或隐藏状态栏\n显隐状态栏"
+    ID_VIEW_TOOLBAR         "��ʾ�����ع�����\n����������"
+    ID_VIEW_STATUS_BAR      "��ʾ������״̬��\n����״̬��"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    AFX_IDS_SCSIZE          "改变窗口大小"
-    AFX_IDS_SCMOVE          "改变窗口位置"
-    AFX_IDS_SCMINIMIZE      "将窗口缩小成图标"
-    AFX_IDS_SCMAXIMIZE      "把窗口放大到最大尺寸"
-    AFX_IDS_SCNEXTWINDOW    "切换到下一个文档窗口"
-    AFX_IDS_SCPREVWINDOW    "切换到先前的文档窗口"
-    AFX_IDS_SCCLOSE         "关闭活动的窗口并提示保存所有文档"
+    AFX_IDS_SCSIZE          "�ı䴰�ڴ�С"
+    AFX_IDS_SCMOVE          "�ı䴰��λ��"
+    AFX_IDS_SCMINIMIZE      "��������С��ͼ��"
+    AFX_IDS_SCMAXIMIZE      "�Ѵ��ڷŴ����ߴ�"
+    AFX_IDS_SCNEXTWINDOW    "�л�����һ���ĵ�����"
+    AFX_IDS_SCPREVWINDOW    "�л�����ǰ���ĵ�����"
+    AFX_IDS_SCCLOSE         "�رջ�Ĵ��ڲ���ʾ���������ĵ�"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    AFX_IDS_SCRESTORE       "把窗口恢复到正常大小"
-    AFX_IDS_SCTASKLIST      "激活任务表"
+    AFX_IDS_SCRESTORE       "�Ѵ��ڻָ���������С"
+    AFX_IDS_SCTASKLIST      "���������"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    AFX_IDS_PREVIEW_CLOSE   "关闭打印预览模式\n取消预阅"
-    IDS_STRING_CREATE       "成功创建数据库表。"
-    IDS_DROP                "成功删除数据库表"
+    AFX_IDS_PREVIEW_CLOSE   "�رմ�ӡԤ��ģʽ\nȡ��Ԥ��"
+    IDS_STRING_CREATE       "�ɹ��������ݿ����"
+    IDS_DROP                "�ɹ�ɾ�����ݿ��"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
     ID_RUN                  "Run the SQL sentence"
-    ID_OPENDB               "打开数据库"
-    ID_CREATEDB             "创建数据库"
-    ID_DROPDB               "删除数据库"
+    ID_OPENDB               "�����ݿ�"
+    ID_CREATEDB             "�������ݿ�"
+    ID_DROPDB               "ɾ�����ݿ�"
 END
 
-#endif    // Chinese (中国) resources
+#endif    // Chinese (�й�) resources
 /////////////////////////////////////////////////////////////////////////////
 
 

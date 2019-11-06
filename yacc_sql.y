@@ -1,6 +1,6 @@
 /*
 file: yacc_sql.y
-content:ï¿½è¤‚é”“Çšæ²»ï¿½
+content:?¹Óï·¨·ÖÎ?
 author:Emily Zhang
 */
 %{
@@ -11,8 +11,8 @@ extern char * position;
 #include<stdlib.h>
 #include<string.h>
 extern int yylex(void);
-//è·å–å­ä¸²
-char *substr(const char *s,int n1,int n2)/*ä»sä¸­æå–ä¸‹æ ‡ä¸ºn1~n2çš„å­—ç¬¦ç»„æˆä¸€ä¸ªæ–°å­—ç¬¦ä¸²ï¼Œç„¶åè¿”å›è¿™ä¸ªæ–°ä¸²çš„é¦–åœ°å€*/
+//»ñÈ¡×Ó´®
+char *substr(const char *s,int n1,int n2)/*´ÓsÖĞÌáÈ¡ÏÂ±êÎªn1~n2µÄ×Ö·û×é³ÉÒ»¸öĞÂ×Ö·û´®£¬È»ºó·µ»ØÕâ¸öĞÂ´®µÄÊ×µØÖ·*/
 {
 	char *sp=malloc(sizeof(char)*(n2-n1+2));
 	int i,j=0;
@@ -25,7 +25,7 @@ char *substr(const char *s,int n1,int n2)/*ä»sä¸­æå–ä¸‹æ ‡ä¸ºn1~n2çš„å­—ç¬¦ç
   sqlstr *ssql;
   Condition wherecondi[MAX_NUM];
 
-	/*ä¸´æ—¶ä¸­é—´å˜é‡*/
+	/*ÁÙÊ±ÖĞ¼ä±äÁ¿*/
 int whereleng=0; 
 int fromleng=0;
 int selectleng=0;
@@ -50,7 +50,7 @@ void yyerror(const char *str) {
 }
 
 %}
-//æ ‡è¯†tokens
+//±êÊ¶tokens
 %token SEMICOLON CREATE DROP TABLE INDEX SELECT INSERT DELETE UPDATE
        LBRACE RBRACE COMMA INT_T STRING_T FLOAT_T HELP EXIT DOT //QUOTE
        INTO VALUES  FROM WHERE AND  SET	ON 
@@ -73,7 +73,7 @@ void yyerror(const char *str) {
 %token <string> SSS
 %token <string>  STAR
 %token <string> STRING_V
-//éç»ˆç»“ç¬¦
+//·ÇÖÕ½á·û
 
 %type <number> type;
 %type <condition1> condition;
@@ -123,12 +123,12 @@ help:
     HELP SEMICOLON {
         ssql->flag=9;//"help";
     };
-drop_table:		/*drop table è¯­å¥çš„è¯­æ³•è§£ææ ‘*/
+drop_table:		/*drop table Óï¾äµÄÓï·¨½âÎöÊ÷*/
     DROP TABLE ID SEMICOLON {
         ssql->flag=6;//"drop_table";
         ssql->sstr.drt.relName=$3;
     };
-create_index:		/*create idnex è¯­å¥çš„è¯­æ³•è§£ææ ‘*/
+create_index:		/*create idnex Óï¾äµÄÓï·¨½âÎöÊ÷*/
     CREATE INDEX ID ON ID LBRACE ID RBRACE SEMICOLON {
 																							        ssql->flag=7;//"create_index";
 																							        ssql->sstr.crei.indexName=$3;
@@ -137,19 +137,19 @@ create_index:		/*create idnex è¯­å¥çš„è¯­æ³•è§£ææ ‘*/
 																							    }
     ;
 
-drop_index:			/*drop index è¯­å¥çš„è¯­æ³•è§£ææ ‘*/
+drop_index:			/*drop index Óï¾äµÄÓï·¨½âÎöÊ÷*/
     DROP INDEX ID  SEMICOLON {
 											        ssql->flag=8;//"drop_index";
 											        ssql->sstr.dri.indexName=$3;
 											    }
     ;
-create_table:		/*create table è¯­å¥çš„è¯­æ³•è§£ææ ‘*/
+create_table:		/*create table Óï¾äµÄÓï·¨½âÎöÊ÷*/
     CREATE TABLE ID LBRACE attr_def attr_def_list RBRACE SEMICOLON {
 	
 																																		ssql->flag=5;//"create_table";
 																																		ssql->sstr.cret.relName=$3;
 																																		ssql->sstr.cret.attrCount=valueleng;
-																																		//ä¸´æ—¶å˜é‡æ¸…é›¶	
+																																		//ÁÙÊ±±äÁ¿ÇåÁã	
 																																		valueleng=0;
 																																		
 																																	    }
@@ -193,7 +193,7 @@ ID_get:
 	;
 
 	
-insert:				/*insert   è¯­å¥çš„è¯­æ³•è§£ææ ‘*/
+insert:				/*insert   Óï¾äµÄÓï·¨½âÎöÊ÷*/
     INSERT INTO ID VALUES LBRACE value value_list RBRACE SEMICOLON {
  																																valueT[valueleng++] = *$6;
 																																
@@ -203,7 +203,7 @@ insert:				/*insert   è¯­å¥çš„è¯­æ³•è§£ææ ‘*/
 																																for(i=0;i<valueleng;i++){
 																																ssql->sstr.ins.values[i] = valueT[i];
 																												}
-																																//ä¸´æ—¶å˜é‡æ¸…é›¶	
+																																//ÁÙÊ±±äÁ¿ÇåÁã	
 																																valueleng=0;
 																															//	free(valueT);
 	
@@ -241,7 +241,7 @@ value:
    								
     ;
     
-delete:		/*  delete è¯­å¥çš„è¯­æ³•è§£ææ ‘*/
+delete:		/*  delete Óï¾äµÄÓï·¨½âÎöÊ÷*/
     DELETE FROM ID where SEMICOLON {
 	
 	ssql->flag=4;//"delete";
@@ -253,7 +253,7 @@ delete:		/*  delete è¯­å¥çš„è¯­æ³•è§£ææ ‘*/
 	whereleng=0;	
     }
     ;
-update:			/*  update è¯­å¥çš„è¯­æ³•è§£ææ ‘*/
+update:			/*  update Óï¾äµÄÓï·¨½âÎöÊ÷*/
     UPDATE ID SET ID EQ value where SEMICOLON{
 	
 											ssql->flag=3;//"update";
@@ -268,7 +268,7 @@ update:			/*  update è¯­å¥çš„è¯­æ³•è§£ææ ‘*/
 									
 										    }
     ;
-select:				/*  select è¯­å¥çš„è¯­æ³•è§£ææ ‘*/
+select:				/*  select Óï¾äµÄÓï·¨½âÎöÊ÷*/
     SELECT select_attr FROM ID rel_list where SEMICOLON {
       
 																												ssql->sstr.sel.relations[fromleng++]=$4;
@@ -282,7 +282,7 @@ select:				/*  select è¯­å¥çš„è¯­æ³•è§£ææ ‘*/
 																												ssql->sstr.sel.nRelations=fromleng;	
 																												ssql->sstr.sel.nConditions=whereleng;
 																											
-																												//ä¸´æ—¶å˜é‡æ¸…é›¶
+																												//ÁÙÊ±±äÁ¿ÇåÁã
 																												whereleng=0;	
 																												fromleng=0;
 																												selectleng=0;
@@ -388,7 +388,7 @@ condition:
 									$$->lhsAttr.relName=$1;
 									$$->lhsAttr.attrName=$3;
 									$$->op=compOpT;
-									$$->bRhsIsAttr = 0;   //å±æ€§å€¼
+									$$->bRhsIsAttr = 0;   //ÊôĞÔÖµ
 									$$->rhsAttr.relName=NULL;
 									$$->rhsAttr.attrName=NULL;
 									$$->rhsValue=*$5;			
@@ -396,23 +396,23 @@ condition:
     											}
     |value comOp ID DOT ID{
 									$$=( Condition *)malloc(sizeof( Condition));
-									$$->bLhsIsAttr = 0;//å±æ€§å€¼
+									$$->bLhsIsAttr = 0;//ÊôĞÔÖµ
 									$$->lhsAttr.relName=NULL;
 									$$->lhsAttr.attrName=NULL;
 									$$->lhsValue = *$1;
 									$$->op=compOpT;
-									$$->bRhsIsAttr = 1;//å±æ€§
+									$$->bRhsIsAttr = 1;//ÊôĞÔ
 									$$->rhsAttr.relName = $3;
 									$$->rhsAttr.attrName = $5;
 									
     						}
     |ID DOT ID comOp ID DOT ID{
 									$$=( Condition *)malloc(sizeof( Condition));
-									$$->bLhsIsAttr = 1;		//å±æ€§
+									$$->bLhsIsAttr = 1;		//ÊôĞÔ
 									$$->lhsAttr.relName=$1;
 									$$->lhsAttr.attrName=$3;
 									$$->op=compOpT;
-									$$->bRhsIsAttr = 1;		//å±æ€§
+									$$->bRhsIsAttr = 1;		//ÊôĞÔ
 									$$->rhsAttr.relName=$5;
 									$$->rhsAttr.attrName=$7;								
     											}

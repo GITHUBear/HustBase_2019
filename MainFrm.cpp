@@ -87,9 +87,9 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 		return FALSE;
 	// TODO: Modify the Window class or styles here by modifying
 	//  the CREATESTRUCT cs
-	cs.x=50;//鏀瑰彉涓荤獥鍙ｇ殑鍒濆浣嶇疆
+	cs.x=50;//改变主窗口的初始位置
 	cs.y=50;
-	cs.cx=1150;//鏀瑰彉涓荤獥鍙ｇ殑鍒濆澶у皬
+	cs.cx=1150;//改变主窗口的初始大小
 	cs.cy=700;
 	return TRUE;
 }
@@ -132,15 +132,15 @@ BOOL CMainFrame::OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext* pContext)
 	{
 		return FALSE;
 	}
-	if (!m_wmSplitter2.CreateView(0, 1, RUNTIME_CLASS(CTableList), CSize(4 * eRect.Width(), 2* eRect.Height()/3), pContext))//鏄剧ず淇℃伅
+	if (!m_wmSplitter2.CreateView(0, 1, RUNTIME_CLASS(CTableList), CSize(4 * eRect.Width(), 2* eRect.Height()/3), pContext))//显示信息
 	{
 		return FALSE;
 	}
-	if (!m_wmSplitter1.CreateView(0, 0, RUNTIME_CLASS(CEditArea), CSize(eRect.Width(), eRect.Height()/6), pContext))	//鏍戠姸鎺т欢
+	if (!m_wmSplitter1.CreateView(0, 0, RUNTIME_CLASS(CEditArea), CSize(eRect.Width(), eRect.Height()/6), pContext))	//树状控件
 	{
 		return FALSE;
 	}	
-	if (!m_wmSplitter1.CreateView(2, 0, RUNTIME_CLASS(CHustBaseView), CSize(eRect.Width(), eRect.Height()/6), pContext))	//鏍戠姸鎺т欢
+	if (!m_wmSplitter1.CreateView(2, 0, RUNTIME_CLASS(CHustBaseView), CSize(eRect.Width(), eRect.Height()/6), pContext))	//树状控件
 	{
 		return FALSE;
 	}

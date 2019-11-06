@@ -77,8 +77,8 @@ extern char * position;
 #include<stdlib.h>
 #include<string.h>
 extern int yylex(void);
-//è·å–å­ä¸²
-char *substr(const char *s,int n1,int n2)/*ä»sä¸­æå–ä¸‹æ ‡ä¸ºn1~n2çš„å­—ç¬¦ç»„æˆä¸€ä¸ªæ–°å­—ç¬¦ä¸²ï¼Œç„¶åè¿”å›è¿™ä¸ªæ–°ä¸²çš„é¦–åœ°å€*/
+//»ñÈ¡×Ó´®
+char *substr(const char *s,int n1,int n2)/*´ÓsÖĞÌáÈ¡ÏÂ±êÎªn1~n2µÄ×Ö·û×é³ÉÒ»¸öĞÂ×Ö·û´®£¬È»ºó·µ»ØÕâ¸öĞÂ´®µÄÊ×µØÖ·*/
 {
 	char *sp=malloc(sizeof(char)*(n2-n1+2));
 	int i,j=0;
@@ -91,7 +91,7 @@ char *substr(const char *s,int n1,int n2)/*ä»sä¸­æå–ä¸‹æ ‡ä¸ºn1~n2çš„å­—ç¬¦ç
   sqlstr *ssql;
   Condition wherecondi[MAX_NUM];
 
-	/*ä¸´æ—¶ä¸­é—´å˜é‡*/
+	/*ÁÙÊ±ÖĞ¼ä±äÁ¿*/
 int whereleng=0; 
 int fromleng=0;
 int selectleng=0;
@@ -1578,7 +1578,7 @@ yyreduce:
 																																		ssql->flag=5;//"create_table";
 																																		ssql->sstr.cret.relName=(yyvsp[(3) - (8)].string);
 																																		ssql->sstr.cret.attrCount=valueleng;
-																																		//ä¸´æ—¶å˜é‡æ¸…é›¶	
+																																		//ÁÙÊ±±äÁ¿ÇåÁã	
 																																		valueleng=0;
 																																		
 																																	    ;}
@@ -1670,7 +1670,7 @@ yyreduce:
 																																for(i=0;i<valueleng;i++){
 																																ssql->sstr.ins.values[i] = valueT[i];
 																												}
-																																//ä¸´æ—¶å˜é‡æ¸…é›¶	
+																																//ÁÙÊ±±äÁ¿ÇåÁã	
 																																valueleng=0;
 																															//	free(valueT);
 	
@@ -1777,7 +1777,7 @@ yyreduce:
 																												ssql->sstr.sel.nRelations=fromleng;	
 																												ssql->sstr.sel.nConditions=whereleng;
 																											
-																												//ä¸´æ—¶å˜é‡æ¸…é›¶
+																												//ÁÙÊ±±äÁ¿ÇåÁã
 																												whereleng=0;	
 																												fromleng=0;
 																												selectleng=0;
@@ -1943,7 +1943,7 @@ yyreduce:
 									(yyval.condition1)->lhsAttr.relName=(yyvsp[(1) - (5)].string);
 									(yyval.condition1)->lhsAttr.attrName=(yyvsp[(3) - (5)].string);
 									(yyval.condition1)->op=compOpT;
-									(yyval.condition1)->bRhsIsAttr = 0;   //å±æ€§å€¼
+									(yyval.condition1)->bRhsIsAttr = 0;   //ÊôĞÔÖµ
 									(yyval.condition1)->rhsAttr.relName=NULL;
 									(yyval.condition1)->rhsAttr.attrName=NULL;
 									(yyval.condition1)->rhsValue=*(yyvsp[(5) - (5)].value1);			
@@ -1957,12 +1957,12 @@ yyreduce:
 #line 397 "yacc_sql.y"
     {
 									(yyval.condition1)=( Condition *)malloc(sizeof( Condition));
-									(yyval.condition1)->bLhsIsAttr = 0;//å±æ€§å€¼
+									(yyval.condition1)->bLhsIsAttr = 0;//ÊôĞÔÖµ
 									(yyval.condition1)->lhsAttr.relName=NULL;
 									(yyval.condition1)->lhsAttr.attrName=NULL;
 									(yyval.condition1)->lhsValue = *(yyvsp[(1) - (5)].value1);
 									(yyval.condition1)->op=compOpT;
-									(yyval.condition1)->bRhsIsAttr = 1;//å±æ€§
+									(yyval.condition1)->bRhsIsAttr = 1;//ÊôĞÔ
 									(yyval.condition1)->rhsAttr.relName = (yyvsp[(3) - (5)].string);
 									(yyval.condition1)->rhsAttr.attrName = (yyvsp[(5) - (5)].string);
 									
@@ -1975,11 +1975,11 @@ yyreduce:
 #line 409 "yacc_sql.y"
     {
 									(yyval.condition1)=( Condition *)malloc(sizeof( Condition));
-									(yyval.condition1)->bLhsIsAttr = 1;		//å±æ€§
+									(yyval.condition1)->bLhsIsAttr = 1;		//ÊôĞÔ
 									(yyval.condition1)->lhsAttr.relName=(yyvsp[(1) - (7)].string);
 									(yyval.condition1)->lhsAttr.attrName=(yyvsp[(3) - (7)].string);
 									(yyval.condition1)->op=compOpT;
-									(yyval.condition1)->bRhsIsAttr = 1;		//å±æ€§
+									(yyval.condition1)->bRhsIsAttr = 1;		//ÊôĞÔ
 									(yyval.condition1)->rhsAttr.relName=(yyvsp[(5) - (7)].string);
 									(yyval.condition1)->rhsAttr.attrName=(yyvsp[(7) - (7)].string);								
     											;}

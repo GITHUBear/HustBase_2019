@@ -59,16 +59,16 @@ void CHustBaseView::OnDraw(CDC* pDC)
 	CHustBaseDoc* pDoc = (CHustBaseDoc*)GetDocument();
 	ASSERT_VALID(pDoc);
 	// TODO: add draw code for native data here
-// 	if (pDoc->isEdit)		//çª—å£æ”¹å˜å¤§å°æ—¶é‡ç»˜ï¼›
+// 	if (pDoc->isEdit)		//´°¿Ú¸Ä±ä´óĞ¡Ê±ÖØ»æ£»
 // 	{
 	int i , j;
 	CFont font;
-	font.CreatePointFont(118, "å¾®è½¯é›…é»‘", NULL);//è®¾ç½®å­—ä½“
+	font.CreatePointFont(118, "Î¢ÈíÑÅºÚ", NULL);//ÉèÖÃ×ÖÌå
 	CFont *pOldFont = pDC->SelectObject(&font);
 	TEXTMETRIC tm;
 	pDC->GetTextMetrics(&tm);
 
-	if (pDoc->isEdit)		//çª—å£æ”¹å˜å¤§å°æ—¶é‡ç»˜ï¼›
+	if (pDoc->isEdit)		//´°¿Ú¸Ä±ä´óĞ¡Ê±ÖØ»æ£»
  	{
 		POINT point1 = {1,1} ,point2 = {pDoc->selColNum*180+1,1}, 
 			point3 = {pDoc->selColNum*180+1,pDoc->selRowNum*25+1}, 
@@ -125,7 +125,7 @@ void CHustBaseView::OnDraw(CDC* pDC)
 	}
 }
 
-void CHustBaseView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint) //åªæœ‰åœ¨ä¸€å¼€å§‹çš„æ—¶å€™ä½¿ç”¨ä¸€æ¬¡ï¼Œä½†æ˜¯ä¹‹åæ–‡æ¡£å˜åŒ–äº†ï¼Œå´æ²¡æœ‰è°ƒç”¨
+void CHustBaseView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint) //Ö»ÓĞÔÚÒ»¿ªÊ¼µÄÊ±ºòÊ¹ÓÃÒ»´Î£¬µ«ÊÇÖ®ºóÎÄµµ±ä»¯ÁË£¬È´Ã»ÓĞµ÷ÓÃ
 {
 	// TODO: Add your specialized code here and/or call the base class
 }
@@ -200,7 +200,7 @@ void CHustBaseView::ShowInfo(UINT ID_TYPE, char* extraInfo)
 	CString str;
 	str.LoadString(ID_TYPE);
 
-	CMainFrame* main = (CMainFrame*)AfxGetApp()->m_pMainWnd;	//è·å–çª—å£æŒ‡é’ˆ
+	CMainFrame* main = (CMainFrame*)AfxGetApp()->m_pMainWnd;	//»ñÈ¡´°¿ÚÖ¸Õë
 	CWnd* pPane = (CWnd*)main->m_wmSplitter1.GetPane(2, 0);
 	CClientDC dc(pPane);
 	
@@ -208,12 +208,12 @@ void CHustBaseView::ShowInfo(UINT ID_TYPE, char* extraInfo)
 	pPane->GetClientRect(cr);
 	COLORREF clr=dc.GetBkColor();	
 	
-	dc.FillSolidRect(cr, clr);	//æ¸…ç©ºä¹‹å‰è¾“å‡ºçš„æ–‡å­—ï¼›
+	dc.FillSolidRect(cr, clr);	//Çå¿ÕÖ®Ç°Êä³öµÄÎÄ×Ö£»
 	
 	if (str)
 	{
 		CFont font;
-		font.CreatePointFont(118, "å¾®è½¯é›…é»‘", NULL);//è®¾ç½®å­—ä½“
+		font.CreatePointFont(118, "Î¢ÈíÑÅºÚ", NULL);//ÉèÖÃ×ÖÌå
 		CFont *pOldFont = dc.SelectObject(&font);
 		TEXTMETRIC tm;
 		dc.GetTextMetrics(&tm);

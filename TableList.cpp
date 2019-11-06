@@ -127,9 +127,9 @@ void CTableList::displayTabInfo(CString ParentNode)
  	path=lpszCurDir;
  	path+="\\SYSTABLES.xx";
 
-	rc=RM_OpenFile((LPSTR)(LPCTSTR)path,&fileHandle);//å»SYSTABLESè¡¨ä¸­è·å–è¡¨å
+	rc=RM_OpenFile((LPSTR)(LPCTSTR)path,&fileHandle);//È¥SYSTABLES±íÖĞ»ñÈ¡±íÃû
 	if(rc!=SUCCESS)
-		AfxMessageBox("æ‰“å¼€ç³»ç»Ÿè¡¨æ–‡ä»¶å¤±è´¥");
+		AfxMessageBox("´ò¿ªÏµÍ³±íÎÄ¼şÊ§°Ü");
 	condition.bLhsIsAttr=1;
 	condition.bRhsIsAttr=0;
 	condition.LattrOffset=0;
@@ -139,18 +139,18 @@ void CTableList::displayTabInfo(CString ParentNode)
 
 	rc=OpenScan(&FileScan,&fileHandle,1,&condition);
 	if(rc!=SUCCESS)
-		AfxMessageBox("åˆå§‹åŒ–æ–‡ä»¶æ‰«æå¤±è´¥");
+		AfxMessageBox("³õÊ¼»¯ÎÄ¼şÉ¨ÃèÊ§°Ü");
 	rc=GetNextRec(&FileScan,&rec);
-	if(rc!=SUCCESS)//ç‚¹å‡»çš„ä¸æ˜¯è¡¨åï¼Œä¸åšæ˜¾ç¤ºå¤„ç†
+	if(rc!=SUCCESS)//µã»÷µÄ²»ÊÇ±íÃû£¬²»×öÏÔÊ¾´¦Àí
 	{
 		rc=RM_CloseFile(&fileHandle);
 		if(rc!=SUCCESS)
-			AfxMessageBox("ç³»ç»Ÿè¡¨æ–‡ä»¶å…³é—­å¤±è´¥");
+			AfxMessageBox("ÏµÍ³±íÎÄ¼ş¹Ø±ÕÊ§°Ü");
 		return;
 	}
 	rc=RM_CloseFile(&fileHandle);
 	if(rc!=SUCCESS)
-		AfxMessageBox("è¡¨ç³»ç»Ÿæ–‡ä»¶å…³é—­å¤±è´¥");
+		AfxMessageBox("±íÏµÍ³ÎÄ¼ş¹Ø±ÕÊ§°Ü");
 
  	CHustBaseDoc *pDoc = GetDocument();
  	CListCtrl & clc = GetListCtrl();
@@ -160,14 +160,14 @@ void CTableList::displayTabInfo(CString ParentNode)
  	lv.mask = LVCF_FMT | LVCF_TEXT | LVCF_WIDTH;
  	lv.fmt = LVCFMT_CENTER;
  	
-	pDoc->m_pEditView->iReadDictstruct(tabname,&tabnum,colname,colnum,coltype,collength,coloffset,iscolix);//è°ƒç”¨iReadDictstructå‡½æ•°è·å–è¡¨ä¿¡æ¯å’Œåˆ—ä¿¡æ¯
+	pDoc->m_pEditView->iReadDictstruct(tabname,&tabnum,colname,colnum,coltype,collength,coloffset,iscolix);//µ÷ÓÃiReadDictstructº¯Êı»ñÈ¡±íĞÅÏ¢ºÍÁĞĞÅÏ¢
 	for(i=0;i<tabnum;i++)
 	{
 		if(strcmp((LPSTR)(LPCTSTR)ParentNode,tabname[i])==0)
 			break;
 	}
 	ClearList();
- 	for(j=1;j<=colnum[i];j++)//ç»˜åˆ¶è¡¨å¤´ï¼Œè¿™é‡Œä»1å¼€å§‹æ˜¯ä¸ºäº†è§£å†³ç¬¬ä¸€åˆ—å¿…é¡»å·¦å¯¹é½çš„é—®é¢˜ï¼Œè‹¥ä»0å¼€å§‹åˆ™ç¬¬ä¸€åˆ—å¿…å®šæ˜¯å·¦å¯¹é½çš„
+ 	for(j=1;j<=colnum[i];j++)//»æÖÆ±íÍ·£¬ÕâÀï´Ó1¿ªÊ¼ÊÇÎªÁË½â¾öµÚÒ»ÁĞ±ØĞë×ó¶ÔÆëµÄÎÊÌâ£¬Èô´Ó0¿ªÊ¼ÔòµÚÒ»ÁĞ±Ø¶¨ÊÇ×ó¶ÔÆëµÄ
  	{
 		lv.cx=15*12;
  		lv.pszText=colname[i][j-1];
@@ -177,11 +177,11 @@ void CTableList::displayTabInfo(CString ParentNode)
 	fileHandle.bOpen=0;
 	rc=RM_OpenFile((LPSTR)(LPCTSTR)ParentNode,&fileHandle);
 	if(rc!=SUCCESS)
-		AfxMessageBox("æ•°æ®è¡¨æ–‡ä»¶æ‰“å¼€å¤±è´¥");
+		AfxMessageBox("Êı¾İ±íÎÄ¼ş´ò¿ªÊ§°Ü");
 	FileScan.bOpen=0;
 	rc=OpenScan(&FileScan,&fileHandle,0,NULL);
 	if(rc!=SUCCESS)
-		AfxMessageBox("åˆå§‹åŒ–æ–‡ä»¶æ‰«æå¤±è´¥");
+		AfxMessageBox("³õÊ¼»¯ÎÄ¼şÉ¨ÃèÊ§°Ü");
 	while(GetNextRec(&FileScan,&rec)==SUCCESS)
 	{
 		clc.InsertItem(k,"");
@@ -213,5 +213,5 @@ void CTableList::displayTabInfo(CString ParentNode)
 	}
 	rc=RM_CloseFile(&fileHandle);
 	if(rc!=SUCCESS)
-		AfxMessageBox("å…³é—­æ•°æ®è¡¨æ–‡ä»¶å¤±è´¥");
+		AfxMessageBox("¹Ø±ÕÊı¾İ±íÎÄ¼şÊ§°Ü");
 }
