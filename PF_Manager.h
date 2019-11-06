@@ -23,12 +23,12 @@ typedef unsigned int PageNum;
 typedef struct{
 	PageNum pageNum;
 	char pData[PF_PAGE_SIZE];
-}Page;
+}Page;                            // 描述一个page上的信息或者一个内存缓冲区槽，会持久化到磁盘
 
 typedef struct{
 	PageNum pageCount;
 	int nAllocatedPages;
-}PF_FileSubHeader;
+}PF_FileSubHeader;               // 文件的首页紧跟Page.pageNum之后的数据，会持久化到磁盘
 
 typedef struct{
 	bool bDirty;
@@ -37,7 +37,7 @@ typedef struct{
 	char *fileName;
 	int fileDesc;
 	Page page;
-}Frame;
+}Frame;                         // 包含了缓冲区Page的缓冲区槽描述器，仅存在内存中
 
 typedef struct{
 	bool bopen;
@@ -47,21 +47,21 @@ typedef struct{
 	Page *pHdrPage;
 	char *pBitmap;
 	PF_FileSubHeader *pFileSubHeader;
-}PF_FileHandle;
+}PF_FileHandle;                // 文件打开之后便于操作设计的文件句柄
 
 typedef struct{
 	int nReads;
 	int nWrites;
 	Frame frame[PF_BUFFER_SIZE];
 	bool allocated[PF_BUFFER_SIZE];
-}BF_Manager;
+}BF_Manager;                  // 缓冲区管理
 
 typedef struct{
 	bool bOpen;
 	Frame *pFrame;
-}PF_PageHandle;
+}PF_PageHandle;               // 文件的一个页面上的句柄
 
-const RC CreateFile(const char *fileName);
+const RC PF_CreateFile(const char *fileName);
 const RC openFile(char *fileName,PF_FileHandle *fileHandle);
 const RC CloseFile(PF_FileHandle *fileHandle);
 
@@ -76,4 +76,7 @@ const RC MarkDirty(PF_PageHandle *pageHandle);
 
 const RC UnpinPage(PF_PageHandle *pageHandle);
 
+const RC GetLastPageNum(PF_FileHandle* fileHandle, PageNum* pageNum);
+
+const RC ForceAllPages(PF_FileHandle* fileHandle);
 #endif

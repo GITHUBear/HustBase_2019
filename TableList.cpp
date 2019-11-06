@@ -119,7 +119,7 @@ void CTableList::displayTabInfo(CString ParentNode)
 	CString path;
 	CString t;
 
-	DWORD cchCurDir; 
+	DWORD cchCurDir= BUFFER;
  	LPTSTR lpszCurDir; 	
  	TCHAR tchBuffer[BUFFER]; 
  	lpszCurDir = tchBuffer; 
@@ -138,6 +138,7 @@ void CTableList::displayTabInfo(CString ParentNode)
 	condition.Rvalue=(LPSTR)(LPCTSTR)ParentNode;
 
 	rc=OpenScan(&FileScan,&fileHandle,1,&condition);
+	rec.pData = new char[4*1024];
 	if(rc!=SUCCESS)
 		AfxMessageBox("初始化文件扫描失败");
 	rc=GetNextRec(&FileScan,&rec);
@@ -146,6 +147,7 @@ void CTableList::displayTabInfo(CString ParentNode)
 		rc=RM_CloseFile(&fileHandle);
 		if(rc!=SUCCESS)
 			AfxMessageBox("系统表文件关闭失败");
+		delete[] rec.pData;
 		return;
 	}
 	rc=RM_CloseFile(&fileHandle);
@@ -175,6 +177,7 @@ void CTableList::displayTabInfo(CString ParentNode)
  		clc.InsertColumn(j,&lv);
  	}
 	fileHandle.bOpen=0;
+
 	rc=RM_OpenFile((LPSTR)(LPCTSTR)ParentNode,&fileHandle);
 	if(rc!=SUCCESS)
 		AfxMessageBox("数据表文件打开失败");
@@ -214,4 +217,6 @@ void CTableList::displayTabInfo(CString ParentNode)
 	rc=RM_CloseFile(&fileHandle);
 	if(rc!=SUCCESS)
 		AfxMessageBox("关闭数据表文件失败");
+
+	delete[] rec.pData;
 }
