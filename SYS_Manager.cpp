@@ -437,8 +437,8 @@ RC CreateTable(char* relName, int attrCount, AttrInfo* attributes) {
 	//根据约定，文件名为了relName.rm。
 	std::string filePath = dbInfo.curDbName + "\\" + relName + RM_FILE_SUFFIX;
 	if ((rc = RM_CreateFile((char*)filePath.c_str(), rmRecordSize))||
-		(rc = ForceAllPages(&dbInfo.sysTables.pfFileHandle)) || 
-		(rc = ForceAllPages(&dbInfo.sysColumns.pfFileHandle)) ) {
+		(rc = ForceDataPages(&dbInfo.sysTables.pfFileHandle)) ||
+		(rc = ForceDataPages(&dbInfo.sysColumns.pfFileHandle)) ) {
 		delete[] rmRecord.pData;
 		return rc;
 	}
@@ -478,8 +478,8 @@ RC DropTable(char* relName) {
 		return rc;
 	}
 
-	if((rc=ForceAllPages(&(dbInfo.sysTables.pfFileHandle))) ||
-		(rc=ForceAllPages(&(dbInfo.sysColumns.pfFileHandle))))
+	if((rc= ForceDataPages(&(dbInfo.sysTables.pfFileHandle))) ||
+		(rc= ForceDataPages(&(dbInfo.sysColumns.pfFileHandle))))
 		return rc;
 
 	return SUCCESS;
@@ -542,8 +542,8 @@ RC CreateIndex(char* indexName, char* relName, char* attrName) {
 		delete[] rmRecord.pData;
 		return rc;
 	}
-	if((rc=ForceAllPages(&(dbInfo.sysTables.pfFileHandle))) ||
-		(rc=ForceAllPages(&(dbInfo.sysColumns.pfFileHandle)))){
+	if((rc=ForceDataPages(&(dbInfo.sysTables.pfFileHandle))) ||
+		(rc= ForceDataPages(&(dbInfo.sysColumns.pfFileHandle)))){
 		delete[] rmRecord.pData;
 		return rc;
 	}
@@ -620,8 +620,8 @@ RC DropIndex(char* indexName) {
 		return rc;
 	}
 
-	if((rc=ForceAllPages(&(dbInfo.sysTables.pfFileHandle))) ||
-		(rc=ForceAllPages(&(dbInfo.sysColumns.pfFileHandle)))){
+	if((rc= ForceDataPages(&(dbInfo.sysTables.pfFileHandle))) ||
+		(rc= ForceDataPages(&(dbInfo.sysColumns.pfFileHandle)))){
 		delete[] rmRecord.pData;
 		return rc;
 	}

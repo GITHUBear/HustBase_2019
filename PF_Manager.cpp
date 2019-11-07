@@ -387,8 +387,37 @@ const RC ForceAllPages(PF_FileHandle *fileHandle)
 			if(_write(fileHandle->fileDesc,&(bf_manager.frame[i].page),sizeof(Page))!=sizeof(Page))
 				return PF_FILEERR;
 		}
-		if(bf_manager.frame[i].page.pageNum!=0)
+		//if(bf_manager.frame[i].page.pageNum!=0)
 			bf_manager.allocated[i]=false;
+	}
+	return SUCCESS;
+}
+
+const RC ForceDataPages(PF_FileHandle* fileHandle)
+{
+	int i, offset;
+
+	// 也请务必保证 fileHandle->bOpen 为真
+	if (!(fileHandle->bopen))
+		return PF_FHCLOSED;
+
+	for (i = 0; i < PF_BUFFER_SIZE; i++) {
+		if (bf_manager.allocated[i] == false)
+			continue;
+		if (bf_manager.frame[i].fileDesc != fileHandle->fileDesc)
+			continue;
+		/*if(strcmp(bf_manager.frame[i].fileName,fileHandle->fileName)!=0)
+			continue;*/
+
+		if (bf_manager.frame[i].bDirty == true) {
+			offset = (bf_manager.frame[i].page.pageNum) * sizeof(Page);
+			if (_lseek(fileHandle->fileDesc, offset, SEEK_SET) == offset - 1)
+				return PF_FILEERR;
+			if (_write(fileHandle->fileDesc, &(bf_manager.frame[i].page), sizeof(Page)) != sizeof(Page))
+				return PF_FILEERR;
+		}
+		if (bf_manager.frame[i].page.pageNum != 0)
+			bf_manager.allocated[i] = false;
 	}
 	return SUCCESS;
 }
