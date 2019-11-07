@@ -41,7 +41,6 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 		return INVALID_VALUES;
 	}
 	Init_Result(res);
-	res->col_num = nSelAttrs;
 	int num = 1;
 	RC rc;
 	std::vector<std::pair<char*, QU_Records*>> tables;
@@ -52,6 +51,38 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 		num *= tables[i].second->nRecords;
 	}
 	std::vector<std::vector<AttrEntry>> tableAttributes;
+	for (size_t i = 0; i < tables.size(); ++i) {
+		std::vector<AttrEntry> attributes;
+		int attrCount;
+		if ((rc = ColumnEntryGet(tables[i].first, &attrCount, attributes))) {
+			return rc;
+		}
+		tableAttributes.push_back(attributes);
+	}
+	if (nSelAttrs == 1 && strcmp(selAttrs[0]->attrName, "*") == 0) {
+		nSelAttrs = 0;
+		for (size_t i = 0; i < tables.size(); ++i) {
+			nSelAttrs += tableAttributes[i].size();
+		}
+		selAttrs = new RelAttr* [nSelAttrs];
+		nSelAttrs = 0;
+		for (size_t i = 0; i < tables.size(); ++i) {
+			for (size_t j = 0; j < tableAttributes[i].size(); ++j) {
+				selAttrs[nSelAttrs] = new RelAttr;
+
+				selAttrs[nSelAttrs]->relName = new char[strlen(tables[i].first) + 1];
+				strcpy(selAttrs[nSelAttrs]->relName, tables[i].first);
+				selAttrs[nSelAttrs]->relName[strlen(tables[i].first)] = '\0';
+
+				selAttrs[nSelAttrs]->attrName = new char[tableAttributes[i][j].attrName.length() + 1];
+				strcpy(selAttrs[nSelAttrs]->attrName, tableAttributes[i][j].attrName.c_str());
+				selAttrs[nSelAttrs]->attrName[tableAttributes[i][j].attrName.length()] = '\0';
+
+				nSelAttrs++;
+			}
+		}
+	}
+	res->col_num = nSelAttrs;
 	// Tranverse every record in the Cartesian product of all tables.
 	for (int i = 0;i < num; ++i) {
 		int x = i;
@@ -60,12 +91,6 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 		for (size_t j = 0;j < tables.size(); ++j) {
 			record.push_back(tables[j].second->records[x%tables[j].second->nRecords]);
 			x /= tables[j].second->nRecords;
-			std::vector<AttrEntry> attributes;
-			int attrCount;
-			if ((rc = ColumnEntryGet(tables[j].first, &attrCount, attributes))) {
-				return rc;
-			}
-			tableAttributes.push_back(attributes);
 		}
 		bool checked = 1;
 		// Go through all conditions.
@@ -169,10 +194,12 @@ const char* GetFullColumnName(RelAttr* relAttr) {
 	if (relAttr->relName == NULL) {
 		return relAttr->attrName;
 	}
-	char* tmp = new char[strlen(relAttr->relName) + 1 + strlen(relAttr->attrName)];
-	strcpy_s(tmp, strlen(relAttr->relName), relAttr->relName);
+	int length = strlen(relAttr->relName) + 1 + strlen(relAttr->attrName) + 1;
+	char* tmp = new char[length];
+	strcpy_s(tmp, length, relAttr->relName);
 	tmp[strlen(relAttr->relName)] = '.';
-	strcpy_s(tmp + strlen(relAttr->relName) + 1, strlen(relAttr->attrName), relAttr->attrName);
+	strcpy_s(tmp + strlen(relAttr->relName) + 1, length - strlen(relAttr->relName) - 1, relAttr->attrName);
+	tmp [strlen(relAttr->relName) + 1 + strlen(relAttr->attrName)] = '\0';
 	return tmp;
 }
 
