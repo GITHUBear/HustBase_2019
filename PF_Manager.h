@@ -11,7 +11,7 @@
 #include <time.h>
 #include <malloc.h>
 #include <windows.h>
-
+#include <assert.h>
 #include "RC.h"
 
 #define PF_PAGE_SIZE ((1<<12)-4)

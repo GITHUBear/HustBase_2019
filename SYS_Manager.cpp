@@ -762,12 +762,13 @@ bool checkAttr(char* relName, int hsIsAttr, RelAttr& hsAttr, AttrType* attrType)
 	// 1.如果bLhsIsAttr为1：
 	if (hsIsAttr) {
 		//	  1.1.检查lhsAttr的relName是否和传入的relName相同。不同返回false。
-		if (strcmp(hsAttr.relName, relName)) {
+		if ( hsAttr.relName && strcmp(hsAttr.relName, relName)) {
 			delete[] rmRecord.pData;
 			return false;
 		}
+
 		//	  1.2.检查lhsAttr的attrName在relName中是否存在。不同返回false。
-		if (ColumnSearchAttr(relName, hsAttr.attrName, &rmRecord)) {
+		if (hsAttr.attrName && ColumnSearchAttr(relName, hsAttr.attrName, &rmRecord)) {
 			delete[] rmRecord.pData;
 			return false;
 		}
@@ -1030,7 +1031,7 @@ RC Update(char* relName, char* attrName, Value* value, int nConditions, Conditio
 	if ((rc = RM_CloseFile(&rmFileHandle))) {
 		return rc;
 	}
-	assert(ixEntrys.size() == 1);
+
 	if (attrEntry.ix_flag && ((rc = CloseIndex(&(ixEntrys[0].ixIndexHandle))))) {
 		return rc;
 	}

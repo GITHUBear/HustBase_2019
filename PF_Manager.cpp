@@ -236,6 +236,7 @@ const RC AllocatePage(PF_FileHandle *fileHandle,PF_PageHandle *pageHandle)
 	// 之前都是分配着的，申请一个缓冲区放置新的pageNum对应的页
 	fileHandle->pFileSubHeader->nAllocatedPages++;
 	fileHandle->pFileSubHeader->pageCount++;
+	//assert(fileHandle->pFileSubHeader->pageCount <= 2);
 	byte=fileHandle->pFileSubHeader->pageCount/8;
 	bit=fileHandle->pFileSubHeader->pageCount%8;
 	fileHandle->pBitmap[byte]|=(1<<bit);
@@ -386,7 +387,8 @@ const RC ForceAllPages(PF_FileHandle *fileHandle)
 			if(_write(fileHandle->fileDesc,&(bf_manager.frame[i].page),sizeof(Page))!=sizeof(Page))
 				return PF_FILEERR;
 		}
-		bf_manager.allocated[i]=false;
+		if(bf_manager.frame[i].page.pageNum!=0)
+			bf_manager.allocated[i]=false;
 	}
 	return SUCCESS;
 }
