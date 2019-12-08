@@ -78,6 +78,7 @@ typedef enum {
 	INDEX_NAME_ILLEGAL,
 
 	NOT_SELECT,
+	SELECT_SUCCESS,
 }RC;
 
 #endif

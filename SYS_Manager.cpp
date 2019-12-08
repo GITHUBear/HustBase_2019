@@ -6,62 +6,122 @@
 
 DB_INFO dbInfo;
 
-void ExecuteAndMessage(char* sql, CEditArea* editArea) {//根据执行的语句类型在界面上显示执行结果。此函数需修改
-	std::string s_sql = sql;
-	AfxMessageBox(sql);//弹出警告框，sql语句词法解析错误信息
-	if (s_sql.find("select") == 0) {
-		RC rc;
-		SelResult res;
-		Init_Result(&res);
-		//rc = Query(sql,&res);
-		//将查询结果处理一下，整理成下面这种形式
-		//调用editArea->ShowSelResult(col_num,row_num,fields,rows);
-		if ((rc = Query(sql, &res))) {
-			return;
-		}
-		int col_num = res.col_num;//列
-		int row_num = 0;//行
-		SelResult* cur_res = &res;
-		while (cur_res) {//所有节点的记录数之和
-			row_num += cur_res->row_num;
-			cur_res = cur_res->next_res;
-		}
-		char** fields = new char* [20];//各字段名称
-		for (int i = 0; i < col_num; i++) {
-			fields[i] = new char[20];
-			memset(fields[i], 0, 20);
-			memcpy(fields[i], res.fields[i], 20);
-		}
-		cur_res = &res;
-		char*** rows = new char** [row_num];
-		for (int i = 0; i < row_num; i++) {
-			rows[i] = new char* [col_num];//存放一条记录
-			for (int j = 0; j < col_num; j++)
-			{
-				rows[i][j] = new char[20];//一条记录的一个字段
-				memset(rows[i][j], 0, 20);
-				memcpy(rows[i][j], cur_res->res[i][j], 20);
+RC execute(char* sql, CEditArea* editArea) {
+	RC rc;
+	sqlstr* sql_str = get_sqlstr();
+	rc = parse(sql, sql_str);//只有两种返回结果SUCCESS和SQL_SYNTAX
+	if (rc == SUCCESS) {
+		switch (sql_str->flag) {
+		case 1: {
+			//判断SQL语句为select语句
+			SelResult res;
+			Init_Result(&res);
+			//将查询结果处理一下，整理成下面这种形式
+			//调用editArea->ShowSelResult(col_num,row_num,fields,rows);
+			if ((rc = Query(sql, &res))) {
+				return rc;
 			}
-			if (i == 99)
-				cur_res = cur_res->next_res;//每个链表节点最多记录100条记录
+			int col_num = res.col_num;//列
+			int row_num = 0;//行
+			SelResult* cur_res = &res;
+			while (cur_res) {//所有节点的记录数之和
+				row_num += cur_res->row_num;
+				cur_res = cur_res->next_res;
+			}
+			char** fields = new char* [20];//各字段名称
+			for (int i = 0; i < col_num; i++) {
+				fields[i] = new char[20];
+				memset(fields[i], 0, 20);
+				memcpy(fields[i], res.fields[i], 20);
+			}
+			cur_res = &res;
+			char*** rows = new char** [row_num];
+			for (int i = 0; i < row_num; i++) {
+				rows[i] = new char* [col_num];//存放一条记录
+				for (int j = 0; j < col_num; j++) {
+					rows[i][j] = new char[20];//一条记录的一个字段
+					memset(rows[i][j], 0, 20);
+					memcpy(rows[i][j], cur_res->res[i][j], 20);
+				}
+				if (i == 99)
+					cur_res = cur_res->next_res;//每个链表节点最多记录100条记录
+			}
+			editArea->ShowSelResult(col_num, row_num, fields, rows);
+			for (int i = 0; i < col_num; i++) {
+				delete[] fields[i];
+			}
+			delete[] fields;
+			Destory_Result(&res);
+			return SELECT_SUCCESS;
 		}
-		editArea->ShowSelResult(col_num, row_num, fields, rows);
-		for (int i = 0; i < col_num; i++) {
-			delete[] fields[i];
+		case 2:
+			//判断SQL语句为insert语句
+			if((rc = Insert(sql_str->sstr.ins.relName, sql_str->sstr.ins.nValues, sql_str->sstr.ins.values))) {
+				return SQL_SYNTAX;
+			}
+			return SUCCESS;
+		case 3:
+			//判断SQL语句为update语句
+			if ((rc = Update(sql_str->sstr.upd.relName, sql_str->sstr.upd.attrName, &sql_str->sstr.upd.value,
+				sql_str->sstr.upd.nConditions, sql_str->sstr.upd.conditions))) {
+				return SQL_SYNTAX;
+			}
+			return SUCCESS;
+		case 4:
+			//判断SQL语句为delete语句
+			if ((rc = Delete(sql_str->sstr.del.relName, sql_str->sstr.del.nConditions, sql_str->sstr.del.conditions))) {
+				return SQL_SYNTAX;
+			}
+			return SUCCESS;
+		case 5:
+			//判断SQL语句为createTable语句
+			if ((rc = CreateTable(sql_str->sstr.cret.relName, sql_str->sstr.cret.attrCount, sql_str->sstr.cret.attributes))) {
+				return SQL_SYNTAX;
+			}
+			return SUCCESS;
+		case 6:
+			//判断SQL语句为dropTable语句
+			if ((rc = DropTable(sql_str->sstr.drt.relName))) {
+				return SQL_SYNTAX;
+			}
+			return SUCCESS;
+		case 7:
+			//判断SQL语句为createIndex语句
+			if ((rc = CreateIndex(sql_str->sstr.crei.indexName, sql_str->sstr.crei.relName, sql_str->sstr.crei.attrName))) {
+				return SQL_SYNTAX;
+			}
+			return SUCCESS;
+		case 8:
+			//判断SQL语句为dropIndex语句
+			if ((rc = DropIndex(sql_str->sstr.dri.indexName))) {
+				return SQL_SYNTAX;
+			}
+			return SUCCESS;
+		case 9:
+			//判断为help语句，可以给出帮助提示
+			return SUCCESS;
+		case 10:
+			//判断为exit语句，可以由此进行退出操作
+			AfxGetMainWnd()->SendMessage(WM_CLOSE);
+			return SUCCESS;
 		}
-		delete[] fields;
-		Destory_Result(&res);
-		return;
 	}
-	RC rc = execute(sql);
+	else {
+		AfxMessageBox(sql_str->sstr.errors);//弹出警告框，sql语句词法解析错误信息
+		return rc;
+	}
+	return SUCCESS;
+}
+
+void ExecuteAndMessage(char* sql, CEditArea* editArea) {//根据执行的语句类型在界面上显示执行结果。此函数需修改
+	RC rc = execute(sql, editArea);
 	int row_num = 0;
-	char** messages;
+	char** messages = NULL;
 	switch (rc) {
 	case SUCCESS:
 		row_num = 1;
 		messages = new char* [row_num];
-		messages[0] = new char[100];
-		strcpy(messages[0], std::string("操作成功:" + std::string(sql)).c_str());
+		messages[0] = "操作成功";
 		editArea->ShowMessage(row_num, messages);
 		delete[] messages;
 		break;
@@ -72,6 +132,8 @@ void ExecuteAndMessage(char* sql, CEditArea* editArea) {//根据执行的语句类型在界
 		editArea->ShowMessage(row_num, messages);
 		delete[] messages;
 		break;
+	case SELECT_SUCCESS:
+		break;
 	default:
 		row_num = 1;
 		messages = new char* [row_num];
@@ -81,94 +143,6 @@ void ExecuteAndMessage(char* sql, CEditArea* editArea) {//根据执行的语句类型在界
 		break;
 	}
 }
-
-RC execute(char* sql) {
-	sqlstr* sql_str = NULL;
-	RC rc;
-	sql_str = get_sqlstr();
-	rc = parse(sql, sql_str);//只有两种返回结果SUCCESS和SQL_SYNTAX
-
-	if (rc == SUCCESS)
-	{
-		int i = 0;
-		switch (sql_str->flag)
-		{
-			//case 1:
-			////判断SQL语句为select语句
-
-			break;
-
-		case 2:
-			//判断SQL语句为insert语句
-			if((rc = Insert(sql_str->sstr.ins.relName, sql_str->sstr.ins.nValues, sql_str->sstr.ins.values)))
-				return SQL_SYNTAX;
-			
-			return SUCCESS;
-		case 3:
-			//判断SQL语句为update语句
-			if ((rc = Update(sql_str->sstr.upd.relName, sql_str->sstr.upd.attrName, &sql_str->sstr.upd.value,
-				sql_str->sstr.upd.nConditions, sql_str->sstr.upd.conditions))) {
-				return SQL_SYNTAX;
-			}
-			return SUCCESS;
-			break;
-
-		case 4:
-			//判断SQL语句为delete语句
-			if ((rc = Delete(sql_str->sstr.del.relName, sql_str->sstr.del.nConditions, sql_str->sstr.del.conditions))) {
-				return SQL_SYNTAX;
-			}
-			return SUCCESS;
-			break;
-
-		case 5:
-			//判断SQL语句为createTable语句
-			if ((rc = CreateTable(sql_str->sstr.cret.relName, sql_str->sstr.cret.attrCount, sql_str->sstr.cret.attributes))) {
-				return SQL_SYNTAX;
-			}
-			return SUCCESS;
-			break;
-
-		case 6:
-			//判断SQL语句为dropTable语句
-			if ((rc = DropTable(sql_str->sstr.drt.relName))) {
-				return SQL_SYNTAX;
-			}
-			return SUCCESS;
-			break;
-
-		case 7:
-			//判断SQL语句为createIndex语句
-			if ((rc = CreateIndex(sql_str->sstr.crei.indexName, sql_str->sstr.crei.relName, sql_str->sstr.crei.attrName))) {
-				return SQL_SYNTAX;
-			}
-			return SUCCESS;
-			break;
-
-		case 8:
-			//判断SQL语句为dropIndex语句
-			if ((rc = DropIndex(sql_str->sstr.dri.indexName))) {
-				return SQL_SYNTAX;
-			}
-			return SUCCESS;
-			break;
-
-		case 9:
-			//判断为help语句，可以给出帮助提示
-			break;
-
-		case 10:
-			//判断为exit语句，可以由此进行退出操作
-			AfxGetMainWnd()->SendMessage(WM_CLOSE);
-			break;
-		}
-	}
-	else {
-		AfxMessageBox(sql_str->sstr.errors);//弹出警告框，sql语句词法解析错误信息
-		return rc;
-	}
-}
-
 
 //
 //目的：在路径 dbPath 下创建一个名为 dbName 的空库，生成相应的系统文件。

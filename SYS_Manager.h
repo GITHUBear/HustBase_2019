@@ -71,7 +71,7 @@ RC DropDB(char* dbname);
 RC OpenDB(char* dbname);
 RC CloseDB();
 
-RC execute(char* sql);
+RC execute(char* sql, CEditArea* editArea);
 
 RC CreateTable(char* relName, int attrCount, AttrInfo* attributes);
 RC DropTable(char* relName);
