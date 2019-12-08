@@ -45,13 +45,17 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 	RC rc;
 	std::vector<std::pair<char*, QU_Records*>> tables;
 	for (int i = 0;i < nRelations; ++i) {
+		// Get all records for every relation.
+		// TODO(zjh): Use unary conditions to filter the records.
 		tables.push_back(std::make_pair(relations[i], new QU_Records));
 		rc = GetRecordByTableName(relations[i], tables[i].second);
 		CHECK(rc);
+		// Count the size of output rows.
 		num *= tables[i].second->nRecords;
 	}
 	std::vector<std::vector<AttrEntry>> tableAttributes;
 	for (size_t i = 0; i < tables.size(); ++i) {
+		// Get all columns for every table.
 		std::vector<AttrEntry> attributes;
 		int attrCount;
 		if ((rc = ColumnEntryGet(tables[i].first, &attrCount, attributes))) {
@@ -60,6 +64,7 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 		tableAttributes.push_back(attributes);
 	}
 	if (nSelAttrs == 1 && strcmp(selAttrs[0]->attrName, "*") == 0) {
+		// For "SELECT *", refill selAttrs with all entries.
 		nSelAttrs = 0;
 		for (size_t i = 0; i < tables.size(); ++i) {
 			nSelAttrs += tableAttributes[i].size();
@@ -85,6 +90,7 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 	res->col_num = nSelAttrs;
 	// Tranverse every record in the Cartesian product of all tables.
 	for (int i = 0;i < num; ++i) {
+		// If a column has index, then we use the relative rank in index.
 		int x = i;
 		std::vector<RM_Record*> record;
 		// Take corresponding records of every table.
@@ -148,7 +154,7 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 					}
 				}
 				assert(value->data);
-				if (!i) {
+				if (!res->row_num) {
 					res->type[j] = value->type;
 					res->length[j] = GetValueLength(value);
 					memcpy(res->fields[j], GetFullColumnName(selAttrs[j]), sizeof(char)*20);
