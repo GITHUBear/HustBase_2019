@@ -114,7 +114,14 @@ RC execute(char* sql, CEditArea* editArea) {
 }
 
 void ExecuteAndMessage(char* sql, CEditArea* editArea) {//根据执行的语句类型在界面上显示执行结果。此函数需修改
-	RC rc = execute(sql, editArea);
+	char* cur_sql = strtok(sql,"\r\n");
+	RC rc;
+	while(cur_sql!= NULL){
+		if(rc = execute(cur_sql, editArea)) {
+			break;
+		}
+		cur_sql = strtok(NULL,"\r\n");
+	}
 	int row_num = 0;
 	char** messages = NULL;
 	switch (rc) {
@@ -142,6 +149,26 @@ void ExecuteAndMessage(char* sql, CEditArea* editArea) {//根据执行的语句类型在界
 		delete[] messages;
 		break;
 	}
+}
+
+
+RC OpenSqlFile(char* filePath, CEditArea* editArea) {
+	RC rc;
+	if (filePath == NULL)
+		return SQL_SYNTAX;
+	std::string str;
+	std::filebuf fb;
+	if (fb.open(filePath, std::ios::in)) {
+	    std::istream is(&fb);
+		while (!is.eof()) {
+			std::string tmp;
+			getline(is, tmp);
+			str += tmp + "\n";
+		}
+    	fb.close();
+  	}
+	ExecuteAndMessage((char*)str.c_str(),editArea);
+  	return SUCCESS;
 }
 
 //

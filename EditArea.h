@@ -7,6 +7,7 @@
 // EditArea.h : header file
 
 #include "str.h"
+#include <fstream>
 
 class CHustBaseDoc;
 
@@ -58,6 +59,7 @@ protected:
 	//{{AFX_MSG(CEditArea)
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg void OnRunBtn();
+	afx_msg void OnOpenSqlFile();
 	afx_msg void OnUpdateRun(CCmdUI* pCmdUI);
 	afx_msg void OnChange();
 	afx_msg void OnSize(UINT nType, int cx, int cy);

@@ -39,6 +39,7 @@ BEGIN_MESSAGE_MAP(CEditArea, CEditView)
 	//{{AFX_MSG_MAP(CEditArea)
 	ON_WM_CREATE()
 	ON_COMMAND(ID_RUN, OnRunBtn)
+	ON_COMMAND(ID_FILE_OPEN, OnOpenSqlFile)
 	ON_UPDATE_COMMAND_UI(ID_RUN, OnUpdateRun)
 	ON_CONTROL_REFLECT(EN_CHANGE, OnChange)
 	ON_WM_SIZE()
@@ -141,6 +142,22 @@ void CEditArea::OnInitialUpdate()
 {
 	CEditView::OnInitialUpdate();
 
+}
+
+void CEditArea::OnOpenSqlFile()
+{
+	//关联打开文件按钮，此处应提示用户输入文件所在位置，并调用OpenSqlFile函数
+	//使用文件夹浏览窗口获得文件夹目录
+	//创建文件浏览窗口以获得用户文件路径输入
+	CFileDialog dialog(TRUE);    //不需要设定默认路径等参数
+	dialog.m_ofn.lpstrTitle = "请选择文件的位置";
+	if (dialog.DoModal() == IDOK)
+	{
+		CString filePath = dialog.GetPathName();
+		//将CString类型数据转换为char*类型输入
+		std::string str_filePath = filePath;
+		OpenSqlFile((char*)str_filePath.c_str(),this);
+	}
 }
 
 void CEditArea::OnUpdateRun(CCmdUI* pCmdUI)

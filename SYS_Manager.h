@@ -117,4 +117,5 @@ RC GetRecordSize(char* relName, int* recordSize);
 RC ShowTable(char* relName);
 RC ShowIndex(char* relName, char* attrName, bool def, int cutLen);
 
+RC OpenSqlFile(char* filePath, CEditArea* editArea) ;
 #endif
