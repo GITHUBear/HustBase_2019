@@ -125,7 +125,7 @@ void CTableList::displayTabInfo(CString ParentNode)
  	lpszCurDir = tchBuffer; 
  	GetCurrentDirectory(cchCurDir, lpszCurDir); 
  	path=lpszCurDir;
- 	path+="\\SYSTABLES.xx";
+ 	path+="\\SYSTABLES";
 
 	rc=RM_OpenFile((LPSTR)(LPCTSTR)path,&fileHandle);//去SYSTABLES表中获取表名
 	if(rc!=SUCCESS)
