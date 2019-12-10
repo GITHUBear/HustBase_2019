@@ -46,12 +46,12 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 	std::reverse(conditions, conditions + nConditions);
 	Init_Result(res);
 	RC rc;
-	std::vector<std::pair<std::string, QU_Records*>> tables;
+	std::vector<std::pair<std::string, QU_Records>> tables;
 	std::vector<std::vector<AttrEntry>> tableAttributes;
 	std::map<std::pair<std::string, std::string>, AttrEntry> tableAttrs;
 	std::map<std::string, int> tableIndex;
 	for (int i = 0;i < nRelations; ++i) {
-		tables.push_back(std::make_pair(relations[i], new QU_Records));
+		tables.push_back(std::make_pair(relations[i], QU_Records()));
 		tableIndex[relations[i]] = i;
 		// Get column information.
 		std::vector<AttrEntry> attributes;
@@ -77,13 +77,13 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 	int num = 1;
 	for (int i = 0;i < nRelations; ++i) {
 		// Get all records for every relation.
-		QU_Records* allRecords = new QU_Records;
+		QU_Records allRecords;
 		rc = GetRecordByTableName(relations[i], allRecords);
 		CHECK(rc);
 		rc = FilterRecordByCondition(tableAttrs, relations[i], nConditions, conditions, allRecords, tables[i].second);
 		CHECK(rc);
 		// Count the size of output rows.
-		num *= tables[i].second->nRecords;
+		num *= tables[i].second.size();
 	}
 	if (nSelAttrs == 1 && strcmp(selAttrs[0]->attrName, "*") == 0) {
 		// For "SELECT *", refill selAttrs with all entries.
@@ -114,8 +114,8 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 		std::vector<RM_Record*> record;
 		// Take corresponding records of every table.
 		for (size_t j = 0;j < tables.size(); ++j) {
-			record.push_back(tables[j].second->records[x%tables[j].second->nRecords]);
-			x /= tables[j].second->nRecords;
+			record.push_back(tables[j].second[x%tables[j].second.size()]);
+			x /= tables[j].second.size();
 		}
 		bool checked = 1;
 		// Go through all conditions.
@@ -241,15 +241,14 @@ const char* GetFullColumnName(RelAttr* relAttr) {
 /*
 	Get all records for tableName
 */
-RC GetRecordByTableName(char* tableName, QU_Records *records) {
-	// TODO(zjh): Make this capable of massive data situation.
+RC GetRecordByTableName(char* tableName, QU_Records& records) {
 	RM_FileHandle fileHandle;
 	RC rc = RM_OpenFile(tableName, &fileHandle);
 	CHECK(rc);
 	RM_FileScan fileScan;
 	rc = OpenScan(&fileScan, &fileHandle, 0, NULL);
 	CHECK(rc);
-	records->nRecords = 0;
+	records.clear();
 	while(1) {
 		RM_Record* record = new RM_Record;
 		int recordSize;
@@ -259,17 +258,17 @@ RC GetRecordByTableName(char* tableName, QU_Records *records) {
 		memset(record->pData, 0, recordSize);
 		rc = GetNextRec(&fileScan, record);
 		if (rc == RM_EOF) break;
-		records->records[records->nRecords++] = record;
+		records.push_back(record);
 	}
 	return SUCCESS;
 }
 
 RC FilterRecordByCondition(
 	std::map<std::pair<std::string, std::string>, AttrEntry>& tableAttrs,
-	const char* relation, int nConditions, Condition* conditions, QU_Records* in, QU_Records* out) {
+	const char* relation, int nConditions, Condition* conditions, QU_Records& in, QU_Records& out) {
 	RC rc;
-	out->nRecords = 0;
-	for (int i = 0;i < in->nRecords; ++i) {
+	out.clear();
+	for (auto rec : in) {
 		bool checked = 1;
 		for (int j = 0;j < nConditions; ++j) {
 			auto cond = conditions[j];
@@ -281,10 +280,10 @@ RC FilterRecordByCondition(
 			}
 			Value lhsValue, rhsValue;
 			rc = GetValueForCond(
-				cond.bLhsIsAttr, cond.lhsAttr, cond.lhsValue, tableAttrs, in->records[i], lhsValue);
+				cond.bLhsIsAttr, cond.lhsAttr, cond.lhsValue, tableAttrs, rec, lhsValue);
 			CHECK(rc);
 			rc = GetValueForCond(
-				cond.bRhsIsAttr, cond.rhsAttr, cond.rhsValue, tableAttrs, in->records[i], rhsValue);
+				cond.bRhsIsAttr, cond.rhsAttr, cond.rhsValue, tableAttrs, rec, rhsValue);
 			CHECK(rc);
 			rc = check_cond(cond.op, lhsValue, rhsValue, checked);
 			CHECK(rc);
@@ -293,8 +292,7 @@ RC FilterRecordByCondition(
 			}
 		}
 		if (checked) {
-			out->records[out->nRecords] = in->records[i];
-			out->nRecords++;
+			out.push_back(rec);
 		}
 	}
 	return SUCCESS;
