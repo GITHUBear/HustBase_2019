@@ -40,44 +40,63 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 	if (res == NULL) {
 		return INVALID_VALUES;
 	}
+	// Reverse these arrays due to unknown bug of flex.
+	std::reverse(selAttrs, selAttrs + nSelAttrs);
+	std::reverse(relations, relations + nRelations);
+	std::reverse(conditions, conditions + nConditions);
 	Init_Result(res);
-	int num = 1;
 	RC rc;
-	std::vector<std::pair<char*, QU_Records*>> tables;
+	std::vector<std::pair<std::string, QU_Records*>> tables;
+	std::vector<std::vector<AttrEntry>> tableAttributes;
+	std::map<std::pair<std::string, std::string>, AttrEntry> tableAttrs;
+	std::map<std::string, int> tableIndex;
+	for (int i = 0;i < nRelations; ++i) {
+		tables.push_back(std::make_pair(relations[i], new QU_Records));
+		tableIndex[relations[i]] = i;
+		// Get column information.
+		std::vector<AttrEntry> attributes;
+		int attrCount;
+		rc = ColumnEntryGet(relations[i], &attrCount, attributes);
+		CHECK(rc);
+		for (auto attr : attributes) {
+			tableAttrs[std::make_pair(tables[i].first, attr.attrName)] = attr;
+		}
+		// Fill null relName in Conditions.
+		for (int j = 0;j < nConditions; ++j) {
+			auto cond = conditions[j];
+			AttrEntry tmp;
+			if (cond.bLhsIsAttr && cond.lhsAttr.relName == NULL && FindAttr(tableAttrs, tables[i].first, cond.lhsAttr.attrName, tmp) != NULL) {
+				conditions[j].lhsAttr.relName = relations[i];
+			}
+			if (cond.bRhsIsAttr && cond.rhsAttr.relName == NULL && FindAttr(tableAttrs, tables[i].first, cond.rhsAttr.attrName, tmp) != NULL) {
+				conditions[j].rhsAttr.relName = relations[i];
+			}
+		}
+		tableAttributes.push_back(attributes);
+	}
+	int num = 1;
 	for (int i = 0;i < nRelations; ++i) {
 		// Get all records for every relation.
-		// TODO(zjh): Use unary conditions to filter the records.
-		tables.push_back(std::make_pair(relations[i], new QU_Records));
-		rc = GetRecordByTableName(relations[i], tables[i].second);
+		QU_Records* allRecords = new QU_Records;
+		rc = GetRecordByTableName(relations[i], allRecords);
+		CHECK(rc);
+		rc = FilterRecordByCondition(tableAttrs, relations[i], nConditions, conditions, allRecords, tables[i].second);
 		CHECK(rc);
 		// Count the size of output rows.
 		num *= tables[i].second->nRecords;
 	}
-	std::vector<std::vector<AttrEntry>> tableAttributes;
-	for (size_t i = 0; i < tables.size(); ++i) {
-		// Get all columns for every table.
-		std::vector<AttrEntry> attributes;
-		int attrCount;
-		if ((rc = ColumnEntryGet(tables[i].first, &attrCount, attributes))) {
-			return rc;
-		}
-		tableAttributes.push_back(attributes);
-	}
 	if (nSelAttrs == 1 && strcmp(selAttrs[0]->attrName, "*") == 0) {
 		// For "SELECT *", refill selAttrs with all entries.
-		nSelAttrs = 0;
-		for (size_t i = 0; i < tables.size(); ++i) {
-			nSelAttrs += tableAttributes[i].size();
-		}
+		nSelAttrs = tableAttrs.size();
 		selAttrs = new RelAttr* [nSelAttrs];
 		nSelAttrs = 0;
 		for (size_t i = 0; i < tables.size(); ++i) {
 			for (size_t j = 0; j < tableAttributes[i].size(); ++j) {
 				selAttrs[nSelAttrs] = new RelAttr;
 
-				selAttrs[nSelAttrs]->relName = new char[strlen(tables[i].first) + 1];
-				strcpy(selAttrs[nSelAttrs]->relName, tables[i].first);
-				selAttrs[nSelAttrs]->relName[strlen(tables[i].first)] = '\0';
+				selAttrs[nSelAttrs]->relName = new char[tables[i].first.length() + 1];
+				strcpy(selAttrs[nSelAttrs]->relName, tables[i].first.c_str());
+				selAttrs[nSelAttrs]->relName[tables[i].first.length()] = '\0';
 
 				selAttrs[nSelAttrs]->attrName = new char[tableAttributes[i][j].attrName.length() + 1];
 				strcpy(selAttrs[nSelAttrs]->attrName, tableAttributes[i][j].attrName.c_str());
@@ -103,36 +122,15 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 		for (int j = 0;j < nConditions; ++j) {
 			Condition* cond = &conditions[j];
 			Value lhsValue, rhsValue;
-			if (cond->bLhsIsAttr) {
-				for (size_t k = 0;k < tables.size(); ++k) {
-					if (cond->lhsAttr.relName == NULL || strcmp(cond->lhsAttr.relName, tables[k].first) == 0) {
-						rc = GetRecordValue(record[k], cond->lhsAttr.attrName, tableAttributes[k], &lhsValue);
-						if (rc == SUCCESS) {
-							break;
-						}
-					}
-				}
-			} else {
-				lhsValue = cond->lhsValue;
-			}
-
-			if (cond->bRhsIsAttr) {
-				for (size_t k = 0;k < tables.size(); ++k) {
-					if (cond->rhsAttr.relName == NULL || strcmp(cond->rhsAttr.relName, tables[k].first) == 0) {
-						rc = GetRecordValue(record[k], cond->rhsAttr.attrName, tableAttributes[k], &rhsValue);
-						if (rc == SUCCESS) {
-							break;
-						}
-					}
-				}
-			} else {
-				rhsValue = cond->rhsValue;
-			}
-
+			rc = GetValueForCond(
+				cond->bLhsIsAttr, cond->lhsAttr, cond->lhsValue, tableAttrs, cond->lhsAttr.relName ? record[tableIndex[cond->lhsAttr.relName]] : NULL, lhsValue);
+			CHECK(rc);
+			rc = GetValueForCond(
+				cond->bRhsIsAttr, cond->rhsAttr, cond->rhsValue, tableAttrs, cond->rhsAttr.relName ? record[tableIndex[cond->rhsAttr.relName]] : NULL, rhsValue);
+			CHECK(rc);
 			rc = check_cond(cond->op, lhsValue, rhsValue, checked);
 			CHECK(rc);
 			if (!checked) {
-				checked = 0;
 				break;
 			}
 		}
@@ -140,36 +138,43 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 			// All conditions passed. Add to res.
 			res->res[res->row_num] = new char*[nSelAttrs];
 			for (int j = 0;j < nSelAttrs; ++j) {
-				Value *value = new Value;
-				value->data = NULL;
+				Value value;
+				value.data = NULL;
 				for (size_t k = 0;k < tables.size(); ++k) {
+					AttrEntry tmp;
 					if (selAttrs[j]->relName == NULL) {
-						rc = GetRecordValue(record[k], selAttrs[j]->attrName, tableAttributes[k], value);
+						rc = FindAttr(tableAttrs, tables[k].first, selAttrs[j]->attrName, tmp);
+						if (rc == ATTR_NOT_EXIST) {
+							continue;
+						}
+						rc = GetRecordValue(record[k], selAttrs[j]->attrName, tmp, value);
 						if (rc == SUCCESS) {
 							break;
 						}
-					} else if (strcmp(tables[k].first, selAttrs[j]->relName) == 0) {
-						rc = GetRecordValue(record[k], selAttrs[j]->attrName, tableAttributes[k], value);
+					} else if (strcmp(tables[k].first.c_str(), selAttrs[j]->relName) == 0) {
+						rc = FindAttr(tableAttrs, tables[k].first, selAttrs[j]->attrName, tmp);
+						CHECK(rc);
+						rc = GetRecordValue(record[k], selAttrs[j]->attrName, tmp, value);
 						CHECK(rc);
 					}
 				}
-				assert(value->data);
+				assert(value.data);
 				if (!res->row_num) {
-					res->type[j] = value->type;
-					res->length[j] = GetValueLength(value);
+					res->type[j] = value.type;
+					res->length[j] = GetValueLength(&value);
 					memcpy(res->fields[j], GetFullColumnName(selAttrs[j]), sizeof(char)*20);
 				}
 				res->res[res->row_num][j] = new char[20];
 				memset(res->res[res->row_num][j], 0, 20);
-				switch(value->type) {
+				switch(value.type) {
 					case chars:
-						strcpy_s(res->res[res->row_num][j], 20, (char*)value->data);
+						strcpy_s(res->res[res->row_num][j], 20, (char*)value.data);
 						break;
 					case ints:
-						sprintf_s(res->res[res->row_num][j], 20, "%d", *(int*)value->data);
+						sprintf_s(res->res[res->row_num][j], 20, "%d", *(int*)value.data);
 						break;
 					case floats:
-						sprintf_s(res->res[res->row_num][j], 20, "%f", *(float*)value->data);
+						sprintf_s(res->res[res->row_num][j], 20, "%f", *(float*)value.data);
 						break;
 					default:
 						return INVALID_TYPES;
@@ -179,6 +184,15 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 		}
 	}
 	return SUCCESS;
+}
+
+RC FindAttr(std::map<std::pair<std::string, std::string>, AttrEntry>& tableAttrs, const std::string& tableName, const std::string& columnName, AttrEntry& attr) {
+	auto p = std::make_pair(tableName, columnName);
+	if (tableAttrs.count(p)) {
+		attr = tableAttrs[p];
+		return SUCCESS;
+	}
+	return ATTR_NOT_EXIST;
 }
 
 // Get length of value.
@@ -193,6 +207,21 @@ int GetValueLength(const Value* v) {
 		default:
 			return 0;
 	}
+}
+
+RC GetValueForCond(
+	bool isAttr, RelAttr attr, Value cond_value, std::map<std::pair<std::string, std::string>, AttrEntry>& tableAttrs, RM_Record* record, Value& value) {
+	RC rc;
+	if (isAttr) {
+		AttrEntry tmp;
+		rc = FindAttr(tableAttrs, attr.relName, attr.attrName, tmp);
+		CHECK(rc);
+		rc = GetRecordValue(record, attr.attrName, tmp, value);
+		CHECK(rc);
+	} else {
+		value = cond_value;
+	}
+	return SUCCESS;
 }
 
 // Return "Table.Column" or "Column" if relName == NULL.
@@ -213,6 +242,7 @@ const char* GetFullColumnName(RelAttr* relAttr) {
 	Get all records for tableName
 */
 RC GetRecordByTableName(char* tableName, QU_Records *records) {
+	// TODO(zjh): Make this capable of massive data situation.
 	RM_FileHandle fileHandle;
 	RC rc = RM_OpenFile(tableName, &fileHandle);
 	CHECK(rc);
@@ -234,23 +264,50 @@ RC GetRecordByTableName(char* tableName, QU_Records *records) {
 	return SUCCESS;
 }
 
+RC FilterRecordByCondition(
+	std::map<std::pair<std::string, std::string>, AttrEntry>& tableAttrs,
+	const char* relation, int nConditions, Condition* conditions, QU_Records* in, QU_Records* out) {
+	RC rc;
+	out->nRecords = 0;
+	for (int i = 0;i < in->nRecords; ++i) {
+		bool checked = 1;
+		for (int j = 0;j < nConditions; ++j) {
+			auto cond = conditions[j];
+			if (cond.bLhsIsAttr && strcmp(cond.lhsAttr.relName, relation)) {
+				continue;
+			}
+			if (cond.bRhsIsAttr && strcmp(cond.rhsAttr.relName, relation)) {
+				continue;
+			}
+			Value lhsValue, rhsValue;
+			rc = GetValueForCond(
+				cond.bLhsIsAttr, cond.lhsAttr, cond.lhsValue, tableAttrs, in->records[i], lhsValue);
+			CHECK(rc);
+			rc = GetValueForCond(
+				cond.bRhsIsAttr, cond.rhsAttr, cond.rhsValue, tableAttrs, in->records[i], rhsValue);
+			CHECK(rc);
+			rc = check_cond(cond.op, lhsValue, rhsValue, checked);
+			CHECK(rc);
+			if (!checked) {
+				break;
+			}
+		}
+		if (checked) {
+			out->records[out->nRecords] = in->records[i];
+			out->nRecords++;
+		}
+	}
+	return SUCCESS;
+}
+
 /*
 	Get value of attrName in rmRecord
 */
-RC GetRecordValue(RM_Record* rmRecord, const char* attrName, const std::vector<AttrEntry>& attributes, Value* value) {
-	bool found = 0;
+RC GetRecordValue(RM_Record* rmRecord, const char* attrName, const AttrEntry& attr, Value& value) {
 	char* pData = rmRecord->pData;
-	for (size_t i = 0; i < attributes.size(); i++) {
-		if (attributes[i].attrName.compare(attrName) == 0) {
-			value->type = attributes[i].attrType;
-			value->data = pData + attributes[i].attrOffset;
-			found = 1;
-		}
-	}
-	if (found) {
-		return SUCCESS;
-	}
-	return ATTR_NOT_EXIST;
+	value.type = attr.attrType;
+	value.data = pData + attr.attrOffset;
+	return SUCCESS;
 }
 
 template<typename T>
