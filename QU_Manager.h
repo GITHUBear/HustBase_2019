@@ -28,7 +28,9 @@ RC GetRecordByTableName(char* tableName, QU_Records &records);
 RC GetRecordValue(RM_Record* rmRecord, const char* attrName, const AttrEntry& attr, Value& value);
 RC GetValueForCond(bool isAttr, RelAttr attr, Value cond_value, std::map<std::pair<std::string, std::string>, AttrEntry>& tableAttrs, RM_Record* record, Value& value);
 RC FindAttr(std::map<std::pair<std::string, std::string>, AttrEntry>& tableAttrs, const std::string& tableName, const std::string& columnName, AttrEntry& attr);
-RC FilterRecordByCondition(std::map<std::pair<std::string, std::string>, AttrEntry>& tableAttrs, const char* relation, int nConditions, Condition* conditions, QU_Records& in, QU_Records& out);
+RC FilterRecordByCondition(std::map<std::pair<std::string, std::string>, AttrEntry>& tableAttrMap, const char* relation, std::vector<Condition> conditions, QU_Records& in, QU_Records& out);
 RC check_cond(const CompOp& op, const Value& lhsValue, const Value& rhsValue, bool& res);
 RC check_cmp(const CompOp& op, const int& cmp, bool& res);
+void ReverseCond(Condition& cond);
+bool condCmp(const Condition& x, const Condition& y);
 #endif
