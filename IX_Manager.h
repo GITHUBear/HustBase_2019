@@ -107,7 +107,7 @@ RC SearchEntry(IX_IndexHandle* indexHandle, void* pData, PageNum* pageNum, int* 
 RC OpenIndexScan(IX_IndexScan *indexScan,IX_IndexHandle *indexHandle,CompOp compOp,char *value);
 RC IX_GetNextEntry(IX_IndexScan *indexScan,RID * rid);
 RC CloseIndexScan(IX_IndexScan *indexScan);
-// RC GetIndexTree(char *fileName, Tree *index);
+RC GetIndexTree(char *fileName, Tree *index);
 
 RC CreateBucket(IX_IndexHandle *indexHandle, PageNum *pageNum);
 RC InsertRIDIntoBucket(IX_IndexHandle* indexHandle, PageNum bucketPageNum, RID rid);

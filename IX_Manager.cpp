@@ -297,9 +297,9 @@ RC CloseIndexScan(IX_IndexScan* indexScan)
 	return SUCCESS;
 }
 
-//RC GetIndexTree(char *fileName, Tree *index){
-//		return SUCCESS;
-//}
+RC GetIndexTree(char *fileName, Tree *index){
+		return SUCCESS;
+}
 
 
 // 
