@@ -178,7 +178,6 @@ RC OpenSqlFile(char* filePath, CEditArea* editArea) {
 //3. 向OS申请在dbpath路径创建文件夹。
 //4. 创建SYSTABLES文件和SYSCOLUMNS文件。
 RC CreateDB(char* dbpath, char* dbname) {
-
 	RC rc;
 	//1. 检查dbpath和dbname的合法性。
 	if (dbpath == NULL || dbname == NULL)
@@ -204,13 +203,11 @@ RC CreateDB(char* dbpath, char* dbname) {
 			if ((rc = RM_CreateFile((char*)(sysTablePath.c_str()), SIZE_SYS_TABLE)) ||
 				(rc = RM_CreateFile((char*)(sysColumnsPath.c_str()), SIZE_SYS_COLUMNS)))
 				return rc;
-
 			return SUCCESS;
 		}
-		return OS_FAIL;
+		return DB_EXIST;
 	}
-
-	return OS_FAIL;
+	return DB_EXIST;
 }
 
 
