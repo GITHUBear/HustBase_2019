@@ -228,8 +228,18 @@ RC DropDB(char* dbname) {
 	if (dbname == NULL || access(dbPath.c_str(), 0) == -1)
 		return DB_NOT_EXIST;
 
-	//2. 判断删除的是否是当前DB
+	//2. 判断dbname是否对应一个DB
+	int isDB = -1;
 	RC rc;
+	if ((rc = CheckDirIsDB(dbname, isDB))){
+		return DB_NOT_EXIST;
+	}
+	if (isDB == -1) {
+		return DB_NOT_EXIST;
+	}
+
+	//2. 判断删除的是否是当前DB
+	
 	if (dbInfo.curDbName.compare(dbname) == 0) {
 		//关闭当前目录
 		if ((rc = CloseDB()))
@@ -310,6 +320,58 @@ RC OpenDB(char* dbname) {
 	return SUCCESS;
 }
 
+
+//检查dbname对应的目录是否为一个合法的DB
+//合法返回1，非法返回-1。中途出错没有判断完返回0
+// 1. 检查dbname是否为NULL
+// 2. 检查curDbName和dbname是否相同
+// 3. 检查systable和syscolums文件是否为合法RM文件。
+RC CheckDirIsDB(char* dbname,int& res) {
+
+	RC rc;
+	//1. 检查dbname是否为空。
+	if (dbname == NULL) {
+		res = -1;
+		return SUCCESS;
+	}
+
+	// 2. 检查curDbName和dbname是否相同
+	if (dbInfo.curDbName.size()) {
+		if (dbInfo.curDbName.compare(dbname) == 0) {
+			res = -1;
+			return SUCCESS;
+		}
+	}
+
+	// 3. 检查systable和syscolums文件是否为合法RM文件。
+	RM_FileHandle tmpSysTable, tmpSysColumn;
+	std::string sysTablePath = dbname; 
+	sysTablePath = sysTablePath + "\\" + TABLE_META_NAME;
+	std::string sysColumnsPath = dbname;
+	sysColumnsPath = sysColumnsPath + "\\" + COLUMN_META_NAME;
+
+	if ((rc = RM_OpenFile((char*)sysTablePath.c_str(), &tmpSysTable))) {
+		res = -1;
+		return rc;
+	}
+
+	if ((rc = RM_CloseFile(&tmpSysTable))) {
+		res = 0; //中途出错
+		return rc;
+	}
+		
+	if ((rc = RM_OpenFile((char*)sysColumnsPath.c_str(), &tmpSysColumn))) {
+		res = -1;
+		return rc;
+	}
+
+	if ((rc = RM_CloseFile(&tmpSysColumn))) {
+		res = 1; //检查完毕
+		return rc;
+	}
+	res = 1;
+	return SUCCESS;
+}
 
 
 //

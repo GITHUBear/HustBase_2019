@@ -107,6 +107,7 @@ RC ColumnEntryGet(char* relName, int* attrCount,
 															  // CreateTable 的 逆操作
 
 //封装的RM方法
+RC CheckDirIsDB(char* dbname, int& res);
 RC CreateIxFromTable(char* relName, char* indexName, int attrOffset);
 RC CreateConFromCondition(char* relName, int nConditons, Condition* conditions, Con* cons);
 bool CheckCondition(char* relName, Condition& condition);
