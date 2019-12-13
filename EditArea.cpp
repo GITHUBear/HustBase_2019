@@ -157,6 +157,11 @@ void CEditArea::OnOpenSqlFile()
 		//将CString类型数据转换为char*类型输入
 		std::string str_filePath = filePath;
 		OpenSqlFile((char*)str_filePath.c_str(),this);
+		CHustBaseDoc* pDoc;
+		pDoc = CHustBaseDoc::GetDoc();
+		CHustBaseApp::pathvalue = true;
+
+		pDoc->m_pTreeView->PopulateTree();
 	}
 }
 
