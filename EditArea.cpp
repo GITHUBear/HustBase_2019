@@ -298,6 +298,7 @@ int CEditArea::iReadDictstruct(char tabname[][20], int* tabnum, char colname[][2
 }
 
 void CEditArea::ShowSelResult(int col_num, int row_num, char** fields, char*** result) {
+	row_num = min(row_num, 100);
 	CHustBaseDoc* pDoc = (CHustBaseDoc*)GetDocument();
 	for (int i = 0; i < col_num; i++) {
 		memcpy(pDoc->selResult[0][i], fields[i], 20);
