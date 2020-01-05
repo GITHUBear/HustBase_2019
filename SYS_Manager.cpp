@@ -18,9 +18,18 @@ RC execute(char* sql, CEditArea* editArea) {
 			Init_Result(&res);
 			//将查询结果处理一下，整理成下面这种形式
 			//调用editArea->ShowSelResult(col_num,row_num,fields,rows);
+			auto start = system_clock::now();
 			if ((rc = Query(sql, &res))) {
 				return rc;
 			}
+			auto end   = system_clock::now();
+			auto duration = duration_cast<microseconds>(end - start);
+			double Duration = double(duration.count()) * microseconds::period::num / microseconds::period::den;
+			auto messages = new char* [1];
+			auto str = "操作成功, 用时" + std::to_string(Duration) + "s";
+			messages[0] = (char*)str.c_str();
+			editArea->ShowMessage(1, (char**)messages);
+			FILE* f = fopen("output.csv", "w");
 			int col_num = res.col_num;//列
 			int row_num = 0;//行
 			SelResult* cur_res = &res;
@@ -33,7 +42,10 @@ RC execute(char* sql, CEditArea* editArea) {
 				fields[i] = new char[20];
 				memset(fields[i], 0, 20);
 				memcpy(fields[i], res.fields[i], 20);
+				if (i > 0) fprintf(f, ",");
+				fprintf(f, "%s", fields[i]);
 			}
+			fprintf(f, "\n");
 			cur_res = &res;
 			char*** rows = new char** [row_num];
 			for (int i = 0; i < row_num; i++) {
@@ -41,12 +53,16 @@ RC execute(char* sql, CEditArea* editArea) {
 				for (int j = 0; j < col_num; j++) {
 					rows[i][j] = new char[20];//一条记录的一个字段
 					memset(rows[i][j], 0, 20);
-					memcpy(rows[i][j], cur_res->res[i][j], 20);
+					memcpy(rows[i][j], cur_res->res[i%100][j], 20);
+					if (j > 0) fprintf(f, ",");
+					fprintf(f, "%s", rows[i][j]);
 				}
+				fprintf(f, "\n");
 				if (i == 99)
 					cur_res = cur_res->next_res;//每个链表节点最多记录100条记录
 			}
-			editArea->ShowSelResult(col_num, row_num, fields, rows);
+			fclose(f);
+			//editArea->ShowSelResult(col_num, row_num, fields, rows);
 			for (int i = 0; i < col_num; i++) {
 				delete[] fields[i];
 			}
@@ -135,7 +151,7 @@ void ExecuteAndMessage(char* sql, CEditArea* editArea) {//根据执行的语句类型在界
 	case SQL_SYNTAX:
 		row_num = 1;
 		messages = new char* [row_num];
-		messages[0] = "有语法错误";
+		messages[0] = cur_sql ? cur_sql : "有语法错误";
 		editArea->ShowMessage(row_num, messages);
 		delete[] messages;
 		break;
