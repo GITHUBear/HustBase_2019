@@ -46,14 +46,14 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 	std::reverse(conditions, conditions + nConditions);
 	Init_Result(res);
 	RC rc;
-	std::vector<std::pair<std::string, QU_Records>> tableRecords;
-	std::vector<std::vector<AttrEntry>> tableAttributes;
-	std::map<std::pair<std::string, std::string>, AttrEntry> tableAttrMap;
-	std::map<std::string, int> tableIndex;
-	std::vector<Condition> condition;
+	std::vector<std::pair<std::string, QU_Records>> tableRecords; // Store all Records for every table.
+	std::vector<std::vector<AttrEntry>> tableAttributes; // Store a vector of AttrEntry for every table.
+	std::map<std::pair<std::string, std::string>, AttrEntry> tableAttrMap; // Map <tableName, columnName> to the AttrEntry of this colunm.
+	std::map<std::string, int> tableOrder; // Map table name to it's order.
+	std::vector<Condition> conds;
 	for (int i = 0;i < nRelations; ++i) {
 		tableRecords.push_back(std::make_pair(relations[i], QU_Records()));
-		tableIndex[relations[i]] = i;
+		tableOrder[relations[i]] = i;
 		// Get column information.
 		std::vector<AttrEntry> attributes;
 		int attrCount;
@@ -66,29 +66,33 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 		for (int j = 0;j < nConditions; ++j) {
 			auto cond = conditions[j];
 			AttrEntry tmp;
-			if (cond.bLhsIsAttr && cond.lhsAttr.relName == NULL && FindAttr(tableAttrMap, tableRecords[i].first, cond.lhsAttr.attrName, tmp) != NULL) {
+			if (cond.bLhsIsAttr && cond.lhsAttr.relName == NULL && FindAttr(tableAttrMap, tableRecords[i].first, cond.lhsAttr.attrName, tmp) == SUCCESS) {
 				conditions[j].lhsAttr.relName = relations[i];
 			}
-			if (cond.bRhsIsAttr && cond.rhsAttr.relName == NULL && FindAttr(tableAttrMap, tableRecords[i].first, cond.rhsAttr.attrName, tmp) != NULL) {
+			if (cond.bRhsIsAttr && cond.rhsAttr.relName == NULL && FindAttr(tableAttrMap, tableRecords[i].first, cond.rhsAttr.attrName, tmp) == SUCCESS) {
 				conditions[j].rhsAttr.relName = relations[i];
 			}
 		}
 		tableAttributes.push_back(attributes);
 	}
+	// Modify every condition so that the table that has the less order always appears at left, if both sides are attrs;
+	// if there's only one side of attr, then make sure that attr appears at right;
+	// if both sides are only values, check and ignore it in future evaluation.
+	// For cond.value.data, fill it with attr's table's order.
 	for (int j = 0;j < nConditions; ++j) {
 		auto cond = conditions[j];
 		int mask = (cond.bLhsIsAttr << 1) | cond.bRhsIsAttr;
-		if (mask == 0b11) {
-			int x = tableIndex[cond.lhsAttr.relName];
-			int y = tableIndex[cond.rhsAttr.relName];
+		if (mask == 0b11) { // attr op attr
+			int x = tableOrder[cond.lhsAttr.relName];
+			int y = tableOrder[cond.rhsAttr.relName];
 			conditions[j].lhsValue.data = (void*)x;
 			conditions[j].rhsValue.data = (void*)y;
 			if (x > y) ReverseCond(conditions[j]);
-		} else if (mask == 0b10) {
-			int x = tableIndex[cond.lhsAttr.relName];
+		} else if (mask == 0b10) { // attr op value
+			int x = tableOrder[cond.lhsAttr.relName];
 			conditions[j].lhsValue.data = (void*)x;
 			ReverseCond(conditions[j]);
-		} else if (mask == 0b00) {
+		} else if (mask == 0b00) { // value op value
 			bool tmp = 0;
 			rc = check_cond(cond.op, cond.lhsValue, cond.rhsValue, tmp);
 			CHECK(rc);
@@ -96,13 +100,14 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 				return SUCCESS;
 			}
 			continue;
-		} else {
-			int y = tableIndex[cond.rhsAttr.relName];
+		} else { // value op attr
+			int y = tableOrder[cond.rhsAttr.relName];
 			conditions[j].rhsValue.data = (void*)y;
 		}
-		condition.push_back(conditions[j]);
+		conds.push_back(conditions[j]);
 	}
-	std::sort(condition.begin(), condition.end(), condCmp);
+	// Sort conds basing on the order of their right attr's table.
+	std::sort(conds.begin(), conds.end(), condCmp);
 	int num = 1;
 	for (int i = 0;i < nRelations; ++i) {
 		// Get all records for every relation.
@@ -110,13 +115,15 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 		rc = GetRecordByTableName(relations[i], allRecords);
 		CHECK(rc);
 		// Filter records by conditions only relating to table[i].
-		rc = FilterRecordByCondition(tableAttrMap, relations[i], condition, allRecords, tableRecords[i].second);
+		rc = FilterRecordByCondition(tableAttrMap, relations[i], conds, allRecords, tableRecords[i].second);
 		CHECK(rc);
 		// Count the size of output rows.
 		num *= tableRecords[i].second.size();
 	}
+	bool star = 0;
 	if (nSelAttrs == 1 && strcmp(selAttrs[0]->attrName, "*") == 0) {
 		// For "SELECT *", refill selAttrs with all entries.
+		star = 1;
 		nSelAttrs = tableAttrMap.size();
 		selAttrs = new RelAttr* [nSelAttrs];
 		nSelAttrs = 0;
@@ -137,36 +144,125 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 		}
 	}
 	res->col_num = nSelAttrs;
-	// Tranverse every record in the Cartesian product of all tableRecords.
-	for (int i = 0;i < num; ++i) {
-		// If a column has index, then we use the relative rank in index.
-		int x = i;
-		std::vector<RM_Record*> record;
-		std::vector<int> rank;
-		// Take corresponding records of every table.
-		for (size_t j = 0;j < tableRecords.size(); ++j) {
-			rank.push_back(x%tableRecords[j].second.size());
-			record.push_back(tableRecords[j].second[x%tableRecords[j].second.size()]);
-			x /= tableRecords[j].second.size();
-		}
-		bool checked = 1;
-		// Go through all conditions.
-		for (auto cond : condition) {
-			Value lhsValue, rhsValue;
-			rc = GetValueForCond(
-				cond.bLhsIsAttr, cond.lhsAttr, cond.lhsValue, tableAttrMap, cond.lhsAttr.relName ? record[tableIndex[cond.lhsAttr.relName]] : NULL, lhsValue);
-			CHECK(rc);
-			rc = GetValueForCond(
-				cond.bRhsIsAttr, cond.rhsAttr, cond.rhsValue, tableAttrMap, cond.rhsAttr.relName ? record[tableIndex[cond.rhsAttr.relName]] : NULL, rhsValue);
-			CHECK(rc);
-			rc = check_cond(cond.op, lhsValue, rhsValue, checked);
-			CHECK(rc);
-			if (!checked) {
-				break;
+	// Perform the select.
+	std::vector<SelStatus> status;
+	std::vector<RM_Record> records;
+	std::vector<int> recordSizes;
+	for (size_t i = 0;i < tableRecords.size(); ++i) {
+		int j;
+		rc = GetRecordSize((char*)tableRecords[i].first.c_str(), &j);
+		CHECK(rc);
+		recordSizes.push_back(j);
+	}
+	status.push_back(SelStatus(-1));
+	records.push_back(RM_Record());
+	while (!status.empty()) {
+		records.pop_back();
+		// Find next record for the last column.
+		bool columnEof = 0;
+		if (status.back().is_index) {
+			RM_Record rec;
+			rec.pData = new char[recordSizes[status.size()-1]];
+			rc = status.back().index.Next(&rec);
+			if (rc == SUCCESS) {
+				records.push_back(rec);
+			} else
+			if (rc == IX_EOF) {
+				columnEof = 1;
+			} else {
+				// Other errors.
+			}
+		} else {
+			if (status.back().i + 1 == tableRecords[status.size()-1].second.size()) {
+				columnEof = 1;
+			} else {
+				auto rec = tableRecords[status.size()-1].second[++status.back().i];
+				records.push_back(*rec);
 			}
 		}
-		if (checked) {
-			// All conditions passed. Add to res.
+		if (columnEof) {
+			// Go back one table and find it's next record.
+			if (status.back().is_index) {
+				status.back().index.Close();
+			}
+			status.pop_back();
+			continue;
+		} else {
+			// Apply conds on this record.
+			bool checked = 1;
+			for (auto cond : conds) {
+				if ((int)cond.rhsValue.data == status.size()-1) {
+					Value lValue, rValue;
+					if (cond.bLhsIsAttr) {
+						GetRecordValue(
+							&records[(int)cond.lhsValue.data],
+							cond.lhsAttr.attrName,
+							tableAttrMap[std::make_pair(cond.lhsAttr.relName, cond.lhsAttr.attrName)],
+							lValue);
+					} else {
+						lValue = cond.lhsValue;
+					}
+					GetRecordValue(
+						&records[status.size()-1],
+						cond.rhsAttr.attrName,
+						tableAttrMap[std::make_pair(cond.rhsAttr.relName, cond.rhsAttr.attrName)],
+						rValue);
+					check_cond(cond.op, lValue, rValue, checked);
+					if (!checked) {
+						break;
+					}
+				}
+			}
+			if (!checked) {
+				// Get next valid record.
+				continue;
+			}
+		}
+		if (status.size() < tableRecords.size()) {
+			// Tranverse the next table.
+			char* tableName = (char*)tableRecords[status.size()].first.c_str(), *columnName;
+			bool found = 0;
+			for (auto cond : conds) {
+				if ((int)cond.rhsValue.data == status.size()) {
+					columnName = cond.rhsAttr.attrName;
+					auto attr = tableAttrMap[std::make_pair(tableName, columnName)];
+					if (attr.ix_flag) {
+						Value lValue;
+						if (cond.bLhsIsAttr) {
+							GetRecordValue(
+								&records[(int)cond.lhsValue.data],
+								cond.lhsAttr.attrName,
+								tableAttrMap[std::make_pair(cond.lhsAttr.relName, cond.lhsAttr.attrName)],
+								lValue);
+						} else {
+							lValue = cond.lhsValue;
+						}
+						int is_success = 0;
+						SelStatus selStatus(tableName, columnName, cond.op, (char*)lValue.data, is_success);
+						if (is_success) {
+							status.push_back(selStatus);
+							records.push_back(RM_Record());
+							found = 1;
+							break;
+						}
+					}
+				}
+ 			}
+			if (found) {
+				continue;
+			} else {
+				status.push_back(SelStatus(-1));
+				records.push_back(RM_Record());
+				continue;
+			}
+		} else {
+			// Add to res.
+			if (res->row_num == 100) {
+				res->next_res = new SelResult;
+				res = res->next_res;
+				Init_Result(res);
+				res->col_num = nSelAttrs;
+			}
 			res->res[res->row_num] = new char*[nSelAttrs];
 			for (int j = 0;j < nSelAttrs; ++j) {
 				Value value;
@@ -178,14 +274,14 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 						if (rc == ATTR_NOT_EXIST) {
 							continue;
 						}
-						rc = GetRecordValue(record[k], selAttrs[j]->attrName, tmp, value);
+						rc = GetRecordValue(&records[k], selAttrs[j]->attrName, tmp, value);
 						if (rc == SUCCESS) {
 							break;
 						}
 					} else if (strcmp(tableRecords[k].first.c_str(), selAttrs[j]->relName) == 0) {
 						rc = FindAttr(tableAttrMap, tableRecords[k].first, selAttrs[j]->attrName, tmp);
 						CHECK(rc);
-						rc = GetRecordValue(record[k], selAttrs[j]->attrName, tmp, value);
+						rc = GetRecordValue(&records[k], selAttrs[j]->attrName, tmp, value);
 						CHECK(rc);
 					}
 				}
@@ -212,6 +308,7 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 				}
 			}
 			res->row_num++;						
+			continue;
 		}
 	}
 	return SUCCESS;
@@ -283,7 +380,7 @@ RC GetValueForCond(
 	return SUCCESS;
 }
 
-// Return "Table.Column" or "Column" if relName == NULL.
+/* Return "Table.Column" or "Column" if relName == NULL. */
 const char* GetFullColumnName(RelAttr* relAttr) {
 	if (relAttr->relName == NULL) {
 		return relAttr->attrName;
@@ -297,9 +394,7 @@ const char* GetFullColumnName(RelAttr* relAttr) {
 	return tmp;
 }
 
-/*
-	Get all records for tableName
-*/
+/* Get all records for tableName. */
 RC GetRecordByTableName(char* tableName, QU_Records& records) {
 	RM_FileHandle fileHandle;
 	RC rc = RM_OpenFile(tableName, &fileHandle);
@@ -356,9 +451,7 @@ RC FilterRecordByCondition(
 	return SUCCESS;
 }
 
-/*
-	Get value of attrName in rmRecord
-*/
+/* Get value of attrName in rmRecord. */
 RC GetRecordValue(RM_Record* rmRecord, const char* attrName, const AttrEntry& attr, Value& value) {
 	char* pData = rmRecord->pData;
 	value.type = attr.attrType;
@@ -373,9 +466,7 @@ int QU_cmp(const T& x, const T& y) {
 	return 1;
 }
 
-/*
-	Set res to (lhsValue op rhsValue)
-*/
+/* Set res to (lhsValue op rhsValue) */
 RC check_cond(const CompOp& op, const Value& lhsValue, const Value& rhsValue, bool& res) {
 	assert(lhsValue.type == rhsValue.type);
 	int cmp;

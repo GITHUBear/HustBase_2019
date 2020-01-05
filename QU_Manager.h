@@ -3,6 +3,9 @@
 #include "str.h"
 #include "RM_Manager.h"
 #include "SYS_Manager.h"
+#include "IX_Iterator.h"
+#include <chrono>
+using namespace std::chrono;
 
 typedef std::vector<RM_Record*> QU_Records;
 
@@ -15,6 +18,19 @@ typedef struct SelResult {
 	char** res[100];	//最多一百条记录
 	SelResult* next_res;
 }SelResult;
+
+typedef struct SelStatus {
+	bool is_index;
+	int i;
+	IX_Iterator index;
+	SelStatus(int _i) : is_index(0), i(_i), index() {}
+	SelStatus(
+		char* tableName,
+		char* columnName,
+		CompOp op,
+		char* value,
+		int& is_success) : is_index(1), i(0), index(tableName, columnName, op, value, i, is_success) {}
+}SelStatus;
 
 void Init_Result(SelResult* res);
 void Destory_Result(SelResult* res);
