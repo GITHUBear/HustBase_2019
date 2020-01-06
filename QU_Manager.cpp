@@ -238,7 +238,9 @@ RC Select(int nSelAttrs, RelAttr** selAttrs, int nRelations, char** relations, i
 							lValue = cond.lhsValue;
 						}
 						int is_success = 0;
+						ReverseOp(cond.op);
 						SelStatus selStatus(tableName, columnName, cond.op, (char*)lValue.data, is_success);
+						ReverseOp(cond.op);
 						if (is_success) {
 							status.push_back(selStatus);
 							records.push_back(RM_Record());
